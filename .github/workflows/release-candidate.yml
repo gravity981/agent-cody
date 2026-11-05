@@ -1,0 +1,149 @@
+# Release candidate (spec/delivery.md 3, REL-03): started manually on main with
+# the version to release. Runs the full check again, then ci/build-release (and
+# ci/publish, if present) in the CI environment with that version, tags
+# v<version>-rc.<M> and publishes a GitHub pre-release with the release files.
+name: Release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (X.Y.Z, e.g. 0.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Check and plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+      previous_tag: ${{ steps.plan.outputs.previous_tag }}
+    steps:
+      - name: Only from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Release candidates are built from main only, not from $GITHUB_REF."
+          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: CI passed for this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          passed=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --status success --json databaseId --jq length)
+          if [ "$passed" -eq 0 ]; then
+            echo "::error::CI has not passed for $GITHUB_SHA; wait for it or fix main first."
+            exit 1
+          fi
+      - name: Plan the candidate
+        id: plan
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::\"$VERSION\" is not a release version X.Y.Z."
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/v$VERSION" > /dev/null; then
+            echo "::error::v$VERSION is already released; choose a higher version."
+            exit 1
+          fi
+          latest=$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sed 's/^v//' | sort -V | tail -n 1 || true)
+          if [ -n "$latest" ] && [ "$(printf '%s\n%s\n' "$latest" "$VERSION" | sort -V | tail -n 1)" != "$VERSION" ]; then
+            echo "::error::$VERSION is not higher than the latest release $latest."
+            exit 1
+          fi
+          last_rc=$(git tag --list "v$VERSION-rc.*" | sed "s/^v$VERSION-rc\.//" | grep -E '^[0-9]+$' | sort -n | tail -n 1 || true)
+          tag="v$VERSION-rc.$(( ${last_rc:-0} + 1 ))"
+          {
+            echo "version=$VERSION"
+            echo "tag=$tag"
+            echo "previous_tag=${latest:+v$latest}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Candidate $tag (latest release: ${latest:-none})"
+
+  check:
+    name: Full check
+    needs: prepare
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Build and publish
+    needs: [prepare, check]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60 # TODO(blueprint): adjust to the project's build duration
+    permissions:
+      contents: write
+      # TODO(blueprint): add what ci/publish needs, e.g. packages: write
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      TAG: ${{ needs.prepare.outputs.tag }}
+      PREVIOUS_TAG: ${{ needs.prepare.outputs.previous_tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Entry point present
+        run: |
+          if [ ! -x ci/build-release ]; then
+            echo "::error::ci/build-release is missing or not executable (spec/delivery.md 2)."
+            exit 1
+          fi
+          mkdir -p release-files
+
+      # Default CI environment: the devcontainer (spec/delivery.md 2).
+      # TODO(blueprint): pin to a commit SHA, or replace with setup steps on the runner
+      - name: Build (and publish) in the devcontainer
+        uses: devcontainers/ci@v0.3
+        env:
+          COMMIT: ${{ github.sha }}
+          CANDIDATE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_DIR: release-files
+          # TODO(blueprint): secrets for ci/publish, e.g. REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        with:
+          push: never
+          runCmd: |
+            set -e
+            ci/build-release
+            if [ -x ci/publish ]; then ci/publish; fi
+          env: |
+            VERSION
+            COMMIT
+            CANDIDATE_TAG
+            RELEASE_DIR
+
+      - name: Tag the commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag --annotate "$TAG" --message "Release candidate $TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
+
+      - name: GitHub pre-release with the release files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          notes_start=()
+          if [ -n "$PREVIOUS_TAG" ]; then notes_start=(--notes-start-tag "$PREVIOUS_TAG"); fi
+          files=()
+          while IFS= read -r -d '' f; do files+=("$f"); done < <(find release-files -maxdepth 1 -type f -print0)
+          gh release create "$TAG" --verify-tag --prerelease --title "$TAG" \
+            --generate-notes "${notes_start[@]}" \
+            --notes "Release candidate of $VERSION (commit $GITHUB_SHA)." \
+            "${files[@]}"

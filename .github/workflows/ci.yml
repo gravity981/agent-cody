@@ -1,0 +1,73 @@
+# CI (spec/delivery.md 2, REL-01, REL-02): every pull request and every push to
+# main. Runs the project's ci/check with the build version
+# <last release>+build.<N>, by default inside the devcontainer (delivery.md 2).
+# Also called by release-candidate.yml to run the full check again for a candidate.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60 # TODO(blueprint): adjust to the project's check duration
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # tags: last release for the version
+
+      - name: Entry point present
+        run: |
+          if [ ! -x ci/check ]; then
+            echo "::error::ci/check is missing or not executable (spec/delivery.md 2; built in stage 1)."
+            exit 1
+          fi
+
+      - name: Determine version
+        id: version
+        run: |
+          last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-*' 2>/dev/null || echo v0.0.0)
+          echo "version=${last#v}+build.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      # Default CI environment: the devcontainer (spec/delivery.md 2).
+      # TODO(blueprint): pin to a commit SHA, or replace with setup steps on the runner
+      - name: Check in the devcontainer
+        uses: devcontainers/ci@v0.3
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          COMMIT: ${{ github.sha }}
+        with:
+          push: never
+          runCmd: ci/check
+          env: |
+            VERSION
+            COMMIT
+
+      - name: Requirement report in the run summary
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -f reports/requirements.md ]; then
+            cat reports/requirements.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No requirement report (reports/requirements.md) was written." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: reports-${{ github.run_attempt }}-${{ github.job }}
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 14

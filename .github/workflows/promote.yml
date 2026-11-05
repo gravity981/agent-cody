@@ -1,0 +1,123 @@
+# Promote a release candidate to a release (spec/delivery.md 3, REL-04): started
+# manually with the candidate tag. No rebuild: runs ci/promote (if present),
+# tags v<version> on the candidate's commit and publishes the GitHub release
+# with exactly the candidate's release files.
+name: Promote
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate:
+        description: Candidate tag to promote (e.g. v0.1.0-rc.2)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  promote:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      # TODO(blueprint): add what ci/promote needs, e.g. packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Plan the promotion
+        id: plan
+        env:
+          CANDIDATE: ${{ inputs.candidate }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$CANDIDATE" =~ ^v((0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*))-rc\.([1-9][0-9]*)$ ]]; then
+            echo "::error::\"$CANDIDATE\" is not a candidate tag vX.Y.Z-rc.M."
+            exit 1
+          fi
+          version="${BASH_REMATCH[1]}"
+          if ! git rev-parse -q --verify "refs/tags/$CANDIDATE" > /dev/null; then
+            echo "::error::Candidate $CANDIDATE does not exist."
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
+            echo "::error::v$version is already released."
+            exit 1
+          fi
+          newest=$(git tag --list "v$version-rc.*" | grep -E "^v$version-rc\.[0-9]+$" | sort -V | tail -n 1)
+          if [ "$newest" != "$CANDIDATE" ]; then
+            echo "::error::Only the latest candidate of $version can be promoted: $newest."
+            exit 1
+          fi
+          latest=$(git tag --list 'v[0-9]*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1 || true)
+          {
+            echo "version=$version"
+            echo "tag=v$version"
+            echo "commit=$(git rev-list -n 1 "$CANDIDATE")"
+            echo "previous_tag=$latest"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Candidate's release files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ inputs.candidate }}
+        run: |
+          mkdir release-files
+          count=$(gh release view "$CANDIDATE" --json assets --jq '.assets | length')
+          if [ "$count" -gt 0 ]; then
+            gh release download "$CANDIDATE" --dir release-files
+          fi
+
+      # ci/promote as it was in the candidate's commit, not as it is on main now
+      - name: Check out the candidate's commit
+        run: git checkout --detach "${{ steps.plan.outputs.commit }}"
+
+      # Default CI environment: the devcontainer (spec/delivery.md 2).
+      # TODO(blueprint): pin to a commit SHA, or replace with setup steps on the runner
+      - name: Promote in the devcontainer
+        if: hashFiles('ci/promote') != ''
+        uses: devcontainers/ci@v0.3
+        env:
+          VERSION: ${{ steps.plan.outputs.version }}
+          COMMIT: ${{ steps.plan.outputs.commit }}
+          CANDIDATE_TAG: ${{ inputs.candidate }}
+          RELEASE_TAG: ${{ steps.plan.outputs.tag }}
+          # TODO(blueprint): secrets for ci/promote, e.g. REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        with:
+          push: never
+          runCmd: ci/promote
+          env: |
+            VERSION
+            COMMIT
+            CANDIDATE_TAG
+            RELEASE_TAG
+
+      - name: Tag and publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE: ${{ inputs.candidate }}
+          VERSION: ${{ steps.plan.outputs.version }}
+          TAG: ${{ steps.plan.outputs.tag }}
+          COMMIT: ${{ steps.plan.outputs.commit }}
+          PREVIOUS_TAG: ${{ steps.plan.outputs.previous_tag }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag --annotate "$TAG" --message "Release $TAG (promoted from $CANDIDATE)" "$COMMIT"
+          git push origin "refs/tags/$TAG"
+
+          notes_start=()
+          if [ -n "$PREVIOUS_TAG" ]; then notes_start=(--notes-start-tag "$PREVIOUS_TAG"); fi
+          files=()
+          while IFS= read -r -d '' f; do files+=("$f"); done < <(find release-files -maxdepth 1 -type f -print0)
+          gh release create "$TAG" --verify-tag --latest --title "$TAG" \
+            --generate-notes "${notes_start[@]}" \
+            --notes "Promoted from $CANDIDATE (commit $COMMIT) without rebuilding." \
+            "${files[@]}"

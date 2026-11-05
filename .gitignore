@@ -1,0 +1,12 @@
+# Verification results and the requirement report (written by ci/check)
+reports/
+
+# Release files (written by ci/build-release)
+release-files/
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# TODO(blueprint): build output and caches of the project's toolchain

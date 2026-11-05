@@ -1,0 +1,37 @@
+{
+  // The development environment (VS Code "Reopen in Container"). By default the
+  // workflows run the ci/ entry points in it too (spec/delivery.md 2). The project's
+  // toolchain goes into the Dockerfile, with pinned versions (spec/architecture.md 5).
+  "name": "<Project>", // TODO(blueprint)
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "features": {
+    // gh: lets Claude read issues, pull requests and CI runs
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+    // TODO(blueprint): features the project needs, e.g. docker-outside-of-docker
+  },
+  "mounts": [
+    // Claude Code login and settings survive container rebuilds, shared across projects
+    "source=claude-config,target=/home/vscode/.claude,type=volume"
+    // TODO(blueprint): volumes for data that must survive rebuilds
+  ],
+  "containerEnv": {
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+  },
+  // TODO(blueprint): forwardPorts, postCreateCommand (e.g. dependency install) as needed
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "editorconfig.editorconfig",
+        "github.vscode-github-actions",
+        "bierner.markdown-mermaid",
+        "davidanson.vscode-markdownlint"
+        // TODO(blueprint): extensions for the project's toolchain
+      ]
+    }
+  },
+  "remoteUser": "vscode"
+}
