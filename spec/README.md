@@ -90,6 +90,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-05 | MAJOR version for serial protocol or bridge HTTP API breaks, or printed parts that no longer fit the previous release. | delivery.md 1 |
 | 2026-11-05 | Verification: unit tests and CAD model checks in CI (JUnit XML, names with `req_ABC_01`); hardware, real agents and look verified manually. | verification.md |
 | 2026-11-05 | Stages: 1 walking skeleton, 2 status light with Claude Code (M1), 3 Copilot (M2), 4 mechanism prototype, 5 character and assembly (M3). | implementation-plan.md |
+| 2026-11-05 | Stage 1: first release contains skeletons (firmware sends `READY <version>`, bridge image answers `--version`, compose file); Python dependencies with uv and lockfiles; static checks ruff, clang-format, shellcheck; Docker in the devcontainer via docker-outside-of-docker; bridge image on GHCR is public. | implementation-plan.md stage 1, delivery.md 2, architecture.md 5.1 |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points

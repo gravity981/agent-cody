@@ -60,6 +60,8 @@ All entry points:
 | `ci/check` | Firmware unit tests (PlatformIO `native`), firmware build, bridge tests (pytest), hook mapping tests, CAD model checks, requirement report tests; then the requirement report. |
 | `ci/build-release` | Into `RELEASE_DIR`: firmware `.bin`, print files (3MF/STL), compose file for the bridge, hook configs and setup guide, BOM and wiring diagram, each with the version in its name. |
 | `ci/publish` | Builds the bridge image and pushes it to GHCR as `cody-bridge:<version>-rc.<M>` (from `CANDIDATE_TAG`); needs `packages: write`. |
+
+The bridge image on GHCR is public, so the compose file pulls it without a login. The entry points get Docker through the devcontainer feature docker-outside-of-docker. The first release (stage 1) contains skeletons: firmware that only sends `READY <version>`, and a bridge image that only answers `--version`, with its compose file.
 | `ci/promote` | Adds the tags `<version>` and `latest` to the candidate's image on GHCR, without rebuilding; needs `packages: write`. |
 
 ## 3. Release flow

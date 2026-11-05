@@ -109,7 +109,9 @@ At boot the device sends `READY <version>`; the bridge then resends settings and
 | Bridge | Python | pinned in step 1a | TD-03 |
 | Bridge runtime | Docker container, image on GHCR | – | TD-04 |
 | CAD | build123d; head mesh from Meshy.ai, processed with manifold3d | pinned in step 1a | TD-05 |
-| CI environment | Devcontainer (devcontainers/ci) | – | README.md "Decisions" |
+| CI environment | Devcontainer (devcontainers/ci), Docker via docker-outside-of-docker | – | README.md "Decisions" |
+| Python dependencies | uv with a lockfile per Python project | pinned in step 1a | README.md "Decisions" |
+| Static checks | ruff (Python), clang-format (C++), shellcheck (shell) | pinned in step 1a | README.md "Decisions" |
 
 Every tool has a pinned version and is installed in the devcontainer (`.devcontainer/`), never only on someone's machine. How CI gets the same tools is decided in delivery.md 2.
 
