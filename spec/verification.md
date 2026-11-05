@@ -1,4 +1,4 @@
-# <Project> – Verification
+# Cody – Verification
 
 How every requirement in [requirements.md](requirements.md) is shown to be met, and how the evidence is traced back to it.
 

@@ -1,4 +1,4 @@
-# <Project> – Delivery
+# Cody – Delivery
 
 Version scheme, CI, releases and how releases reach their users. Requirements: REL in [requirements.md](requirements.md).
 

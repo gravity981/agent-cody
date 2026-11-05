@@ -1,6 +1,6 @@
-# <Project> – Specification
+# Cody – Specification
 
-<!-- TODO(blueprint): one paragraph on what the project is, for whom, and what it delivers. -->
+Cody (Coding Agent Desk Companion) is a small 3D-printed desk figure of a cartoon developer sitting at a laptop. It shows developers who work with AI coding agents (Claude Code, GitHub Copilot in VS Code) what their agent is doing: while the agent works, the figure's two arms type, driven by a single geared DC motor; an RGB LED and a buzzer signal the other states (idle, thinking, approval needed, completed, error). The project delivers printable CAD parts, ESP32 firmware driving ready-made electronics modules over USB, and a computer-side bridge with the agent hooks.
 
 **Status: draft.** Implementation follows [implementation-plan.md](implementation-plan.md) once the spec is approved.
 
@@ -10,6 +10,7 @@ This folder is the **source of truth**. The project's files (code, models, drawi
 
 | Document | Content |
 |---|---|
+| [idea.md](idea.md) | The original idea; input to the spec, not part of it |
 | [README.md](README.md) | Purpose, document index, conventions, topic status, decisions, open points |
 | [requirements.md](requirements.md) | All requirement tables, one section per topic |
 | [architecture.md](architecture.md) | Building blocks, interfaces, technology stack with decision records (TD) |

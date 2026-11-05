@@ -1,4 +1,4 @@
-# <Project> – Implementation Plan
+# Cody – Implementation Plan
 
 The spec is implemented in stages, each split into steps. This plan lists what must be decided or provided before each stage and collects a status report after every completed stage.
 

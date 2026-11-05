@@ -2,12 +2,13 @@
 
 ## Project
 
-<!-- TODO(blueprint): two or three sentences: what the project is, what it delivers, and its main technologies and tools. -->
+Cody is a 3D-printed desk figure of a cartoon developer whose arms type while an AI coding agent (Claude Code, GitHub Copilot) works, with an RGB LED and a buzzer for the other agent states. It delivers printable CAD parts (FDM, Prusa MK3S+), ESP32 firmware driving ready-made modules (motor driver, WS2812 LED, buzzer) over USB serial, and a computer-side bridge with agent hooks. Technologies and tools are decided in the spec (`spec/architecture.md`).
 
 The specification in `spec/` is the source of truth; the project's files implement it.
 
 | Document | Content |
 |---|---|
+| `spec/idea.md` | The original idea; input to the spec, not part of it |
 | `spec/README.md` | Purpose, document index, conventions, topic status, decisions, open points |
 | `spec/requirements.md` | All requirement tables |
 | `spec/architecture.md` | Building blocks, interfaces, technology stack with decision records |

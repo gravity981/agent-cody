@@ -1,4 +1,4 @@
-# <Project> – Requirements
+# Cody – Requirements
 
 All requirements of the project, one section per topic. Conventions (IDs, priorities, withdrawn requirements) are in [README.md](README.md). Topics 1 and 2 come from the project blueprint and apply to every project; adapt them where the project needs it.
 

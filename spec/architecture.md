@@ -1,4 +1,4 @@
-# <Project> – Architecture
+# Cody – Architecture
 
 How the requirements in [requirements.md](requirements.md) are met. Requirements say *what*; this document says *how*. Every choice that was open is recorded: key technologies as decision records in section 5, everything else as a row in "Decisions" in [README.md](README.md).
 

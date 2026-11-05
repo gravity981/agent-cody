@@ -2,7 +2,7 @@
   // The development environment (VS Code "Reopen in Container"). By default the
   // workflows run the ci/ entry points in it too (spec/delivery.md 2). The project's
   // toolchain goes into the Dockerfile, with pinned versions (spec/architecture.md 5).
-  "name": "<Project>", // TODO(blueprint)
+  "name": "Cody",
   "build": {
     "dockerfile": "Dockerfile",
     "context": ".."

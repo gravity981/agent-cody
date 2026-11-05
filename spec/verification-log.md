@@ -1,4 +1,4 @@
-# <Project> – Verification Log
+# Cody – Verification Log
 
 Manual verification: inspections, demonstrations, checks on real hardware or in real environments (see [verification.md](verification.md), section 6). The requirement report reads the table below as an extra source of evidence.
 
