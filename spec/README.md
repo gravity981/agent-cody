@@ -57,16 +57,46 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 |---|---|---|---|---|---|
 | TRC | Requirement traceability | 1 | 7 | 1 | specified |
 | REL | CI, versions and releases | 2 | 6 | 1 | specified |
-<!-- TODO(blueprint): one row per project topic -->
+| FW | Firmware | 3 | 12 | 2 | specified |
+| BRG | Host bridge | 4 | 12 | 2 | specified |
+| AGT | Agent integrations | 5 | 9 | 2, 3 | specified |
+| ELE | Electronics | 6 | 7 | 2, 4, 5 | specified |
+| FIG | Figure and mechanism | 7 | 17 | 4, 5 | specified |
 
 ## Decisions
 
 | Date | Decision | Recorded in |
 |---|---|---|
+| 2026-11-05 | Built for the owner's own desk; repo open, no build kit for others (no polished BOM, assembly guide or toolchain-free flashing). | README.md (this table) |
+| 2026-11-05 | Claude Code and GitHub Copilot (VS Code) integrations are both Must. | requirements.md (AGT) |
+| 2026-11-05 | Status light (ESP32, LED, buzzer, bridge, hooks) comes before the arm mechanism and the character, for value early. | implementation-plan.md |
+| 2026-11-05 | A host-side bridge (localhost HTTP in, USB serial out) is used, because hooks run in containers/WSL that can't open the serial port, and it merges sessions. Alternatives rejected: hook writes serial directly; Wi-Fi on the ESP32. | requirements.md (BRG) |
+| 2026-11-05 | The bridge runs on Linux and WSL2 (USB attached with usbipd-win on WSL); containerizing it is evaluated in architecture. | architecture.md 2 |
+| 2026-11-05 | Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device. | architecture.md 1 |
+| 2026-11-05 | Topics FW, BRG, AGT, ELE, FIG (mechanism and printed figure merged into FIG). | requirements.md |
+| 2026-11-05 | FW: COMPLETED/ERROR stay until the next state; heartbeat with fallback to "disconnected" after 30 s; mute and volume; SPEED Must, LED/BEEP test commands Could; settings kept by the bridge, not the firmware. | requirements.md 3 |
+| 2026-11-05 | BRG: several sessions are merged, most urgent state wins; stale sessions (WORKING/THINKING/APPROVAL) dropped after a configurable timeout; listens on local interfaces only, no auth; autostart. | requirements.md 4 |
+| 2026-11-05 | AGT: Copilot drives IDLE/THINKING/WORKING/COMPLETED (Must); APPROVAL/ERROR are Could until VS Code provides events; Copilot sessions keyed by workspace folder. | requirements.md 5 |
+| 2026-11-05 | ELE: whole device powered from one USB port, ≤ 500 mA (USB 2.0 guarantee; the ESP32 is a USB 2.0 device); soldering of header pins and wires allowed; parts budget ≤ CHF 25. | requirements.md 6 |
+| 2026-11-05 | FIG: figure simplified to a bust (head, torso, arms) behind table and laptop on a platform; ≤ 12 printed parts; hand travel 3–8 mm at 1–4 strokes/s; 8 h endurance run; noise judged by the owner. | requirements.md 7 |
+| 2026-11-05 | Controller ESP32-C3 SuperMini. | architecture.md TD-01 |
+| 2026-11-05 | Firmware with Arduino-ESP32 and PlatformIO (pioarduino platform). | architecture.md TD-02 |
+| 2026-11-05 | Bridge in Python. | architecture.md TD-03 |
+| 2026-11-05 | Bridge runs as a Docker container; image published on GHCR (ci/publish, ci/promote). | architecture.md TD-04 |
+| 2026-11-05 | CAD in build123d; head generated with Meshy.ai and processed with manifold3d. | architecture.md TD-05 |
+| 2026-11-05 | Interfaces: hooks forward the agent's own payload to the bridge (port 8765), all mapping in the bridge; serial text protocol with OK/ERR replies, VOLUME 0–3 (0 = mute), READY line at boot. | architecture.md 4 |
+| 2026-11-05 | CI runs in the devcontainer. | delivery.md 2 |
+| 2026-11-05 | Delivery: download from the GitHub release, plus the bridge image on GHCR. | delivery.md 4 |
+| 2026-11-05 | MAJOR version for serial protocol or bridge HTTP API breaks, or printed parts that no longer fit the previous release. | delivery.md 1 |
+| 2026-11-05 | Verification: unit tests and CAD model checks in CI (JUnit XML, names with `req_ABC_01`); hardware, real agents and look verified manually. | verification.md |
+| 2026-11-05 | Stages: 1 walking skeleton, 2 status light with Claude Code (M1), 3 Copilot (M2), 4 mechanism prototype, 5 character and assembly (M3). | implementation-plan.md |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points
 
 <!-- Questions that are not decided yet, each with options and a recommendation. Move them to "Decisions" once settled. -->
 
-- None yet.
+- **Meshy.ai licence of generated models** (before stage 5). Free-tier outputs are believed to be CC BY 4.0 (to be checked). Options: (a) free tier with attribution in the repo; (b) paid tier for private ownership; (c) sculpt the head yourself. Recommendation: (a) if the terms confirm it.
+- **Exact module models** (before stage 2): motor driver breakout (DRV8833 candidate), WS2812 module, buzzer module, N20 motor and gear ratio (before stage 4). Recommendation: choose together at stage start within ELE-04 and ELE-06.
+- **Docker container and serial replug / reachability from devcontainers** (TD-04, stage 2). Recommendation: prove in step 2b; fall back to a native systemd service if it doesn't work.
+- **Does Copilot read user-level Claude Code hook configuration?** (AGT-08, stage 3). Recommendation: check at stage 3 start; dedupe in the bridge either way.

@@ -19,7 +19,7 @@ Versions follow [Semantic Versioning](https://semver.org).
 
 | Version step | When |
 |---|---|
-| MAJOR | Incompatible change <!-- TODO(blueprint): what counts as incompatible in this project (file formats, interfaces, mechanical fit, …) --> |
+| MAJOR | Incompatible change: the serial protocol or the bridge HTTP API changes so that firmware and bridge (or hooks) must be updated together, or printed parts no longer fit parts or modules of the previous release |
 | MINOR | New features, backward-compatible additions |
 | PATCH | Fixes only |
 
@@ -31,11 +31,7 @@ Versions follow [Semantic Versioning](https://semver.org).
 
 ### CI environment
 
-<!-- TODO(blueprint): decide and record in README.md "Decisions". Options:
-1. (Default in the workflows) The devcontainer: the workflows build `.devcontainer/` and run the entry points inside it (devcontainers/ci). Same tools as local development, no extra setup; slower when the image is large.
-2. The runner directly: replace the devcontainers/ci steps with setup steps for the toolchain (setup actions, caches). Faster, but the tool versions must be kept in sync with the devcontainer by hand.
-3. A dedicated CI image or self-hosted runner: when tools need licences or hardware (CAD, HIL benches).
--->
+The devcontainer: the workflows build `.devcontainer/` and run the entry points inside it (devcontainers/ci), so CI uses the same pinned tools as development (PlatformIO with the ESP32 toolchain, Python with build123d and manifold3d, Docker CLI for the bridge image).
 
 ### Entry points
 
@@ -57,7 +53,14 @@ All entry points:
 - Files in `RELEASE_DIR` are attached to the GitHub pre-release; promotion attaches the very same files to the release. "Download only" delivery needs just `ci/check` and `ci/build-release`.
 - Entry points that publish need credentials: add them as repository secrets and pass them in the workflow step that runs the entry point (marked `TODO(blueprint)`; with devcontainers/ci both under `env:` of the step and in its `env` list). `GITHUB_TOKEN` is not passed by default.
 
-<!-- TODO(blueprint): the project's choices: what ci/check runs, what the release files are, whether publish/promote exist. -->
+### Project choices
+
+| Entry point | Does in Cody |
+|---|---|
+| `ci/check` | Firmware unit tests (PlatformIO `native`), firmware build, bridge tests (pytest), hook mapping tests, CAD model checks, requirement report tests; then the requirement report. |
+| `ci/build-release` | Into `RELEASE_DIR`: firmware `.bin`, print files (3MF/STL), compose file for the bridge, hook configs and setup guide, BOM and wiring diagram, each with the version in its name. |
+| `ci/publish` | Builds the bridge image and pushes it to GHCR as `cody-bridge:<version>-rc.<M>` (from `CANDIDATE_TAG`); needs `packages: write`. |
+| `ci/promote` | Adds the tags `<version>` and `latest` to the candidate's image on GHCR, without rebuilding; needs `packages: write`. |
 
 ## 3. Release flow
 
@@ -92,14 +95,8 @@ flowchart LR
 
 ## 4. Delivery to users
 
-<!-- TODO(blueprint): choose one and describe it; record the choice in README.md "Decisions".
-
-Options:
-1. Download only: users get the release files from the GitHub release. Nothing else to do.
-2. Distribution: `ci/publish` / `ci/promote` push to a registry, store or file server.
-3. Deployment: a project-defined, manually started step (script or extra workflow) installs a release into an environment (staging, production, devices). Describe environments, who triggers it, and rollback.
--->
+Download only, plus the bridge image on GHCR. The owner downloads the release files from the GitHub release, flashes the firmware, prints the parts, installs the hook configs, and starts the bridge with the compose file, which pulls `cody-bridge:<version>` from GHCR. Recorded in README.md "Decisions".
 
 ## 5. Environments
 
-<!-- TODO(blueprint): only if section 4 involves deployment: staging/production, test benches, devices. Otherwise "None". -->
+None.
