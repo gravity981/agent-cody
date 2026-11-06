@@ -142,6 +142,7 @@ Log (BRG-13, BRG-14): the bridge writes lines `YYYY-MM-DD HH:MM:SS LEVEL message
 
 - Head ↔ torso: socket designed in code CAD and cut into the head mesh by the pipeline (TD-05).
 - Electronics: modules mounted on a removable plate or compartment in the platform; USB port accessible from outside (FIG-14).
+- Status LED (FW-01): the WS2812 sits in the laptop lid, behind the screen printed in white or translucent PLA. The screen faces the figure, so the light falls on its face, hands and hoodie and reaches the user indirectly, without glare. A small hole in the back of the lid lets some light through towards the user. The lid is fixed (no hinge); the three LED wires run through it into the platform; the LED is reachable for service (FIG-14). Lid size and angle must leave the typing hands visible from the user's side (FIG-01).
 
 ## 5. Technology stack
 
@@ -241,7 +242,50 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 | Motor, LED and buzzer exceed 500 mA (ELE-04), especially at motor start | Small N20 motor, PWM soft start, LED brightness limited; measured in stage 4. |
 | Serial plug & play inside the Docker container (TD-04, BRG-06) | Mount `/dev` with a cgroup rule; step 2d must demonstrate first plug-in and replug in the container; if it fails, switch to a native service (new TD). |
 | Copilot hook API (Preview) changes or reads Claude Code hook configs too (AGT-08) | Mapping in the bridge, not in hooks; recorded payloads in tests; dedupe by endpoint and payload format. |
-| Crank fits in the torso with 3–8 mm hand travel (FIG-07, FIG-10) | Mechanism prototype first (stage 4), before the character. |
+| Drive fits in the bust with 3–8 mm hand travel (FIG-07, FIG-10); tight clearance between motor and arm sleeves (8.3) | Mechanism prototype first (stage 4), before the character; motor lower and eccentrics larger if needed. |
 | Meshy mesh not printable or not watertight | manifold3d repair in the pipeline; regenerate. |
 
 Open questions are listed in "Open points" in [README.md](README.md).
+
+## 8. Arm mechanism and figure construction (concept)
+
+Concept for stages 4 and 5, worked out on 2026-11-06 with the drafts of the bust and the left arm (hoodie bust with a large head and headphones, arm with a bent elbow). Not decided yet: the concept is confirmed or changed at the start of stage 4 (see "Open points" in [README.md](README.md)). Sizes are first guesses for the stage 4 test rig.
+
+### 8.1 Goals
+
+- The figure looks natural: shoulders where shoulders are, natural proportions; the arms join the torso like an action figure's.
+- Everything that moves the arms is hidden inside the torso (FIG-10); the bust and arms are scaled so that it fits.
+- The hands move up and down on the keyboard (FIG-07), alternately (FIG-06).
+
+### 8.2 Concepts considered
+
+| # | Concept | Status | Reason |
+|---|---|---|---|
+| A | Motor shaft pointing forward, one crank disc with two pins at 180°, wire rods (Z-bends) up to levers pointing back from the shoulder | rejected | The lever (≈ 15 mm) behind the shoulder either sticks out of the back or forces the shoulder unnaturally far forward. |
+| B | As A, but the lever hangs down inside the chest and horizontal rods push its lower end | not pursued | Superseded by C and D before it was worked out; needs rods and room below the shoulders. |
+| C | Motor upright, shaft up, turning a tilted disc ("wave plate"); short levers pointing back from the shoulder axle, pressed up against the plate's underside by the arms' weight | rejected | The bust is too short below the shoulders for a 34 mm motor plus plate; the motor would have to sit below the bust, against FIG-10. |
+| C′ | As C, with the shoulder axle pointing forward (in the figure's viewing direction) | rejected | The arm then swings in the frontal plane: the hand, which sits below the shoulder, moves mostly sideways (≈ 19 mm sideways for 6 mm up and down), which doesn't look like typing. |
+| **D** | **Chest cam drive** (8.3): motor lying across the upper chest with a double eccentric; levers pointing forward from the shoulder axle rest on the eccentrics; action-figure shoulder joints | **preferred** | Everything inside the chest, no rods, natural shoulders, few parts. |
+
+### 8.3 Preferred concept: chest cam drive
+
+- **Shoulder joint:** each arm joins the torso like an action figure's. The sleeve cap turns around a hidden steel axle (≈ Ø2 mm, left–right) at mid-depth, about 10 mm below the top of the shoulders. The joint surfaces of arm and torso are concentric to the axle, so the seam stays closed while the arm turns (only a few degrees). The axle ends are hidden under the sleeve caps.
+- **Lever:** inside the chest each arm continues as a lever of ≈ 8 mm pointing forward, slightly below the axle. The left arm reaches its lever through a sleeve on the axle, so both levers sit side by side next to the motor shaft. Lever and hand are on the same side of the axle: lifting the tip lifts the hand.
+- **Drive:** the N20 (Ø12 × 24 mm, shaft Ø3 × 10 mm, 34 mm in total) lies across the upper chest, its axis ≈ 8 mm in front of and ≈ 6 mm below the shoulder axle. Its D-shaft carries one printed double eccentric: two eccentrics (≈ Ø10 × 4 mm, offset ≈ 0.65 mm) half a turn apart. Each lever tip rests on top of one eccentric, held there by the arm's weight; one turn is one stroke of each arm, alternately.
+- **Travel:** lever ratio ≈ 37 : 8 (hand ≈ 37 mm in front of the axle), so ±0.65 mm at the tip gives ≈ 6 mm at the hand (FIG-07). The travel is tuned by swapping the double eccentric.
+- **Speed:** with the 300 rpm N20 at 5 V and partial PWM, about 1.5–4 turns/s, so 1.5–4 strokes/s per arm (FIG-08) without extra gears.
+- **Contact:** at 4 strokes/s the hand needs ≈ 2 m/s², below gravity; a light spring can press the levers down if a tip lifts off.
+- **Stops:** one above each lever tip, catching the arm when someone lifts a hand (FIG-09); downwards the eccentric holds the lever.
+- **Clearances:** motor surface ≈ 4 mm from the axle centre (≈ 1.5 mm to the arm sleeves); front of the motor ≈ 5 mm behind the chest surface (2 mm wall plus 3 mm gap). If too tight, the motor goes 1–2 mm lower and the eccentrics get larger; the lever ratio and travel stay the same.
+- **Sizes of the figure:** bust (head and torso) ≈ 105 mm high; torso at the shoulders ≈ 62 × 38 mm (inside ≈ 58 × 34 mm, the motor uses 34 mm across). With table and platform the assembly stays within FIG-02.
+- **Service and cables:** a removable back panel gives access to motor, eccentric and axle; the arms pull off the axle (FIG-14). Motor wires leave the bust downwards to the electronics in the platform.
+- **Noise (FIG-13):** PWM at 20 kHz is inaudible; the lever tips slide on the eccentrics, so they get smooth, rounded tips; the stops are not touched while running.
+- **Status LED:** in the laptop lid (4.5).
+
+### 8.4 Figure construction: Meshy outer shapes, functional geometry in code
+
+- The outer shapes are generated in Meshy: the bust with the head (without arms) and the left arm, in their final pose; both are committed with their prompt or input images (as for the head in TD-05).
+- A script (manifold3d with build123d parts) repairs and scales the meshes, places the arm at the shoulder axle, cuts the action-figure joint into arm and bust with the same surface around the axle (fit by construction, defined gap ≈ 0.3 mm), adds the axle hole and lever to the arm, hollows the bust with a cavity designed around the drive, adds the motor mount and stops, cuts the back panel and cable opening, mirrors the arm, and exports the print files; CI checks them (FIG-02 – FIG-04, FIG-17).
+- The script moves, turns and scales but doesn't re-pose: the elbow angle and the proportions of the arm in Meshy must suit the table height. Fingers ≥ about 2 mm thick, or merged, so they print with a 0.4 mm nozzle.
+- This extends TD-05 (today: build123d for torso and arms, Meshy only for the head); TD-05 is revised when the concept is confirmed.
+
