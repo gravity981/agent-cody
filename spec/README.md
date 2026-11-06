@@ -54,8 +54,8 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 
 | Prefix | Topic | Section in requirements.md | Reqs (active) | Stage | Status |
 |---|---|---|---|---|---|
-| TRC | Requirement traceability | 1 | 7 | 1 | specified |
-| REL | CI, versions and releases | 2 | 6 | 1 | specified |
+| TRC | Requirement traceability | 1 | 7 | 1 | implemented |
+| REL | CI, versions and releases | 2 | 6 | 1 | implemented |
 | FW | Firmware | 3 | 12 | 2 | specified |
 | BRG | Host bridge | 4 | 12 | 2 | specified |
 | AGT | Agent integrations | 5 | 11 | 2, 3 | specified |

@@ -26,7 +26,7 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 
 | Stage | Content | Milestone | Status |
 |---|---|---|---|
-| 1 | Walking skeleton: toolchain, CI, requirement report, first release candidate | | in progress |
+| 1 | Walking skeleton: toolchain, CI, requirement report, first release candidate | | done |
 | 2 | Status light on the bench with Claude Code | M1 | next |
 | 3 | Copilot integration | M2 | open |
 | 4 | Mechanism prototype | | open |
@@ -155,4 +155,48 @@ After each completed stage, Claude appends a report with this structure to secti
 
 ## 5. Status reports
 
-No stage completed yet.
+### Stage 1 – Walking Skeleton (2026-11-06)
+
+**Summary:** The project has its toolchain, CI and release path: every pull request and push to `main` runs all checks and the requirement report in the devcontainer, and release `v0.1.0` (skeleton firmware, skeleton bridge image on GHCR, compose file) was built, promoted and downloaded.
+
+**Steps:**
+- 1a – done: devcontainer with pinned toolchain (PlatformIO/pioarduino for the ESP32-C3, uv with Python 3.14, build123d, manifold3d, ruff, clang-format, shellcheck), top-level folders, static checks.
+- 1b – done, extended: requirement report with its tests, `ci/check`, CI green on PR #1. Extended by fixes found in CI: post-create step for the runner's UID, devcontainer image slimmed (PlatformIO 8.1 → 2.9 GB), devcontainer image cached on GHCR.
+- 1c – done: version determination, skeleton firmware and bridge, `ci/build-release`, `ci/publish`, `ci/promote`; first candidate and promotion by the owner. A bug in the image existence check (images overwritten) was found in local tests and fixed before the first release.
+
+**Requirements:** 13 of 13 planned for this stage implemented, all with passing evidence (requirement report). Overall: 13 of 79 active requirements.
+
+**Verification:** automated: 29 tests passing (requirement report 23, version and release 6), static checks, firmware build; manual: 5 records (REL-01, REL-03 – REL-06).
+
+**Spec changes and deviations:**
+- Plug & play for the device connection: BRG-06 reworded, BRG-07 port setting optional.
+- REL-05 reworded: the tag ruleset can't restrict creation, because GitHub can't put the GitHub Actions actor on a bypass list.
+- New topic DOC (parts list, assembly instructions, 7 requirements): others can rebuild Cody; ELE-07 reduced to the wiring diagram.
+- New AGT-10 (one-command setup) and AGT-11 (same hooks on host and in devcontainers) to reduce setup effort; the bridge stays.
+- Spec review findings recorded as risks R1 – R8 (architecture.md 7.1); R1 addressed by AGT-11.
+- `spec/idea.md` removed (conflicted with the spec); "Decisions" limited to decisions that change requirements or architecture.
+
+**Overall status:**
+
+| Stage | Content | Status |
+|---|---|---|
+| 1 | Walking skeleton | done |
+| 2 | Status light on the bench with Claude Code | next |
+| 3 | Copilot integration | open |
+| 4 | Mechanism prototype | open |
+| 5 | Character and assembly | open |
+
+**Remaining requirements by stage:** 2 → 37, 3 → 6, 4 → 10, 5 → 13.
+
+**Waiting on the project owner:**
+- Branch `feature/stage-2`, then `/stage-start 2`.
+- Parts delivered (ordered 2026-11-06: ESP32-C3 ×2, DRV8833 ×2, N20 6 V 300 and 500 rpm, WS2812, KY-006); usbipd-win installed on Windows.
+- Decide at stage start: how the CHF 25 budget is counted (risk R6); release format of the build documentation (open point).
+- Open the project once with "Reopen in Container" in VS Code (needed for flashing).
+
+**Risks and notes:**
+- Plug & play of the serial device inside the bridge container (TD-04) is unproven; step 2b must show it, otherwise a native service.
+- CI runs that rebuild the toolchain layers (first run, toolchain changes in a pull request) take long; the ownership step in the post-create adds a few minutes to every run.
+- The KY-006 may be a coil buzzer: measure before wiring; then it is driven through the DRV8833's second channel.
+- Product photos in the parts list are the shops' images; replace them with own photos before a release.
+- GitHub Copilot's agent hooks are still in Preview (stage 3).
