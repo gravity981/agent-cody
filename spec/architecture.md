@@ -240,19 +240,4 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 | Crank fits in the torso with 3–8 mm hand travel (FIG-07, FIG-10) | Mechanism prototype first (stage 4), before the character. |
 | Meshy mesh not printable or not watertight | manifold3d repair in the pipeline; regenerate. |
 
-### 7.1 Findings from the spec review (2026-11-05)
-
-Recorded as risks; the requirements are unchanged. The proposed fixes are not decided.
-
-| # | Finding | Affects | Proposed fix (not decided) |
-|---|---|---|---|
-| R1 | *Addressed by AGT-11 (2026-11-06).* "Set up once at user level" assumes one `~/.claude/settings.json`; inside a devcontainer Claude Code reads the container's home, and the bridge address differs (`127.0.0.1` on the host, `host.docker.internal` in a container). Every devcontainer would need its own setup. | AGT-02, AGT-03 | Require a hook URL that resolves on the host and in containers, and specify how the config reaches devcontainers (bind-mount or devcontainer feature), or narrow AGT-03 to "once per environment". |
-| R2 | A session in COMPLETED stays until its next event or end; Claude Code sessions stay open for days, so after the first finished turn the figure shows green permanently and IDLE appears only after `/exit`. | BRG-02, BRG-04, FW-05 | COMPLETED falls back to IDLE after a configurable time in the bridge, or accept green as "nothing running" and drop IDLE from the merge order. |
-| R3 | VS Code with the WSL or devcontainer extension runs Copilot's agent remotely; AGT-04 names no environments (unlike AGT-02), so its verification is undefined. | AGT-04 | Name the environments in AGT-04 or in a new requirement. |
-| R4 | A USB meter shows averages; the current peak at motor start lasts milliseconds, so "including motor start" can't be verified as written. | ELE-04 | Average ≤ 500 mA plus a PWM start ramp of at least 200 ms, or an oscilloscope check. |
-| R5 | *Addressed 2026-11-06: ELE-03 reworded (1.5 ×), disconnected pattern and volume levels in 4.3.* Requirements without a measurable limit: "with margin" (ELE-03); volume levels of a passive buzzer (FW-09); the "disconnected" pattern blinks all night when the laptop sleeps with USB powered (FW-06). | ELE-03, FW-09, FW-06 | ELE-03: e.g. ≥ 1.5 × stall current. FW-09: levels audibly different. FW-06: subtle pattern (slow, dim pulse). |
-| R6 | *Addressed 2026-11-06: ELE-06 reworded.* Scope of the CHF 25 is unclear: spare boards (TD-01 says buy two), screws, wire, USB cable. | ELE-06 | Define: one unit including consumables, spares excluded (or the other way round). |
-| R7 | Docker is the riskiest choice for the least gain: a native service avoids replug and the BRG-08 network setup; GHCR adds `ci/publish`, `ci/promote` and `packages: write` to stage 1. | TD-04, BRG-06, BRG-08, REL | Prove Docker with the device in stage 2 first; add GHCR publishing only after that. |
-| R8 | Smaller points: whether the head counts as a printed part (now separate, so 12 parts gets tighter); APPROVAL after a denied permission depends on the agent's next event (`PermissionDenied` not mapped); any local process can set the state. | FIG-04, AGT-01, BRG-08 | Clarify FIG-04; map `PermissionDenied`; record the unauthenticated local API as accepted. |
-
 Open questions are listed in "Open points" in [README.md](README.md).
