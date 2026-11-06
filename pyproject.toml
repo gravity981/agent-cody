@@ -33,4 +33,5 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM"]
 [tool.pytest.ini_options]
 addopts = ["-ra", "--import-mode=importlib"]
 testpaths = ["tools", "bridge", "cad"]
+pythonpath = ["bridge/tests"]  # shared test helpers (fakes.py)
 junit_family = "xunit2"

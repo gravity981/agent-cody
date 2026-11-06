@@ -57,7 +57,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | TRC | Requirement traceability | 1 | 7 | 1 | implemented |
 | REL | CI, versions and releases | 2 | 6 | 1 | implemented |
 | FW | Firmware | 3 | 12 | 2 | specified |
-| BRG | Host bridge | 4 | 12 | 2 | specified |
+| BRG | Host bridge | 4 | 14 | 2 | specified |
 | AGT | Agent integrations | 5 | 11 | 2, 3 | specified |
 | ELE | Electronics | 6 | 7 | 2, 4, 5 | specified |
 | FIG | Figure and mechanism | 7 | 17 | 4, 5 | specified |
@@ -90,6 +90,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-06 | Others can rebuild Cody: the project delivers a parts list and assembly instructions (new topic DOC), written for a maker without the owner's help, in the repository and as release files, growing with stages 2, 4 and 5. ELE-07 reduced to the wiring diagram. | requirements.md 8 |
 | 2026-11-06 | The bridge stays (dropping it would need the device and a hook program in every devcontainer); setup effort is reduced instead: one command sets up bridge and hooks (AGT-10), and the same hook configuration works on the host and in devcontainers (AGT-11). | requirements.md 5, architecture.md 4.1 |
 | 2026-11-06 | Stage 2 start: AGT-02 counts WSL2 as Linux; ELE-03 margin 1.5 × stall current; ELE-06 counted per piece without spares and shipping; host command `cody` as a shell script (status and manual state in stage 2, setup in stage 3); hooks are curl command hooks with fallback addresses (Docker Engine in WSL2 has no `host.docker.internal`); build documentation released as CSV and PDF. | requirements.md 5–6, architecture.md 3–4, delivery.md 2 |
+| 2026-11-06 | The bridge logs state changes (also without a device) and, at debug level, events and serial traffic (BRG-13); the log goes to Docker's log, rotated by Docker at 10 MB × 2 files (BRG-14). | requirements.md 4, architecture.md 4.4 |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points

@@ -49,13 +49,13 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device; a build k
 
 The hooks contain no logic: they forward the agent's own hook payload. All mapping lives in the bridge, so it is tested in CI with recorded payloads.
 
-- Port `8765`. The bridge listens only on loopback and the local Docker interfaces, including the default bridge gateway `172.17.0.1` (BRG-08). The hooks are command hooks using curl that try `localhost`, then `host.docker.internal`, then `172.17.0.1`, within 1 s in total (AGT-07), so the same configuration works on the host and in devcontainers (AGT-11), also with Docker Engine in WSL2, where `host.docker.internal` is not defined. Devcontainers that share the Claude Code configuration (e.g. the `claude-config` volume) are set up once; they need curl.
+- Port `8765`. The bridge listens only on loopback and the local Docker interfaces, including the default bridge gateway `172.17.0.1` (BRG-08): its container uses the host network and binds exactly the configured addresses (`listen`, default `127.0.0.1` and `172.17.0.1`); only loopback and Docker's address range `172.16.0.0/12` are accepted. The hooks are command hooks using curl that try `localhost`, then `host.docker.internal`, then `172.17.0.1`, within 1 s in total (AGT-07), so the same configuration works on the host and in devcontainers (AGT-11), also with Docker Engine in WSL2, where `host.docker.internal` is not defined. Devcontainers that share the Claude Code configuration (e.g. the `claude-config` volume) are set up once; they need curl.
 - `cody setup` (AGT-10) starts the bridge container with autostart, writes the hooks of both agents at user level, checks the device connection and reports what is missing (e.g. usbipd on WSL2).
 - `POST /hooks/claude-code`: Claude Code's hook JSON as is, sent by the curl command hook configured in `~/.claude/settings.json`. Session key: `session_id`; event: `hook_event_name`.
 - `POST /hooks/copilot`: Copilot's hook JSON, sent by a command hook (`curl -m 1 --data-binary @- …`) configured in `~/.copilot/hooks/`. Session key: workspace folder (`cwd`) (AGT-06).
 - `GET /status`: device connection, firmware version, sessions with their states, merged state (BRG-11).
-- `POST /state`: sets a state manually (`{"state": "WORKING"}`), as its own session `manual` (BRG-12).
-- Host command `cody` (`cli/`): a shell script using curl on these endpoints: `cody status`, `cody state <STATE>`, `cody --version`; `cody setup` follows with AGT-10. Installed by copying it to `~/.local/bin`.
+- `POST /state`: sets a state manually (`{"state": "WORKING"}`), as its own session `manual` (BRG-12); `DELETE /state` removes it, otherwise it ends by the session timeout.
+- Host command `cody` (`cli/`): a shell script using curl on these endpoints: `cody status`, `cody state <STATE>`, `cody state clear`, `cody --version`; `cody setup` follows with AGT-10. Installed by copying it to `~/.local/bin`.
 - Hooks time out after 1 s and never fail the agent (AGT-07).
 
 **Claude Code mapping (AGT-01):**
@@ -125,7 +125,11 @@ Default pins of the ESP32-C3 SuperMini (avoiding the boot pins 2, 8, 9 and the U
 
 ### 4.4 Bridge configuration (BRG-07)
 
-`~/.config/cody/bridge.toml` on the host, mounted read-only into the container by the compose file; a missing file or key means the default. Keys: `serial_port` (optional override), `speed`, `volume`, `session_timeout_min` (default 10).
+`~/.config/cody/bridge.toml` on the host, mounted read-only into the container by the compose file; a missing file or key means the default. Keys: `serial_port` (optional override), `speed` (default 128), `volume` (default 2), `session_timeout_min` (default 10), `listen` (default `["127.0.0.1", "172.17.0.1"]`), `log_level` (`"info"` or `"debug"`, default `"info"`).
+
+The bridge is a Python program with the standard library's threaded HTTP server and pyserial for the port and device discovery. It finds the device among the serial ports by Espressif's USB vendor ID (`303A`) and accepts it only after `VERSION?` is answered (FW-11). It sends `PING` every 5 s (BRG-05).
+
+Log (BRG-13, BRG-14): the bridge writes lines `YYYY-MM-DD HH:MM:SS LEVEL message` to stdout, for example `2026-11-06 14:02:11 INFO  state WORKING (sent) <- claude-code 3f2a1c PreToolUse`. Docker keeps them in its json-file log, limited by the compose file to 2 files of 10 MB (`max-size`, `max-file`); read with `docker compose logs`. Info: state changes with cause and delivery, device connects and losses, config. Debug: every event, and every command (`->`) and reply (`<-`) on the serial line. The container uses the host network and sees replugged devices through `/dev` mounted with a device cgroup rule for `ttyACM` devices.
 
 ### 4.5 Mechanical interfaces
 

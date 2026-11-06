@@ -65,8 +65,8 @@ Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived.
 **2a – Firmware logic.** Serial protocol, state machine, LED effects, sounds with volume and motor control as logic with host unit tests (defaults in architecture.md 4.3); firmware builds for the ESP32-C3.
 Requirements: FW-02, FW-03, FW-05, FW-08, FW-10 – FW-12.
 
-**2b – Bridge.** HTTP endpoints, session merging, timeouts, heartbeat, serial connection tested with a fake serial device, config file, autostart; host command `cody` (status, manual state).
-Requirements: BRG-01 – BRG-05, BRG-07 – BRG-12.
+**2b – Bridge.** HTTP endpoints, session merging, timeouts, heartbeat, serial connection tested with a fake serial device, config file, autostart, log with rotation; host command `cody` (status, manual state).
+Requirements: BRG-01 – BRG-05, BRG-07 – BRG-14.
 
 **2c – Claude Code integration.** User-level curl command hooks that find the bridge on the host and in containers, event mapping with recorded payloads, timeout behaviour; real sessions on WSL2 and in a devcontainer (the bridge without a device is enough).
 Requirements: AGT-01 – AGT-03, AGT-07, AGT-11.

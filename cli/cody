@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# cody: host command for the Cody bridge (spec/architecture.md 4.1).
+#   cody status            device, sessions and merged state (BRG-11)
+#   cody state <STATE>     set a state manually, e.g. WORKING (BRG-12)
+#   cody state clear       remove the manual state
+#   cody --version
+set -euo pipefail
+
+CODY_VERSION="0.0.0+unknown"  # replaced by ci/build-release
+url="${CODY_BRIDGE_URL:-http://127.0.0.1:8765}"
+states="IDLE WORKING THINKING APPROVAL COMPLETED ERROR"
+
+usage() {
+  sed -n '3,6s/^#   //p' "$0" >&2
+  exit 2
+}
+
+request() {
+  if ! curl --silent --show-error --fail-with-body --max-time 3 "$@"; then
+    echo "cody: the bridge doesn't answer at $url (is it running? docker compose ps)" >&2
+    exit 1
+  fi
+}
+
+case "${1:-}" in
+  --version)
+    echo "cody $CODY_VERSION"
+    ;;
+  status)
+    [[ $# -eq 1 ]] || usage
+    request "$url/status?format=text"
+    ;;
+  state)
+    [[ $# -eq 2 ]] || usage
+    if [[ "$2" == clear ]]; then
+      request -X DELETE "$url/state" > /dev/null
+    elif [[ " $states " == *" $2 "* ]]; then
+      request -X POST -H "Content-Type: application/json" \
+        --data "{\"state\": \"$2\"}" "$url/state" > /dev/null
+    else
+      echo "cody: STATE is one of: $states, or clear" >&2
+      exit 2
+    fi
+    ;;
+  *)
+    usage
+    ;;
+esac
