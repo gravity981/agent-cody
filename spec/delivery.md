@@ -93,7 +93,7 @@ flowchart LR
 
 - Releases and candidates are immutable. A problem in `1.2.0-rc.1` is fixed on `main` and becomes `1.2.0-rc.2`; a problem after `1.2.0` becomes `1.2.1`.
 - Releases are made from `main` only; no release branches. Hotfixes take the same path with a patch version.
-- Tags `v*` are protected by a repository ruleset (REL-05), set up once by the project owner.
+- Tags `v*` are protected by a repository ruleset (REL-05), set up once by the project owner: target `v*`, rules "Restrict updates", "Restrict deletions" and "Block force pushes", no bypass. "Restrict creations" is not used: the workflows push tags with `GITHUB_TOKEN`, and GitHub can't put the built-in GitHub Actions actor on a bypass list. Tags are created only by the release workflows by convention (single owner; Claude is denied tag commands).
 
 ## 4. Delivery to users
 

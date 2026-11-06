@@ -26,7 +26,7 @@ Details in [delivery.md](delivery.md). The GitHub workflows come with the bluepr
 | REL-02 | Every build carries a version according to the version scheme (delivery.md 1) and its commit; how a built artifact reveals both is defined in architecture.md. | Must |
 | REL-03 | A release candidate is built from `main` by a manually started workflow, only for a commit whose CI passed, after the full check passed again; it is tagged `v<version>-rc.<M>` and published as a GitHub pre-release with the release files. | Must |
 | REL-04 | Only the latest candidate of a version can be promoted; promotion does not rebuild, tags `v<version>` on the candidate's commit, and publishes a GitHub release with exactly the candidate's release files. | Must |
-| REL-05 | Tags `v*` can't be moved or deleted (repository tag ruleset); only the release workflows create them, and they never reuse an existing tag. | Must |
+| REL-05 | Tags `v*` can't be moved or deleted (repository tag ruleset: restrict updates, restrict deletions, block force pushes); the release workflows create them and never reuse an existing tag. Creating `v*` tags by hand is not blocked by GitHub. | Must |
 | REL-06 | Releases are delivered as defined in delivery.md 4 (deployment, distribution, or download from the GitHub release only). | Must |
 
 ## 3. Firmware (FW)

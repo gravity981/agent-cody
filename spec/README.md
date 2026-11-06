@@ -93,6 +93,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-05 | Stage 1: first release contains skeletons (firmware sends `READY <version>`, bridge image answers `--version`, compose file); Python dependencies with uv and lockfiles; static checks ruff, clang-format, shellcheck; Docker in the devcontainer via docker-outside-of-docker; bridge image on GHCR is public. | implementation-plan.md stage 1, delivery.md 2, architecture.md 5.1 |
 | 2026-11-06 | Step 1a: Python 3.14 (newest supported by build123d/OCP); ESP32 toolchain baked into the devcontainer image; one uv workspace with a single lockfile instead of one lockfile per project; binary files in plain git, marked binary (no LFS). | architecture.md 5.1 |
 | 2026-11-06 | Plug & play for the device connection, incl. replug: BRG-06 reworded (no port setting, no manual step after a one-time host setup); serial port in BRG-07 is an optional override; on WSL2 a one-time usbipd setup with auto-attach is accepted; Docker stays, plug & play in the container must be shown in step 2b. | requirements.md 4, architecture.md 2 and 7 |
+| 2026-11-06 | Tag ruleset for `v*` restricts updates and deletions and blocks force pushes, but not creation: GitHub can't add the built-in GitHub Actions actor to a bypass list. Rejected: own GitHub App with token in the workflows (setup, secrets, workflow changes). REL-05 reworded. | requirements.md 2, delivery.md 3 |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points
