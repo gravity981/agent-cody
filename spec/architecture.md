@@ -84,7 +84,7 @@ THINKING vs WORKING between tool calls is approximate for both agents.
 
 ### 4.2 Bridge → firmware (USB serial)
 
-USB CDC of the ESP32-C3, 115200 baud, ASCII lines terminated by `\n`. Every command is answered with `OK` or `ERR <reason>` (FW-10).
+USB CDC of the ESP32-C3, 115200 baud, ASCII lines terminated by `\n` (a `\r` before it is ignored). Commands and names are uppercase. A line longer than 64 characters is answered with `ERR line too long` and dropped. Every command is answered with `OK` or `ERR <reason>` (FW-10); an error never changes the state.
 
 | Command | Meaning | Req |
 |---|---|---|
@@ -93,12 +93,12 @@ USB CDC of the ESP32-C3, 115200 baud, ASCII lines terminated by `\n`. Every comm
 | `SPEED:<0-255>` | Motor PWM in WORKING | FW-08 |
 | `VOLUME:<0-3>` | Sound volume, `0` = mute | FW-09 |
 | `VERSION?` | Answered with `VERSION <version> <commit>` before `OK` | FW-11 |
-| `LED:<r>,<g>,<b>` | Test: show a colour | FW-12 |
+| `LED:<r>,<g>,<b>` | Test: show a colour (0–255 each) until the next `STATE` or a disconnect | FW-12 |
 | `BEEP:<APPROVAL\|SUCCESS\|WARNING>` | Test: play a sound | FW-12 |
 
-At boot the device sends `READY <version>`; the bridge then resends settings and state (BRG-06).
+At boot the device sends `READY <version>`; the bridge then resends settings and state (BRG-06). Every valid command, including `PING`, counts as activity for the 30 s timeout (FW-06); the first one after power-up or a disconnect ends the "disconnected" pattern (FW-07). Sending the current state again doesn't replay its sound (FW-04: sounds play when a state is entered).
 
-### 4.3 Device behaviour (defaults, tuned on the bench in step 2a)
+### 4.3 Device behaviour (defaults, tuned on the bench in step 2d)
 
 | State | LED (r,g,b and effect) | Sound | Arms |
 |---|---|---|---|
@@ -110,9 +110,18 @@ At boot the device sends `READY <version>`; the bridge then resends settings and
 | ERROR | red (255,0,0) blinking 2 Hz | warning: falling 3.0 / 2.0 kHz, 200 ms each, twice | stopped |
 | disconnected (FW-06, FW-07) | white slow pulse 0–10 %, period 4 s (unobtrusive at night) | – | stopped |
 
-- LED brightness is capped at 50 % of full scale (ELE-04).
+- LED brightness is capped at 50 % of full scale (ELE-04); the percentages above are relative to that cap.
 - Buzzer: PWM at the tone frequency; volume by duty cycle, `VOLUME` 0 / 1 / 2 / 3 ≈ 0 / 3 / 12 / 50 %; levels must sound different on the bench (FW-09). A coil buzzer is driven through the DRV8833's second channel instead of a GPIO.
-- Motor: PWM at about 20 kHz (inaudible); a short kick start at full duty before dropping to `SPEED`.
+- Motor: PWM at about 20 kHz (inaudible); a kick start of 100 ms at full duty before dropping to `SPEED`; `SPEED:0` stops the motor.
+
+Default pins of the ESP32-C3 SuperMini (avoiding the boot pins 2, 8, 9 and the USB pins 18, 19), confirmed with the wiring diagram in step 2d (ELE-07):
+
+| Signal | GPIO |
+|---|---|
+| DRV8833 AIN1 / AIN2 (motor) | 3 / 4 |
+| WS2812 data | 5 |
+| Buzzer (piezo directly, or DRV8833 BIN1 for a coil buzzer) | 6 |
+| DRV8833 BIN2 (held low; only used with a coil buzzer) | 7 |
 
 ### 4.4 Bridge configuration (BRG-07)
 
