@@ -25,6 +25,9 @@ sed -e "s#@IMAGE@#$(cody_bridge_image)#g" -e "s#@VERSION@#$VERSION#g" bridge/com
 sed -e "s#^CODY_VERSION=\"0.0.0+unknown\"#CODY_VERSION=\"$VERSION\"#" cli/cody > "$RELEASE_DIR/cody-$VERSION"
 chmod +x "$RELEASE_DIR/cody-$VERSION"
 
+# Wiring diagram (ELE-07)
+cp electronics/wiring.svg "$RELEASE_DIR/cody-wiring-$VERSION.svg"
+
 # Claude Code hook installer (AGT-03, AGT-11): Python, standard library only
 cp hooks/install-claude-code "$RELEASE_DIR/cody-install-claude-code-$VERSION"
 chmod +x "$RELEASE_DIR/cody-install-claude-code-$VERSION"
