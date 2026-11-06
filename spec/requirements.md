@@ -31,7 +31,7 @@ Details in [delivery.md](delivery.md). The GitHub workflows come with the bluepr
 
 ## 3. Firmware (FW)
 
-The ESP32 firmware turns simple commands from the bridge into physical behaviour. It knows nothing about agents or IDEs. State table: [idea.md](idea.md) §6.1; protocol details in [architecture.md](architecture.md). Settings (speed, volume, mute) are kept by the bridge and sent after every (re)connect; the firmware stores none.
+The ESP32 firmware turns simple commands from the bridge into physical behaviour. It knows nothing about agents or IDEs. Protocol details in [architecture.md](architecture.md). Settings (speed, volume, mute) are kept by the bridge and sent after every (re)connect; the firmware stores none.
 
 | ID | Requirement | Prio |
 |---|---|---|

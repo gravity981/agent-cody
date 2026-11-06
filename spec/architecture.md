@@ -149,7 +149,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 **Context:** BRG-01 – BRG-12: HTTP server, serial, config, CLI; Linux/WSL2.
 
-**Options evaluated:** Python (proposed in the idea; pyserial, pytest, quick to change); Go (single binary, more code).
+**Options evaluated:** Python (proposed in the original idea; pyserial, pytest, quick to change); Go (single binary, more code).
 
 **Decision:** Python; it also serves the requirement report and the CAD scripts, so one language covers the host side.
 
