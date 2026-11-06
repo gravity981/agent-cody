@@ -27,7 +27,7 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 | Stage | Content | Milestone | Status |
 |---|---|---|---|
 | 1 | Walking skeleton: toolchain, CI, requirement report, first release candidate | | done |
-| 2 | Status light on the bench with Claude Code | M1 | next |
+| 2 | Status light on the bench with Claude Code | M1 | in progress |
 | 3 | Copilot integration | M2 | open |
 | 4 | Mechanism prototype | | open |
 | 5 | Character and assembly | M3 | open |
@@ -56,22 +56,25 @@ Requirements: REL-02 – REL-06.
 **Before the stage starts:**
 - Electronics bought: ESP32-C3 SuperMini (two), WS2812 module, passive buzzer module, motor driver breakout, a small N20 geared motor for the bench, cables (models chosen with the owner, within ELE-06).
 - On WSL2: usbipd-win installed.
+- *Status at stage start (2026-11-06): parts ordered (docs/parts-list.md), not delivered yet; cables, breadboard and multimeter to be provided by the owner; usbipd-win to be installed before the bench checks. Steps 2a – 2c start without hardware; the bench work is step 2d.*
 
 **Steps:**
 
-**2a – Firmware.** Serial protocol, state machine, LED effects, sounds with volume, motor PWM, heartbeat fallback, version; unit tests on the host; bench demonstration.
-Requirements: FW-01 – FW-12.
+Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived.
 
-**2b – Bridge.** HTTP endpoints, session merging, timeouts, serial connection with reconnect, heartbeat, config, status and manual state commands; container with autostart and replug proven on the device.
-Requirements: BRG-01 – BRG-12.
+**2a – Firmware logic.** Serial protocol, state machine, LED effects, sounds with volume and motor control as logic with host unit tests (defaults in architecture.md 4.3); firmware builds for the ESP32-C3.
+Requirements: FW-02, FW-03, FW-05, FW-08, FW-10 – FW-12.
 
-**2c – Claude Code integration.** User-level hooks that find the bridge on `localhost` or the Docker host, event mapping with recorded payloads, timeout behaviour; real sessions on Linux, WSL2 and in a devcontainer.
+**2b – Bridge.** HTTP endpoints, session merging, timeouts, heartbeat, serial connection tested with a fake serial device, config file, autostart; host command `cody` (status, manual state).
+Requirements: BRG-01 – BRG-05, BRG-07 – BRG-12.
+
+**2c – Claude Code integration.** User-level curl command hooks that find the bridge on the host and in containers, event mapping with recorded payloads, timeout behaviour; real sessions on WSL2 and in a devcontainer (the bridge without a device is enough).
 Requirements: AGT-01 – AGT-03, AGT-07, AGT-11.
 
-**2d – Bench electronics documented.** Modules, connections and soldering as built; wiring diagram.
-Requirements: ELE-01 – ELE-03, ELE-07.
+**2d – Bench.** Parts arrived: firmware flashed, modules wired and soldered; LED effects, sounds, volume levels and the disconnected pattern shown and tuned on the device; plug & play of the device in the bridge container (first plug-in, replug, reset); wiring diagram.
+Requirements: FW-01, FW-04, FW-06, FW-07, FW-09, BRG-06, ELE-01 – ELE-03, ELE-07.
 
-**2e – Build documentation for the status light.** Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, bridge, hooks) with pictures; both as release files.
+**2e – Build documentation for the status light.** Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, bridge, hooks) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
 Requirements: DOC-01, DOC-02, DOC-05, DOC-06.
 
 ### Stage 3 – Copilot integration

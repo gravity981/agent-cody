@@ -74,7 +74,7 @@ Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). 
 | ID | Requirement | Prio |
 |---|---|---|
 | AGT-01 | Claude Code sessions drive all six states. | Must |
-| AGT-02 | The Claude Code integration works with Claude Code running on Linux, in WSL2 and in a devcontainer. | Must |
+| AGT-02 | The Claude Code integration works with Claude Code running on Linux (including WSL2) and in a devcontainer. | Must |
 | AGT-03 | The Claude Code hooks are set up once at user level and apply to every project. | Must |
 | AGT-04 | GitHub Copilot agent mode in VS Code drives the states IDLE, THINKING, WORKING and COMPLETED. | Must |
 | AGT-05 | GitHub Copilot drives APPROVAL and ERROR, once VS Code provides events for them. | Could |
@@ -93,10 +93,10 @@ Electronics built from ready-made modules only, powered from the host's USB port
 |---|---|---|
 | ELE-01 | The electronics consist only of ready-made development boards and breakout modules; no custom PCB and no discrete circuits. | Must |
 | ELE-02 | Soldering is limited to header pins and wires onto modules; all other connections are pluggable (JST, Dupont, screw terminals). | Must |
-| ELE-03 | The motor is driven only through a ready-made motor driver breakout with PWM, rated for the motor's stall current with margin. | Must |
+| ELE-03 | The motor is driven only through a ready-made motor driver breakout with PWM, whose continuous current rating is at least 1.5 × the motor's stall current. | Must |
 | ELE-04 | The whole device is powered from one USB port of the host through a single cable; its total current, including motor start, stays at or below 500 mA. There is no second supply. | Must |
 | ELE-05 | Motor start and switching never reset the ESP32 or interrupt the USB connection. | Must |
-| ELE-06 | The purchased parts (electronics and mechanics, without filament and tools) cost at most CHF 25. | Must |
+| ELE-06 | The purchased parts of one Cody (electronics and mechanics, without filament and tools) cost at most CHF 25, counted per piece used (pack price divided by pack size), without spares and shipping. | Must |
 | ELE-07 | A wiring diagram (modules, pins, connectors) is in the repository; the purchased parts are listed in the parts list (DOC-01). | Must |
 
 ## 7. Figure and mechanism (FIG)

@@ -89,6 +89,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-06 | Tag ruleset for `v*` restricts updates and deletions and blocks force pushes, but not creation: GitHub can't add the built-in GitHub Actions actor to a bypass list. Rejected: own GitHub App with token in the workflows (setup, secrets, workflow changes). REL-05 reworded. | requirements.md 2, delivery.md 3 |
 | 2026-11-06 | Others can rebuild Cody: the project delivers a parts list and assembly instructions (new topic DOC), written for a maker without the owner's help, in the repository and as release files, growing with stages 2, 4 and 5. ELE-07 reduced to the wiring diagram. | requirements.md 8 |
 | 2026-11-06 | The bridge stays (dropping it would need the device and a hook program in every devcontainer); setup effort is reduced instead: one command sets up bridge and hooks (AGT-10), and the same hook configuration works on the host and in devcontainers (AGT-11). | requirements.md 5, architecture.md 4.1 |
+| 2026-11-06 | Stage 2 start: AGT-02 counts WSL2 as Linux; ELE-03 margin 1.5 × stall current; ELE-06 counted per piece without spares and shipping; host command `cody` as a shell script (status and manual state in stage 2, setup in stage 3); hooks are curl command hooks with fallback addresses (Docker Engine in WSL2 has no `host.docker.internal`); build documentation released as CSV and PDF. | requirements.md 5–6, architecture.md 3–4, delivery.md 2 |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points
@@ -96,7 +97,6 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 <!-- Questions that are not decided yet, each with options and a recommendation. Move them to "Decisions" once settled. -->
 
 - **Meshy.ai licence of generated models** (before stage 5). Free-tier outputs are believed to be CC BY 4.0 (to be checked). Options: (a) free tier with attribution in the repo (the mesh then stays under CC BY 4.0 next to the MIT-licensed project); (b) paid tier for private ownership; (c) sculpt the head yourself. Recommendation: (a) if the terms confirm it.
-- **Release format of the build documentation** (step 2e, DOC-06). Options: (a) parts list as CSV plus instructions as one PDF rendered from the Markdown; (b) the Markdown with its pictures as a zip; (c) PDF only. Recommendation: (a), printable and easy to shop from.
-- **Exact module models** (before stage 2): motor driver breakout (DRV8833 candidate), WS2812 module, buzzer module, N20 motor and gear ratio (before stage 4). Recommendation: choose together at stage start within ELE-04 and ELE-06.
+- **N20 gear ratio** (before stage 4): 300 or 500 rpm, both bought; chosen with the crank prototype. The other modules are chosen (docs/parts-list.md).
 - **Docker container and serial replug / reachability from devcontainers** (TD-04, stage 2). Recommendation: prove in step 2b; fall back to a native systemd service if it doesn't work.
 - **Does Copilot read user-level Claude Code hook configuration?** (AGT-08, stage 3). Recommendation: check at stage 3 start; dedupe in the bridge either way.

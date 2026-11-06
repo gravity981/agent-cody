@@ -35,7 +35,8 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device; a build k
 | `spec/` | Specification | Markdown |
 | `ci/` | Entry points for CI and releases (delivery.md 2) | Shell |
 | `firmware/` | ESP32-C3 firmware with host unit tests | C++, Arduino-ESP32, PlatformIO (TD-01, TD-02) |
-| `bridge/` | Host bridge: HTTP in, serial out, config, CLI, Dockerfile, compose file | Python, Docker (TD-03, TD-04) |
+| `bridge/` | Host bridge: HTTP in, serial out, config, Dockerfile, compose file | Python, Docker (TD-03, TD-04) |
+| `cli/` | Host command `cody`: status and manual state (BRG-11, BRG-12), setup (AGT-10) | Bash, curl |
 | `hooks/` | Hook configuration for Claude Code and Copilot, setup guide | JSON, shell |
 | `cad/` | Code-CAD models, head mesh pipeline, model checks, print notes | Python, build123d, manifold3d (TD-05) |
 | `electronics/` | Wiring diagram | Markdown |
@@ -48,11 +49,13 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device; a build k
 
 The hooks contain no logic: they forward the agent's own hook payload. All mapping lives in the bridge, so it is tested in CI with recorded payloads.
 
-- Port `8765`. The bridge listens only on loopback and the local Docker/WSL interfaces (BRG-08). The hooks try `localhost` first and then `host.docker.internal`, so the same configuration works on the host and in devcontainers (AGT-11); devcontainers that share the Claude Code configuration (e.g. the `claude-config` volume) are set up once.
+- Port `8765`. The bridge listens only on loopback and the local Docker interfaces, including the default bridge gateway `172.17.0.1` (BRG-08). The hooks are command hooks using curl that try `localhost`, then `host.docker.internal`, then `172.17.0.1`, within 1 s in total (AGT-07), so the same configuration works on the host and in devcontainers (AGT-11), also with Docker Engine in WSL2, where `host.docker.internal` is not defined. Devcontainers that share the Claude Code configuration (e.g. the `claude-config` volume) are set up once; they need curl.
 - `cody setup` (AGT-10) starts the bridge container with autostart, writes the hooks of both agents at user level, checks the device connection and reports what is missing (e.g. usbipd on WSL2).
-- `POST /hooks/claude-code`: Claude Code's hook JSON as is, configured in `~/.claude/settings.json` (an `http` hook, or a command hook if trying two addresses needs one). Session key: `session_id`; event: `hook_event_name`.
+- `POST /hooks/claude-code`: Claude Code's hook JSON as is, sent by the curl command hook configured in `~/.claude/settings.json`. Session key: `session_id`; event: `hook_event_name`.
 - `POST /hooks/copilot`: Copilot's hook JSON, sent by a command hook (`curl -m 1 --data-binary @- …`) configured in `~/.copilot/hooks/`. Session key: workspace folder (`cwd`) (AGT-06).
 - `GET /status`: device connection, firmware version, sessions with their states, merged state (BRG-11).
+- `POST /state`: sets a state manually (`{"state": "WORKING"}`), as its own session `manual` (BRG-12).
+- Host command `cody` (`cli/`): a shell script using curl on these endpoints: `cody status`, `cody state <STATE>`, `cody --version`; `cody setup` follows with AGT-10. Installed by copying it to `~/.local/bin`.
 - Hooks time out after 1 s and never fail the agent (AGT-07).
 
 **Claude Code mapping (AGT-01):**
@@ -95,7 +98,27 @@ USB CDC of the ESP32-C3, 115200 baud, ASCII lines terminated by `\n`. Every comm
 
 At boot the device sends `READY <version>`; the bridge then resends settings and state (BRG-06).
 
-### 4.3 Mechanical interfaces
+### 4.3 Device behaviour (defaults, tuned on the bench in step 2a)
+
+| State | LED (r,g,b and effect) | Sound | Arms |
+|---|---|---|---|
+| IDLE | blue (0,0,255) steady at 15 % | – | stopped |
+| WORKING | blue (0,0,255) pulsing 20–100 %, period 2 s | – | motor at `SPEED` |
+| THINKING | yellow (255,160,0) steady at 50 % | – | stopped |
+| APPROVAL | orange (255,80,0) blinking 1 Hz | double beep: 2 × 100 ms at 2.7 kHz, 100 ms apart | stopped |
+| COMPLETED | green (0,255,0) steady at 50 % | success: rising 2.0 / 2.5 / 3.0 kHz, 100 ms each | stopped |
+| ERROR | red (255,0,0) blinking 2 Hz | warning: falling 3.0 / 2.0 kHz, 200 ms each, twice | stopped |
+| disconnected (FW-06, FW-07) | white slow pulse 0–10 %, period 4 s (unobtrusive at night) | – | stopped |
+
+- LED brightness is capped at 50 % of full scale (ELE-04).
+- Buzzer: PWM at the tone frequency; volume by duty cycle, `VOLUME` 0 / 1 / 2 / 3 ≈ 0 / 3 / 12 / 50 %; levels must sound different on the bench (FW-09). A coil buzzer is driven through the DRV8833's second channel instead of a GPIO.
+- Motor: PWM at about 20 kHz (inaudible); a short kick start at full duty before dropping to `SPEED`.
+
+### 4.4 Bridge configuration (BRG-07)
+
+`~/.config/cody/bridge.toml` on the host, mounted read-only into the container by the compose file; a missing file or key means the default. Keys: `serial_port` (optional override), `speed`, `volume`, `session_timeout_min` (default 10).
+
+### 4.5 Mechanical interfaces
 
 - Head ↔ torso: socket designed in code CAD and cut into the head mesh by the pipeline (TD-05).
 - Electronics: modules mounted on a removable plate or compartment in the platform; USB port accessible from outside (FIG-14).
@@ -210,8 +233,8 @@ Recorded as risks; the requirements are unchanged. The proposed fixes are not de
 | R2 | A session in COMPLETED stays until its next event or end; Claude Code sessions stay open for days, so after the first finished turn the figure shows green permanently and IDLE appears only after `/exit`. | BRG-02, BRG-04, FW-05 | COMPLETED falls back to IDLE after a configurable time in the bridge, or accept green as "nothing running" and drop IDLE from the merge order. |
 | R3 | VS Code with the WSL or devcontainer extension runs Copilot's agent remotely; AGT-04 names no environments (unlike AGT-02), so its verification is undefined. | AGT-04 | Name the environments in AGT-04 or in a new requirement. |
 | R4 | A USB meter shows averages; the current peak at motor start lasts milliseconds, so "including motor start" can't be verified as written. | ELE-04 | Average ≤ 500 mA plus a PWM start ramp of at least 200 ms, or an oscilloscope check. |
-| R5 | Requirements without a measurable limit: "with margin" (ELE-03); volume levels of a passive buzzer (FW-09); the "disconnected" pattern blinks all night when the laptop sleeps with USB powered (FW-06). | ELE-03, FW-09, FW-06 | ELE-03: e.g. ≥ 1.5 × stall current. FW-09: levels audibly different. FW-06: subtle pattern (slow, dim pulse). |
-| R6 | Scope of the CHF 25 is unclear: spare boards (TD-01 says buy two), screws, wire, USB cable. | ELE-06 | Define: one unit including consumables, spares excluded (or the other way round). |
+| R5 | *Addressed 2026-11-06: ELE-03 reworded (1.5 ×), disconnected pattern and volume levels in 4.3.* Requirements without a measurable limit: "with margin" (ELE-03); volume levels of a passive buzzer (FW-09); the "disconnected" pattern blinks all night when the laptop sleeps with USB powered (FW-06). | ELE-03, FW-09, FW-06 | ELE-03: e.g. ≥ 1.5 × stall current. FW-09: levels audibly different. FW-06: subtle pattern (slow, dim pulse). |
+| R6 | *Addressed 2026-11-06: ELE-06 reworded.* Scope of the CHF 25 is unclear: spare boards (TD-01 says buy two), screws, wire, USB cable. | ELE-06 | Define: one unit including consumables, spares excluded (or the other way round). |
 | R7 | Docker is the riskiest choice for the least gain: a native service avoids replug and the BRG-08 network setup; GHCR adds `ci/publish`, `ci/promote` and `packages: write` to stage 1. | TD-04, BRG-06, BRG-08, REL | Prove Docker with the device in stage 2 first; add GHCR publishing only after that. |
 | R8 | Smaller points: whether the head counts as a printed part (now separate, so 12 parts gets tighter); APPROVAL after a denied permission depends on the agent's next event (`PermissionDenied` not mapped); any local process can set the state. | FIG-04, AGT-01, BRG-08 | Clarify FIG-04; map `PermissionDenied`; record the unauthenticated local API as accepted. |
 
