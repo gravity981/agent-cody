@@ -1,0 +1,13 @@
+[project]
+name = "cody-bridge"
+version = "0.0.0"
+description = "Cody host bridge: agent events over local HTTP to the device over USB serial"
+requires-python = ">=3.14,<3.15"
+dependencies = []
+
+[project.scripts]
+cody-bridge = "cody_bridge.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14"]
+build-backend = "uv_build"

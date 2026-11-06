@@ -33,6 +33,8 @@ Versions follow [Semantic Versioning](https://semver.org).
 
 The devcontainer: the workflows build `.devcontainer/` and run the entry points inside it (devcontainers/ci), so CI uses the same pinned tools as development (PlatformIO with the ESP32 toolchain, Python with build123d and manifold3d, Docker CLI for the bridge image).
 
+Image cache: `ci.yml` pushes the built devcontainer image to GHCR as `ghcr.io/<owner>/<repo>-devcontainer` on every push to `main` and uses it as build cache in every run (`cacheFrom`), so the toolchain is rebuilt only when `.devcontainer/` or the lock files change. Pull requests and release candidates only read the cache. The job needs `packages: write`; the caller in `release-candidate.yml` grants it too. In CI the post-create step (`.devcontainer/post-create.sh`) gives the toolchain folders to the runner's UID, which devcontainers/ci assigns to the container user.
+
 ### Entry points
 
 The workflows are the same for every project and know nothing about its technology. What is checked, built and published is defined by executables in `ci/`, written in stage 1 in whatever the toolchain offers (shell, Python, PowerShell, Make, a CAD tool's batch mode, …).
@@ -58,8 +60,10 @@ All entry points:
 | Entry point | Does in Cody |
 |---|---|
 | `ci/check` | Firmware unit tests (PlatformIO `native`), firmware build, bridge tests (pytest), hook mapping tests, CAD model checks, requirement report tests; then the requirement report. |
-| `ci/build-release` | Into `RELEASE_DIR`: firmware `.bin`, print files (3MF/STL), compose file for the bridge, hook configs and setup guide, BOM and wiring diagram, each with the version in its name. |
+| `ci/build-release` | Into `RELEASE_DIR`: firmware as one combined image `cody-firmware-<version>.bin` (bootloader, partition table and app, flashed at 0x0), print files (3MF/STL), compose file for the bridge, hook configs and setup guide, BOM and wiring diagram, each with the version in its name; and `LICENSE`. |
 | `ci/publish` | Builds the bridge image and pushes it to GHCR as `cody-bridge:<version>-rc.<M>` (from `CANDIDATE_TAG`); needs `packages: write`. |
+
+The bridge image on GHCR is public, so the compose file pulls it without a login. It carries the OCI labels for version, commit, source repository and licence (`MIT`). `ci/publish` and `ci/promote` log in to GHCR with the workflow's `GITHUB_TOKEN` (`packages: write`), passed into the devcontainer; no personal token is needed. The entry points get Docker through the devcontainer feature docker-outside-of-docker. The first release (stage 1) contains skeletons: firmware that only sends `READY <version>`, and a bridge image that only answers `--version`, with its compose file.
 | `ci/promote` | Adds the tags `<version>` and `latest` to the candidate's image on GHCR, without rebuilding; needs `packages: write`. |
 
 ## 3. Release flow
@@ -91,7 +95,7 @@ flowchart LR
 
 - Releases and candidates are immutable. A problem in `1.2.0-rc.1` is fixed on `main` and becomes `1.2.0-rc.2`; a problem after `1.2.0` becomes `1.2.1`.
 - Releases are made from `main` only; no release branches. Hotfixes take the same path with a patch version.
-- Tags `v*` are protected by a repository ruleset (REL-05), set up once by the project owner.
+- Tags `v*` are protected by a repository ruleset (REL-05), set up once by the project owner: target `v*`, rules "Restrict updates", "Restrict deletions" and "Block force pushes", no bypass. "Restrict creations" is not used: the workflows push tags with `GITHUB_TOKEN`, and GitHub can't put the built-in GitHub Actions actor on a bypass list. Tags are created only by the release workflows by convention (single owner; Claude is denied tag commands).
 
 ## 4. Delivery to users
 

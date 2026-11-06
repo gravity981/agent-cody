@@ -1,0 +1,10 @@
+[project]
+name = "cody-cad"
+version = "0.0.0"
+description = "Cody CAD: build123d models, head mesh pipeline, model checks"
+requires-python = ">=3.14,<3.15"
+dependencies = ["build123d==0.13.0", "manifold3d==3.5.4"]
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14"]
+build-backend = "uv_build"

@@ -1,7 +1,7 @@
 {
-  // The development environment (VS Code "Reopen in Container"). By default the
-  // workflows run the ci/ entry points in it too (spec/delivery.md 2). The project's
-  // toolchain goes into the Dockerfile, with pinned versions (spec/architecture.md 5).
+  // The development environment (VS Code "Reopen in Container"). The workflows run
+  // the ci/ entry points in it too (spec/delivery.md 2). The project's toolchain is
+  // in the Dockerfile, with pinned versions (spec/architecture.md 5.1).
   "name": "Cody",
   "build": {
     "dockerfile": "Dockerfile",
@@ -9,18 +9,19 @@
   },
   "features": {
     // gh: lets Claude read issues, pull requests and CI runs
-    "ghcr.io/devcontainers/features/github-cli:1": {}
-    // TODO(blueprint): features the project needs, e.g. docker-outside-of-docker
+    "ghcr.io/devcontainers/features/github-cli:1.1.3": {},
+    // Docker CLI using the host's Docker: builds and pushes the bridge image (ci/publish)
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1.10.1": {}
   },
   "mounts": [
     // Claude Code login and settings survive container rebuilds, shared across projects
     "source=claude-config,target=/home/vscode/.claude,type=volume"
-    // TODO(blueprint): volumes for data that must survive rebuilds
   ],
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
   },
-  // TODO(blueprint): forwardPorts, postCreateCommand (e.g. dependency install) as needed
+  // Fixes toolchain ownership in CI and installs the workspace members
+  "postCreateCommand": ".devcontainer/post-create.sh",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -28,9 +29,17 @@
         "editorconfig.editorconfig",
         "github.vscode-github-actions",
         "bierner.markdown-mermaid",
-        "davidanson.vscode-markdownlint"
-        // TODO(blueprint): extensions for the project's toolchain
-      ]
+        "davidanson.vscode-markdownlint",
+        "ms-python.python",
+        "charliermarsh.ruff",
+        "ms-vscode.cpptools",
+        "xaver.clang-format",
+        "timonwong.shellcheck",
+        "bernhard-42.ocp-cad-viewer"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/opt/cody-venv/bin/python"
+      }
     }
   },
   "remoteUser": "vscode"

@@ -11,4 +11,8 @@ indent_size = 2
 [*.md]
 trim_trailing_whitespace = false
 
-# TODO(blueprint): conventions of the project's languages and tools
+[*.py]
+indent_size = 4
+
+[*.{cpp,h,hpp}]
+indent_size = 2

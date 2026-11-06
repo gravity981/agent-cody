@@ -32,6 +32,9 @@ How every requirement in [requirements.md](requirements.md) is shown to be met, 
 - pytest and Unity test names are identifiers and use `req_ABC_01` in the name: `test_req_BRG_02_most_urgent_wins`, `test_req_FW_10_unknown_command_keeps_state`. Several IDs: `test_req_BRG_03_req_FW_04_…`.
 - Manual checks name their IDs in the "Requirements" column of verification-log.md.
 - Every ID must exist in requirements.md and must not be withdrawn.
+- A tag is malformed if `req_` in a test name is not followed by 2–4 capital letters, `_` and two digits (`req_BRG_02` is valid; `req_brg_2` and `req_BRG_2` are errors).
+- Results are read from the JUnit XML files in `reports/`. A failed or erroring test is failing evidence; a skipped test counts as no evidence (neither passing nor failing).
+- For manual records, the latest record of a requirement is the one with the newest date; on the same date, the row further down the table wins.
 
 ### Requirement report
 
@@ -50,7 +53,7 @@ and fails if an implemented requirement has no passing evidence, if any evidence
 | Topic | Method and level | Notes |
 |---|---|---|
 | TRC | Test (the report's own tests) | |
-| REL | Test where scriptable; first real candidate and promotion recorded in the log | |
+| REL | REL-01: green CI run on a pull request (log). REL-02: tests of the version determination, the bridge `--version` and the version and commit in the firmware image. REL-03 – REL-06: first candidate, promotion, tag ruleset and delivery done by the owner and recorded in the log | REL-03 – REL-06 stay on the "not yet implemented" list until their log rows exist. |
 | FW | Test (unit, host); demonstration on the bench (log) | Visible/audible behaviour (FW-01, FW-04, FW-06, FW-07) also demonstrated on hardware. |
 | BRG | Test (pytest, fake serial); demonstration of autostart and replug (log) | BRG-06 replug and BRG-09 autostart need the real container and device. |
 | AGT | Test (recorded payloads); demonstration with real Claude Code and Copilot (log) | AGT-02 needs Linux, WSL2 and devcontainer runs. |
@@ -63,8 +66,7 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 
 | Prefix | IDs |
 |---|---|
-| TRC | TRC-01 – TRC-07 |
-| REL | REL-01 – REL-06 |
+| REL | REL-03 – REL-06 |
 | FW | FW-01 – FW-12 |
 | BRG | BRG-01 – BRG-12 |
 | AGT | AGT-01 – AGT-09 |

@@ -51,9 +51,11 @@ The specification in `spec/` is the source of truth; the project's files impleme
 - Development happens in the devcontainer (`.devcontainer/`). Every tool is installed there with a pinned version, never only on a developer's machine. Which environment CI uses is decided in `spec/delivery.md`, section 2.
 - Monorepo: one top-level folder per building block, as listed in `spec/architecture.md`, section 3.
 
-<!-- TODO(blueprint): commands, filled in during stage 1 -->
-
 | Command | Does |
 |---|---|
 | `ci/check` | All automated verification and the requirement report, as in CI |
 | `ci/build-release` | Release files into `$RELEASE_DIR` (normally run by the release workflow) |
+| `uv sync --frozen` | Install the Python workspace (bridge, cad, tools) from `uv.lock` |
+| `tools/static-checks` | ruff, clang-format and shellcheck |
+| `cd firmware && pio run` | Build the firmware |
+| `cd firmware && pio test -e native` | Firmware unit tests on the host |

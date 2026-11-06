@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Prints the build version (spec/delivery.md 1, REL-02): $VERSION if set
+# (CI, release workflows), otherwise <last release>+local.<short commit>.
+# <last release> is the highest tag vX.Y.Z without suffix reachable from HEAD,
+# or 0.0.0 if there is none.
+set -euo pipefail
+
+if [[ -n "${VERSION:-}" ]]; then
+  echo "$VERSION"
+  exit 0
+fi
+last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-*' 2>/dev/null || echo v0.0.0)
+echo "${last#v}+local.$(git rev-parse --short HEAD)"

@@ -26,8 +26,8 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 
 | Stage | Content | Milestone | Status |
 |---|---|---|---|
-| 1 | Walking skeleton: toolchain, CI, requirement report, first release candidate | | next |
-| 2 | Status light on the bench with Claude Code | M1 | open |
+| 1 | Walking skeleton: toolchain, CI, requirement report, first release candidate | | in progress |
+| 2 | Status light on the bench with Claude Code | M1 | next |
 | 3 | Copilot integration | M2 | open |
 | 4 | Mechanism prototype | | open |
 | 5 | Character and assembly | M3 | open |
@@ -38,17 +38,17 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 - Spec approved enough to choose the toolchain; key technologies decided (architecture.md 5).
 - CI environment decided (delivery.md 2).
 - Delivery decided (delivery.md 4) and release files defined.
-- GitHub repository with Actions enabled; tag ruleset for `v*` (REL-05) set up by the project owner.
+- GitHub repository with Actions enabled; tag ruleset for `v*` (REL-05) set up by the project owner. *Status at stage start (2026-11-05): no remote yet; the owner sets up the repository, Actions, the ruleset and package permissions before step 1b. Step 1a needs no GitHub.*
 
 **Steps:**
 
-**1a – Devcontainer and toolchain.** Base image and project tools with pinned versions in `.devcontainer/` (PlatformIO with pioarduino, Python, build123d, manifold3d, pytest, Docker CLI); CI environment as decided (delivery.md 2); top-level folders as in architecture.md 3; formatting and static checks for the chosen technology.
+**1a – Devcontainer and toolchain.** Base image and project tools with pinned versions in `.devcontainer/`: PlatformIO with the pioarduino platform, uv with Python, build123d, manifold3d, pytest, ruff, clang-format, shellcheck, and the docker-outside-of-docker feature; Python dependencies locked with uv. Top-level folders as in architecture.md 3; formatting and static checks (ruff, clang-format, shellcheck); `.gitignore`, `.gitattributes`, `.editorconfig` for the toolchain.
 Requirements: none (foundation).
 
-**1b – Requirement report and CI.** The requirement report in the project's technology with its own tests; `ci/check` runs all automated verification and then the report; CI green on a pull request.
+**1b – Requirement report and CI.** The requirement report in Python (`tools/`) with its own pytest tests (JUnit XML); `ci/check` runs the static checks, all tests and then the report; CI green on a pull request.
 Requirements: TRC-01 – TRC-07, REL-01.
 
-**1c – Release.** Version determination (`<last release>+build.<N>` in CI, `+local.<commit>` locally) and how artifacts reveal it; `ci/build-release`, `ci/publish` and `ci/promote` for the bridge image on GHCR (a minimal bridge image is enough here); first candidate and promotion done by the project owner and recorded in the verification log; delivery as in delivery.md 4.
+**1c – Release.** Version determination (`<last release>+build.<N>` in CI, `+local.<commit>` locally) and how artifacts reveal it; skeleton firmware (`.bin` that sends `READY <version>` at boot) and skeleton bridge image (answers `--version`) with its compose file, as the first release files; `ci/build-release`, `ci/publish` (bridge image to GHCR with the candidate tag) and `ci/promote` (retag without rebuilding); workflow permissions `packages: write` and action SHA pins; first candidate and promotion done by the project owner and recorded in the verification log; delivery as in delivery.md 4.
 Requirements: REL-02 – REL-06.
 
 ### Stage 2 – Status light on the bench

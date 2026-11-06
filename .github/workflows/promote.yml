@@ -25,7 +25,7 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write
-      # TODO(blueprint): add what ci/promote needs, e.g. packages: write
+      packages: write # ci/promote tags the bridge image on GHCR
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -78,18 +78,33 @@ jobs:
       - name: Check out the candidate's commit
         run: git checkout --detach "${{ steps.plan.outputs.commit }}"
 
+      # Devcontainer image cache, as in ci.yml (spec/delivery.md 2)
+      - name: Devcontainer image name
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-devcontainer" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
       # Default CI environment: the devcontainer (spec/delivery.md 2).
-      # TODO(blueprint): pin to a commit SHA, or replace with setup steps on the runner
       - name: Promote in the devcontainer
         if: hashFiles('ci/promote') != ''
-        uses: devcontainers/ci@v0.3
+        uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3.1900000450
         env:
           VERSION: ${{ steps.plan.outputs.version }}
           COMMIT: ${{ steps.plan.outputs.commit }}
           CANDIDATE_TAG: ${{ inputs.candidate }}
           RELEASE_TAG: ${{ steps.plan.outputs.tag }}
-          # TODO(blueprint): secrets for ci/promote, e.g. REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+          # ci/promote: GHCR login with the workflow's token (spec/delivery.md 2)
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ github.token }}
         with:
+          imageName: ${{ steps.image.outputs.name }}
+          cacheFrom: ${{ steps.image.outputs.name }}
           push: never
           runCmd: ci/promote
           env: |
@@ -97,6 +112,9 @@ jobs:
             COMMIT
             CANDIDATE_TAG
             RELEASE_TAG
+            GHCR_USER
+            GHCR_TOKEN
+            GITHUB_REPOSITORY
 
       - name: Tag and publish the release
         env:

@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# ci/publish (spec/delivery.md 2): builds the bridge image and pushes it to GHCR
+# as cody-bridge:<version>-rc.<M> (from CANDIDATE_TAG). Never overwrites a tag.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+# shellcheck source=ci/lib.sh
+source ci/lib.sh
+
+: "${CANDIDATE_TAG:?CANDIDATE_TAG must be set}"
+VERSION=$(cody_version)
+COMMIT=$(cody_commit)
+image=$(cody_bridge_image)
+ref="$image:${CANDIDATE_TAG#v}"
+
+cody_ghcr_login
+if cody_image_exists "$ref"; then
+  echo "$ref already exists; published images are never overwritten" >&2
+  exit 1
+fi
+
+docker build --file bridge/Dockerfile \
+  --build-arg "VERSION=$VERSION" --build-arg "COMMIT=$COMMIT" \
+  --label "org.opencontainers.image.title=cody-bridge" \
+  --label "org.opencontainers.image.version=$VERSION" \
+  --label "org.opencontainers.image.revision=$COMMIT" \
+  --label "org.opencontainers.image.source=https://github.com/$(cody_repository)" \
+  --label "org.opencontainers.image.licenses=MIT" \
+  --tag "$ref" .
+docker push "$ref"
+echo "Published $ref"

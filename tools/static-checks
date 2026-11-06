@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Formatting and static checks (spec/architecture.md 5.1): ruff for Python,
+# clang-format for the firmware's C++, shellcheck for shell scripts.
+# Run from the repository root; exits non-zero if any check fails.
+set -uo pipefail
+
+failed=0
+run() {
+  echo "== $*"
+  "$@" || failed=1
+}
+
+run uv run --frozen ruff check .
+run uv run --frozen ruff format --check .
+
+mapfile -t cpp < <(git ls-files --cached --others --exclude-standard \
+  'firmware/*.cpp' 'firmware/*.h' 'firmware/*.hpp')
+if ((${#cpp[@]})); then
+  run clang-format --dry-run --Werror "${cpp[@]}"
+fi
+
+mapfile -t shell < <(git ls-files --cached --others --exclude-standard \
+  | while read -r f; do
+      [[ -f "$f" ]] || continue
+      case "$f" in
+        *.sh) echo "$f" ;;
+        *) head -n1 "$f" 2>/dev/null | grep -qE '^#!.*\b(ba)?sh\b' && echo "$f" ;;
+      esac
+    done)
+if ((${#shell[@]})); then
+  run shellcheck "${shell[@]}"
+fi
+
+exit "$failed"
