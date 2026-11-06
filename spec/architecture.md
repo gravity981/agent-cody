@@ -25,7 +25,7 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device; a build k
 - Power and data through one USB port of the host, ≤ 500 mA in total (ELE-04).
 - Parts budget ≤ CHF 25 (ELE-06); printer Prusa MK3S+, FDM, PLA/PETG (FIG-03).
 - Ready-made modules only; soldering limited to header pins and wires (ELE-01, ELE-02).
-- Host: Linux or WSL2. On WSL2 the ESP32's USB device is attached with `usbipd-win` (manual step; `usbipd attach --auto-attach` survives replugs).
+- Host: Linux or WSL2. On WSL2 the ESP32's USB device reaches WSL through `usbipd-win`. A one-time host setup is accepted for plug & play (BRG-06): install usbipd, `usbipd bind` the device once, and start `usbipd attach --wsl --auto-attach` at Windows login (e.g. a scheduled task); afterwards plug and replug need no action. The setup is described in the repository.
 - GitHub Copilot's agent hooks are in Preview and may change; they provide no session id and no events for approval or failed turns.
 
 ## 3. Overview
@@ -105,13 +105,13 @@ At boot the device sends `READY <version>`; the bridge then resends settings and
 | Area | Choice | Version | Decision |
 |---|---|---|---|
 | Controller board | ESP32-C3 SuperMini | – | TD-01 |
-| Firmware framework | Arduino-ESP32 3.x with PlatformIO (pioarduino platform) | pinned in step 1a | TD-02 |
-| Bridge | Python | pinned in step 1a | TD-03 |
+| Firmware framework | Arduino-ESP32 3.x with PlatformIO (pioarduino platform) | PlatformIO 6.2.0, pioarduino 55.03.312-1; toolchain baked into the devcontainer image | TD-02 |
+| Bridge | Python | 3.14 | TD-03 |
 | Bridge runtime | Docker container, image on GHCR | – | TD-04 |
-| CAD | build123d; head mesh from Meshy.ai, processed with manifold3d | pinned in step 1a | TD-05 |
+| CAD | build123d; head mesh from Meshy.ai, processed with manifold3d | build123d 0.13.0, manifold3d 3.5.4 | TD-05 |
 | CI environment | Devcontainer (devcontainers/ci), Docker via docker-outside-of-docker | – | README.md "Decisions" |
-| Python dependencies | uv with a lockfile per Python project | pinned in step 1a | README.md "Decisions" |
-| Static checks | ruff (Python), clang-format (C++), shellcheck (shell) | pinned in step 1a | README.md "Decisions" |
+| Python dependencies | uv workspace (members `bridge`, `cad`, `tools`) with one lockfile `uv.lock`; tests with pytest | uv 0.13.7, pytest 9.2.0 | README.md "Decisions" |
+| Static checks | ruff (Python), clang-format (C++), shellcheck (shell) | ruff 0.17.3, clang-format 23.1.5, shellcheck 0.11.0 | README.md "Decisions" |
 
 Every tool has a pinned version and is installed in the devcontainer (`.devcontainer/`), never only on someone's machine. How CI gets the same tools is decided in delivery.md 2.
 
@@ -193,7 +193,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 | Risk | Mitigation |
 |---|---|
 | Motor, LED and buzzer exceed 500 mA (ELE-04), especially at motor start | Small N20 motor, PWM soft start, LED brightness limited; measured in stage 4. |
-| Serial replug inside the Docker container (TD-04) | Mount `/dev` with a cgroup rule; prove in stage 2; fall back to a native service. |
+| Serial plug & play inside the Docker container (TD-04, BRG-06) | Mount `/dev` with a cgroup rule; step 2b must demonstrate first plug-in and replug in the container; if it fails, switch to a native service (new TD). |
 | Copilot hook API (Preview) changes or reads Claude Code hook configs too (AGT-08) | Mapping in the bridge, not in hooks; recorded payloads in tests; dedupe by endpoint and payload format. |
 | Crank fits in the torso with 3–8 mm hand travel (FIG-07, FIG-10) | Mechanism prototype first (stage 4), before the character. |
 | Meshy mesh not printable or not watertight | manifold3d repair in the pipeline; regenerate. |

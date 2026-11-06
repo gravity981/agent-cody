@@ -1,9 +1,10 @@
 # Normalise line endings; scripts keep LF so they run in the Linux devcontainer
 * text=auto eol=lf
 
-# TODO(blueprint): binary files of the project's tools. Large or frequently
-# changed binaries (CAD models, images, firmware blobs) belong in Git LFS:
-#   git lfs install && git lfs track "*.step"
-# which adds lines like:
-# *.step filter=lfs diff=lfs merge=lfs -text
-# *.png  binary
+# Binary files, kept in plain git (no LFS): meshes, print files, firmware images, images
+*.glb binary
+*.stl binary
+*.3mf binary
+*.bin binary
+*.png binary
+*.jpg binary

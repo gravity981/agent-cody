@@ -59,8 +59,8 @@ A background process on the host (Linux, WSL2) that receives agent events from t
 | BRG-03 | It sends a state command only when the merged state changes, so sounds are not repeated. | Must |
 | BRG-04 | It drops a session in WORKING, THINKING or APPROVAL after no event for a configurable time (default 10 min); a session in COMPLETED or ERROR stays until its next event or its end. | Must |
 | BRG-05 | It sends a heartbeat to the device at least every 10 s. | Must |
-| BRG-06 | It runs without the device; it connects to the configured or auto-detected serial port, reconnects within 10 s after the device is replugged or reset, and then resends the settings and the current state. | Must |
-| BRG-07 | Settings (serial port, motor speed, volume, mute, session timeout) are read from a config file and sent to the device on every connect. | Must |
+| BRG-06 | Plug & play: it runs without the device; when the device is plugged in (first time or replug) or reset, it finds and uses it within 10 s without a port setting or any manual step on the host (after a one-time host setup), and then resends the settings and the current state. | Must |
+| BRG-07 | Settings (motor speed, volume, mute, session timeout, and optionally a serial port that overrides auto-detection) are read from a config file; the device settings are sent to the device on every connect. | Must |
 | BRG-08 | It listens only on the loopback interface and the local Docker/WSL interfaces, never on the LAN. | Must |
 | BRG-09 | It starts automatically and runs in the background. | Should |
 | BRG-10 | It reports its version and commit (REL-02). | Must |

@@ -1,0 +1,34 @@
+# uv workspace for the Python parts of Cody (spec/architecture.md 5.1):
+# bridge (host bridge), cad (build123d models and head pipeline), tools (requirement report).
+# One lockfile (uv.lock) for all members.
+
+[tool.uv.workspace]
+members = ["bridge", "cad", "tools"]
+
+[tool.uv]
+required-version = "==0.13.7"
+
+[dependency-groups]
+dev = [
+    "cody-bridge",
+    "cody-cad",
+    "cody-tools",
+    "pytest==9.2.0",
+    "ruff==0.17.3",
+    "ocp-vscode==4.2.0",
+]
+
+[tool.uv.sources]
+cody-bridge = { workspace = true }
+cody-cad = { workspace = true }
+cody-tools = { workspace = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
