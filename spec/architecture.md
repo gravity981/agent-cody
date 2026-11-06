@@ -48,8 +48,9 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device; a build k
 
 The hooks contain no logic: they forward the agent's own hook payload. All mapping lives in the bridge, so it is tested in CI with recorded payloads.
 
-- Port `8765`. The bridge listens only on loopback and the local Docker/WSL interfaces (BRG-08); hooks in a devcontainer reach it via `host.docker.internal`.
-- `POST /hooks/claude-code`: Claude Code's hook JSON as is, sent by an `http` hook (no script) configured in `~/.claude/settings.json`. Session key: `session_id`; event: `hook_event_name`.
+- Port `8765`. The bridge listens only on loopback and the local Docker/WSL interfaces (BRG-08). The hooks try `localhost` first and then `host.docker.internal`, so the same configuration works on the host and in devcontainers (AGT-11); devcontainers that share the Claude Code configuration (e.g. the `claude-config` volume) are set up once.
+- `cody setup` (AGT-10) starts the bridge container with autostart, writes the hooks of both agents at user level, checks the device connection and reports what is missing (e.g. usbipd on WSL2).
+- `POST /hooks/claude-code`: Claude Code's hook JSON as is, configured in `~/.claude/settings.json` (an `http` hook, or a command hook if trying two addresses needs one). Session key: `session_id`; event: `hook_event_name`.
 - `POST /hooks/copilot`: Copilot's hook JSON, sent by a command hook (`curl -m 1 --data-binary @- …`) configured in `~/.copilot/hooks/`. Session key: workspace folder (`cwd`) (AGT-06).
 - `GET /status`: device connection, firmware version, sessions with their states, merged state (BRG-11).
 - Hooks time out after 1 s and never fail the agent (AGT-07).
@@ -205,7 +206,7 @@ Recorded as risks; the requirements are unchanged. The proposed fixes are not de
 
 | # | Finding | Affects | Proposed fix (not decided) |
 |---|---|---|---|
-| R1 | "Set up once at user level" assumes one `~/.claude/settings.json`; inside a devcontainer Claude Code reads the container's home, and the bridge address differs (`127.0.0.1` on the host, `host.docker.internal` in a container). Every devcontainer would need its own setup. | AGT-02, AGT-03 | Require a hook URL that resolves on the host and in containers, and specify how the config reaches devcontainers (bind-mount or devcontainer feature), or narrow AGT-03 to "once per environment". |
+| R1 | *Addressed by AGT-11 (2026-11-06).* "Set up once at user level" assumes one `~/.claude/settings.json`; inside a devcontainer Claude Code reads the container's home, and the bridge address differs (`127.0.0.1` on the host, `host.docker.internal` in a container). Every devcontainer would need its own setup. | AGT-02, AGT-03 | Require a hook URL that resolves on the host and in containers, and specify how the config reaches devcontainers (bind-mount or devcontainer feature), or narrow AGT-03 to "once per environment". |
 | R2 | A session in COMPLETED stays until its next event or end; Claude Code sessions stay open for days, so after the first finished turn the figure shows green permanently and IDLE appears only after `/exit`. | BRG-02, BRG-04, FW-05 | COMPLETED falls back to IDLE after a configurable time in the bridge, or accept green as "nothing running" and drop IDLE from the merge order. |
 | R3 | VS Code with the WSL or devcontainer extension runs Copilot's agent remotely; AGT-04 names no environments (unlike AGT-02), so its verification is undefined. | AGT-04 | Name the environments in AGT-04 or in a new requirement. |
 | R4 | A USB meter shows averages; the current peak at motor start lasts milliseconds, so "including motor start" can't be verified as written. | ELE-04 | Average ≤ 500 mA plus a PWM start ramp of at least 200 ms, or an oscilloscope check. |

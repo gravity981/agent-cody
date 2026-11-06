@@ -56,7 +56,7 @@ and fails if an implemented requirement has no passing evidence, if any evidence
 | REL | REL-01: green CI run on a pull request (log). REL-02: tests of the version determination, the bridge `--version` and the version and commit in the firmware image. REL-03 – REL-06: first candidate, promotion, tag ruleset and delivery done by the owner and recorded in the log | REL-03 – REL-06 stay on the "not yet implemented" list until their log rows exist. |
 | FW | Test (unit, host); demonstration on the bench (log) | Visible/audible behaviour (FW-01, FW-04, FW-06, FW-07) also demonstrated on hardware. |
 | BRG | Test (pytest, fake serial); demonstration of autostart and replug (log) | BRG-06 replug and BRG-09 autostart need the real container and device. |
-| AGT | Test (recorded payloads); demonstration with real Claude Code and Copilot (log) | AGT-02 needs Linux, WSL2 and devcontainer runs. |
+| AGT | Test (recorded payloads, bridge discovery); demonstration with real Claude Code and Copilot (log) | AGT-02 and AGT-11 need Linux, WSL2 and devcontainer runs; AGT-10 is demonstrated on a fresh host. |
 | ELE | Inspection (BOM, wiring, modules); measurement (USB meter); demonstration (8 h run) | All manual. |
 | FIG | Analysis (CI model checks: FIG-02 – FIG-04, FIG-17); inspection and demonstration (log) | Look, travel, noise, stability, endurance and service are judged on the printed assembly. |
 | DOC | Test where scriptable (DOC-06: release files present; links and referenced files exist); inspection (log); DOC-07 demonstration by a test builder (log) | The owner builds along the instructions for each milestone. |
@@ -69,7 +69,7 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 |---|---|
 | FW | FW-01 – FW-12 |
 | BRG | BRG-01 – BRG-12 |
-| AGT | AGT-01 – AGT-09 |
+| AGT | AGT-01 – AGT-11 |
 | ELE | ELE-01 – ELE-07 |
 | FIG | FIG-01 – FIG-17 |
 | DOC | DOC-01 – DOC-07 |

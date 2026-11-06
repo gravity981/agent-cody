@@ -65,8 +65,8 @@ Requirements: FW-01 – FW-12.
 **2b – Bridge.** HTTP endpoints, session merging, timeouts, serial connection with reconnect, heartbeat, config, status and manual state commands; container with autostart and replug proven on the device.
 Requirements: BRG-01 – BRG-12.
 
-**2c – Claude Code integration.** User-level http hooks, event mapping with recorded payloads, timeout behaviour; real sessions on Linux, WSL2 and in a devcontainer.
-Requirements: AGT-01 – AGT-03, AGT-07.
+**2c – Claude Code integration.** User-level hooks that find the bridge on `localhost` or the Docker host, event mapping with recorded payloads, timeout behaviour; real sessions on Linux, WSL2 and in a devcontainer.
+Requirements: AGT-01 – AGT-03, AGT-07, AGT-11.
 
 **2d – Bench electronics documented.** Modules, connections and soldering as built; wiring diagram.
 Requirements: ELE-01 – ELE-03, ELE-07.
@@ -83,6 +83,9 @@ Requirements: DOC-01, DOC-02, DOC-05, DOC-06.
 
 **3a – Copilot hooks.** User-level hooks, mapping, session key by workspace folder, deduplication against Claude Code hooks; setup guide for both agents.
 Requirements: AGT-04 – AGT-06, AGT-08, AGT-09.
+
+**3b – One-command setup.** `cody setup`: starts the bridge with autostart, installs the hooks of both agents at user level, checks the device connection and reports what is missing.
+Requirements: AGT-10.
 
 ### Stage 4 – Mechanism prototype
 
