@@ -59,6 +59,7 @@ and fails if an implemented requirement has no passing evidence, if any evidence
 | AGT | Test (recorded payloads); demonstration with real Claude Code and Copilot (log) | AGT-02 needs Linux, WSL2 and devcontainer runs. |
 | ELE | Inspection (BOM, wiring, modules); measurement (USB meter); demonstration (8 h run) | All manual. |
 | FIG | Analysis (CI model checks: FIG-02 – FIG-04, FIG-17); inspection and demonstration (log) | Look, travel, noise, stability, endurance and service are judged on the printed assembly. |
+| DOC | Test where scriptable (DOC-06: release files present; links and referenced files exist); inspection (log); DOC-07 demonstration by a test builder (log) | The owner builds along the instructions for each milestone. |
 
 ## 5. Not yet implemented
 
@@ -71,6 +72,7 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 | AGT | AGT-01 – AGT-09 |
 | ELE | ELE-01 – ELE-07 |
 | FIG | FIG-01 – FIG-17 |
+| DOC | DOC-01 – DOC-07 |
 
 ## 6. Manual verification
 
@@ -83,6 +85,7 @@ Verified manually because they need real hardware, real agents or the owner's ju
 - AGT-01 – AGT-04: real agent sessions in each environment; AGT-09: setup guide followed once.
 - ELE-01 – ELE-07: modules, soldering, current, stability, cost, documents.
 - FIG-01, FIG-05 – FIG-16: printed assembly, motion, endurance, noise, service.
+- DOC-01 – DOC-05: completeness and usability of the parts list and instructions, checked by building along them; DOC-07: a test build by someone else.
 
 ## 7. Release checklist
 

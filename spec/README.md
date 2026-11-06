@@ -61,12 +61,13 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | AGT | Agent integrations | 5 | 9 | 2, 3 | specified |
 | ELE | Electronics | 6 | 7 | 2, 4, 5 | specified |
 | FIG | Figure and mechanism | 7 | 17 | 4, 5 | specified |
+| DOC | Build documentation | 8 | 7 | 2, 4, 5 | specified |
 
 ## Decisions
 
 | Date | Decision | Recorded in |
 |---|---|---|
-| 2026-11-05 | Built for the owner's own desk; repo open, no build kit for others (no polished BOM, assembly guide or toolchain-free flashing). | README.md (this table) |
+| 2026-11-05 | Built for the owner's own desk; repo open, no build kit for others (no polished BOM, assembly guide or toolchain-free flashing). *Build kit part superseded on 2026-11-06 (DOC).* | README.md (this table) |
 | 2026-11-05 | Claude Code and GitHub Copilot (VS Code) integrations are both Must. | requirements.md (AGT) |
 | 2026-11-05 | A host-side bridge (localhost HTTP in, USB serial out) is used, because hooks run in containers/WSL that can't open the serial port, and it merges sessions. Alternatives rejected: hook writes serial directly; Wi-Fi on the ESP32. | requirements.md (BRG) |
 | 2026-11-05 | The bridge runs on Linux and WSL2 (USB attached with usbipd-win on WSL); containerizing it is evaluated in architecture. | architecture.md 2 |
@@ -86,6 +87,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-05 | Delivery: download from the GitHub release, plus the bridge image on GHCR. | delivery.md 4 |
 | 2026-11-06 | Plug & play for the device connection, incl. replug: BRG-06 reworded (no port setting, no manual step after a one-time host setup); serial port in BRG-07 is an optional override; on WSL2 a one-time usbipd setup with auto-attach is accepted; Docker stays, plug & play in the container must be shown in step 2b. | requirements.md 4, architecture.md 2 and 7 |
 | 2026-11-06 | Tag ruleset for `v*` restricts updates and deletions and blocks force pushes, but not creation: GitHub can't add the built-in GitHub Actions actor to a bypass list. Rejected: own GitHub App with token in the workflows (setup, secrets, workflow changes). REL-05 reworded. | requirements.md 2, delivery.md 3 |
+| 2026-11-06 | Others can rebuild Cody: the project delivers a parts list and assembly instructions (new topic DOC), written for a maker without the owner's help, in the repository and as release files, growing with stages 2, 4 and 5. ELE-07 reduced to the wiring diagram. | requirements.md 8 |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points
@@ -93,6 +95,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 <!-- Questions that are not decided yet, each with options and a recommendation. Move them to "Decisions" once settled. -->
 
 - **Meshy.ai licence of generated models** (before stage 5). Free-tier outputs are believed to be CC BY 4.0 (to be checked). Options: (a) free tier with attribution in the repo (the mesh then stays under CC BY 4.0 next to the MIT-licensed project); (b) paid tier for private ownership; (c) sculpt the head yourself. Recommendation: (a) if the terms confirm it.
+- **Release format of the build documentation** (step 2e, DOC-06). Options: (a) parts list as CSV plus instructions as one PDF rendered from the Markdown; (b) the Markdown with its pictures as a zip; (c) PDF only. Recommendation: (a), printable and easy to shop from.
 - **Exact module models** (before stage 2): motor driver breakout (DRV8833 candidate), WS2812 module, buzzer module, N20 motor and gear ratio (before stage 4). Recommendation: choose together at stage start within ELE-04 and ELE-06.
 - **Docker container and serial replug / reachability from devcontainers** (TD-04, stage 2). Recommendation: prove in step 2b; fall back to a native systemd service if it doesn't work.
 - **Does Copilot read user-level Claude Code hook configuration?** (AGT-08, stage 3). Recommendation: check at stage 3 start; dedupe in the bridge either way.

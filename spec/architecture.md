@@ -38,7 +38,8 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device; a build k
 | `bridge/` | Host bridge: HTTP in, serial out, config, CLI, Dockerfile, compose file | Python, Docker (TD-03, TD-04) |
 | `hooks/` | Hook configuration for Claude Code and Copilot, setup guide | JSON, shell |
 | `cad/` | Code-CAD models, head mesh pipeline, model checks, print notes | Python, build123d, manifold3d (TD-05) |
-| `electronics/` | BOM and wiring diagram | Markdown |
+| `electronics/` | Wiring diagram | Markdown |
+| `docs/` | Build documentation: parts list and assembly instructions (DOC) | Markdown, pictures and renders |
 | `tools/` | Requirement report | Python |
 
 ## 4. Interfaces
@@ -186,7 +187,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 | Firmware | `VERSION?` command (FW-11) and the `READY <version>` line at boot; version in the `.bin` file name |
 | Bridge | `--version` and `GET /status` (BRG-10); image tag and OCI labels |
 | Print files | Version in file names and in the 3MF metadata |
-| Hook configs, BOM, wiring | Version in file names of the release files |
+| Hook configs, parts list, assembly instructions, wiring | Version in file names of the release files |
 
 ## 7. Risks and open technical questions
 

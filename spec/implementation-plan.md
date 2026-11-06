@@ -16,9 +16,9 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 
 | Milestone | After stage | What users get |
 |---|---|---|
-| M1 | 2 | Desk status light: LED and sound (and a bare motor) show what Claude Code is doing. |
+| M1 | 2 | Desk status light: LED and sound (and a bare motor) show what Claude Code is doing; documented so others can build it. |
 | M2 | 3 | Both Claude Code and GitHub Copilot drive the status light. |
-| M3 | 5 | Complete Cody: printed figure whose arms type while the agent works. |
+| M3 | 5 | Complete Cody: printed figure whose arms type while the agent works; parts list and assembly instructions for a full rebuild. |
 
 ## 3. Stages and steps
 
@@ -68,8 +68,11 @@ Requirements: BRG-01 – BRG-12.
 **2c – Claude Code integration.** User-level http hooks, event mapping with recorded payloads, timeout behaviour; real sessions on Linux, WSL2 and in a devcontainer.
 Requirements: AGT-01 – AGT-03, AGT-07.
 
-**2d – Bench electronics documented.** Modules, connections and soldering as built; BOM and wiring diagram.
+**2d – Bench electronics documented.** Modules, connections and soldering as built; wiring diagram.
 Requirements: ELE-01 – ELE-03, ELE-07.
+
+**2e – Build documentation for the status light.** Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, bridge, hooks) with pictures; both as release files.
+Requirements: DOC-01, DOC-02, DOC-05, DOC-06.
 
 ### Stage 3 – Copilot integration
 
@@ -94,10 +97,14 @@ Requirements: FIG-06 – FIG-09, FIG-11.
 **4b – Power and endurance.** USB current measured incl. motor start; stability of ESP32 and USB; 8 h run with motor temperature and noise.
 Requirements: FIG-12, FIG-13, ELE-04, ELE-05.
 
+**4c – Mechanism instructions.** Assembly instructions for motor, crank, rods and arms; parts list updated.
+Requirements: DOC-03.
+
 ### Stage 5 – Character and assembly
 
 **Before the stage starts:**
 - Meshy.ai licence terms checked (README.md "Open points"); head generated.
+- A test builder for DOC-07 found.
 
 **Steps:**
 
@@ -107,8 +114,11 @@ Requirements: none (part of FIG-01, verified in 5b).
 **5b – Figure and scene.** Torso with hidden mechanism, table, laptop, platform with electronics compartment; model checks in CI; print notes.
 Requirements: FIG-01 – FIG-05, FIG-10, FIG-17.
 
-**5c – Assembly and service.** Full assembly; service checks, stability, no glue; final BOM cost.
+**5c – Assembly and service.** Full assembly; service checks, stability, no glue; final parts cost (from the parts list).
 Requirements: FIG-14 – FIG-16, ELE-06.
+
+**5d – Complete build documentation.** Printing and full assembly instructions; parts list final; a test build by someone other than the owner.
+Requirements: DOC-04, DOC-07.
 
 ## 4. Status report template
 

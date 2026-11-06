@@ -95,7 +95,7 @@ Electronics built from ready-made modules only, powered from the host's USB port
 | ELE-04 | The whole device is powered from one USB port of the host through a single cable; its total current, including motor start, stays at or below 500 mA. There is no second supply. | Must |
 | ELE-05 | Motor start and switching never reset the ESP32 or interrupt the USB connection. | Must |
 | ELE-06 | The purchased parts (electronics and mechanics, without filament and tools) cost at most CHF 25. | Must |
-| ELE-07 | A bill of materials (part, source, price) and a wiring diagram (modules, pins, connectors) are in the repository. | Must |
+| ELE-07 | A wiring diagram (modules, pins, connectors) is in the repository; the purchased parts are listed in the parts list (DOC-01). | Must |
 
 ## 7. Figure and mechanism (FIG)
 
@@ -120,3 +120,17 @@ The printed desk scene and the arm mechanism. The figure is simplified to a bust
 | FIG-15 | The assembly uses screws or snap fits, no glue. | Should |
 | FIG-16 | The assembly stands stable on the desk and doesn't move or tip while the arms move. | Must |
 | FIG-17 | CAD sources and print files with their print settings are in the repository. | Must |
+
+## 8. Build documentation (DOC)
+
+Written so that a maker with a 3D printer and a soldering iron can build a Cody without the owner's help. Markdown in the repository; every release carries it as release files. It grows with the stages: the status light (stage 2), the mechanism (stage 4), the full figure (stage 5).
+
+| ID | Requirement | Prio |
+|---|---|---|
+| DOC-01 | A parts list names every part of one Cody: purchased parts (with source and price), printed parts (file, material, quantity), fasteners and consumables. | Must |
+| DOC-02 | Assembly instructions cover the electronics and the setup: soldering, wiring, flashing the firmware, installing the bridge and the hooks. | Must |
+| DOC-03 | Assembly instructions cover the mechanism: motor, crank, connecting rods, arms. | Must |
+| DOC-04 | Assembly instructions cover printing the parts and assembling the full figure. | Must |
+| DOC-05 | Each step of the instructions names the parts and tools it needs and has a picture or render. | Must |
+| DOC-06 | The parts list and the assembly instructions are release files, with the version in their names. | Must |
+| DOC-07 | Someone other than the owner builds a Cody from the parts list and the instructions. | Should |

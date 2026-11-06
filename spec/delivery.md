@@ -60,7 +60,7 @@ All entry points:
 | Entry point | Does in Cody |
 |---|---|
 | `ci/check` | Firmware unit tests (PlatformIO `native`), firmware build, bridge tests (pytest), hook mapping tests, CAD model checks, requirement report tests; then the requirement report. |
-| `ci/build-release` | Into `RELEASE_DIR`: firmware as one combined image `cody-firmware-<version>.bin` (bootloader, partition table and app, flashed at 0x0), print files (3MF/STL), compose file for the bridge, hook configs and setup guide, BOM and wiring diagram, each with the version in its name; and `LICENSE`. |
+| `ci/build-release` | Into `RELEASE_DIR`: firmware as one combined image `cody-firmware-<version>.bin` (bootloader, partition table and app, flashed at 0x0), print files (3MF/STL), compose file for the bridge, hook configs and setup guide, parts list and assembly instructions (DOC-06) and wiring diagram, each with the version in its name; and `LICENSE`. |
 | `ci/publish` | Builds the bridge image and pushes it to GHCR as `cody-bridge:<version>-rc.<M>` (from `CANDIDATE_TAG`); needs `packages: write`. |
 
 The bridge image on GHCR is public, so the compose file pulls it without a login. It carries the OCI labels for version, commit, source repository and licence (`MIT`). `ci/publish` and `ci/promote` log in to GHCR with the workflow's `GITHUB_TOKEN` (`packages: write`), passed into the devcontainer; no personal token is needed. The entry points get Docker through the devcontainer feature docker-outside-of-docker. The first release (stage 1) contains skeletons: firmware that only sends `READY <version>`, and a bridge image that only answers `--version`, with its compose file.
