@@ -8,7 +8,6 @@ The specification in `spec/` is the source of truth; the project's files impleme
 
 | Document | Content |
 |---|---|
-| `spec/idea.md` | The original idea; input to the spec, not part of it |
 | `spec/README.md` | Purpose, document index, conventions, topic status, decisions, open points |
 | `spec/requirements.md` | All requirement tables |
 | `spec/architecture.md` | Building blocks, interfaces, technology stack with decision records |

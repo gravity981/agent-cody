@@ -4,8 +4,7 @@
 > - Ready-made modules only, no custom circuit board, and fewer parts: one geared DC motor drives both arms instead of five servos, an RGB LED and a buzzer instead of a display and speaker.
 > - Powered from a single USB port (≤ 500 mA).
 > - Integrates Claude Code and GitHub Copilot in VS Code through a persistent host bridge.
->
-> Like Tiny Engineer, the figure is 3D printed.
+> - Its own 3D-printed parts: a simplified developer bust behind a desk with a laptop, modelled in code (build123d) with a generated head.
 
 # Cody – Coding Agent Desk Companion
 
@@ -19,7 +18,7 @@ The project delivers:
 
 ## Specification
 
-The specification in [spec/](spec/README.md) is the source of truth; start with [spec/README.md](spec/README.md). The original idea is in [spec/idea.md](spec/idea.md).
+The specification in [spec/](spec/README.md) is the source of truth; start with [spec/README.md](spec/README.md).
 
 ## Getting started
 
