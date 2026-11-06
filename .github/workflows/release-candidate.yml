@@ -92,7 +92,7 @@ jobs:
     timeout-minutes: 60 # TODO(blueprint): adjust to the project's build duration
     permissions:
       contents: write
-      # TODO(blueprint): add what ci/publish needs, e.g. packages: write
+      packages: write # ci/publish pushes the bridge image to GHCR
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
       TAG: ${{ needs.prepare.outputs.tag }}
@@ -109,16 +109,31 @@ jobs:
           fi
           mkdir -p release-files
 
+      # Devcontainer image cache, as in ci.yml (spec/delivery.md 2)
+      - name: Devcontainer image name
+        id: image
+        run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}-devcontainer" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
       # Default CI environment: the devcontainer (spec/delivery.md 2).
-      # TODO(blueprint): pin to a commit SHA, or replace with setup steps on the runner
       - name: Build (and publish) in the devcontainer
-        uses: devcontainers/ci@v0.3
+        uses: devcontainers/ci@513af61f4de4f75d37e4438f184ba4358f0fc1ca # v0.3.1900000450
         env:
           COMMIT: ${{ github.sha }}
           CANDIDATE_TAG: ${{ needs.prepare.outputs.tag }}
           RELEASE_DIR: release-files
-          # TODO(blueprint): secrets for ci/publish, e.g. REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+          # ci/publish: GHCR login with the workflow's token (spec/delivery.md 2)
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ github.token }}
         with:
+          imageName: ${{ steps.image.outputs.name }}
+          cacheFrom: ${{ steps.image.outputs.name }}
           push: never
           runCmd: |
             set -e
@@ -129,6 +144,9 @@ jobs:
             COMMIT
             CANDIDATE_TAG
             RELEASE_DIR
+            GHCR_USER
+            GHCR_TOKEN
+            GITHUB_REPOSITORY
 
       - name: Tag the commit
         run: |

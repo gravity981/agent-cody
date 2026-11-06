@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# ci/promote (spec/delivery.md 2): tags the candidate's bridge image with the
+# release version and "latest", without rebuilding.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+# shellcheck source=ci/lib.sh
+source ci/lib.sh
+
+: "${CANDIDATE_TAG:?CANDIDATE_TAG must be set}"
+: "${RELEASE_TAG:?RELEASE_TAG must be set}"
+image=$(cody_bridge_image)
+candidate="$image:${CANDIDATE_TAG#v}"
+release="$image:${RELEASE_TAG#v}"
+
+cody_ghcr_login
+if ! cody_image_exists "$candidate"; then
+  echo "$candidate does not exist" >&2
+  exit 1
+fi
+if cody_image_exists "$release"; then
+  echo "$release already exists; published images are never overwritten" >&2
+  exit 1
+fi
+
+docker buildx imagetools create --tag "$release" --tag "$image:latest" "$candidate"
+echo "Promoted $candidate to $release and latest"

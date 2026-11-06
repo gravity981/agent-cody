@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# ci/build-release (spec/delivery.md 2): release files into $RELEASE_DIR, with
+# VERSION and COMMIT baked in and the version in each file name.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+# shellcheck source=ci/lib.sh
+source ci/lib.sh
+
+: "${RELEASE_DIR:?RELEASE_DIR must be set}"
+VERSION=$(cody_version)
+COMMIT=$(cody_commit)
+export VERSION COMMIT
+echo "Release files for $VERSION ($COMMIT) into $RELEASE_DIR"
+mkdir -p "$RELEASE_DIR"
+
+# Firmware: one combined image (bootloader, partitions, app), flashed at 0x0
+(cd firmware && pio run --environment esp32c3)
+cp firmware/.pio/build/esp32c3/firmware.factory.bin "$RELEASE_DIR/cody-firmware-$VERSION.bin"
+
+# Compose file for the bridge image of this version (published by ci/publish)
+sed -e "s#@IMAGE@#$(cody_bridge_image)#g" -e "s#@VERSION@#$VERSION#g" bridge/compose.yaml \
+  > "$RELEASE_DIR/cody-bridge-compose-$VERSION.yaml"
+
+cp LICENSE "$RELEASE_DIR/LICENSE"
+
+ls -l "$RELEASE_DIR"

@@ -1,0 +1,9 @@
+# Cody bridge @VERSION@ (spec/delivery.md 4).
+#   docker compose -f <this file> up
+# To try a release candidate before promotion, set its image tag:
+#   CODY_BRIDGE_TAG=<version>-rc.<M> docker compose -f <this file> up
+# Skeleton from step 1c: prints version and commit; the bridge follows in stage 2.
+services:
+  bridge:
+    image: @IMAGE@:${CODY_BRIDGE_TAG:-@VERSION@}
+    command: ["--version"]

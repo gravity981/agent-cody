@@ -53,7 +53,7 @@ and fails if an implemented requirement has no passing evidence, if any evidence
 | Topic | Method and level | Notes |
 |---|---|---|
 | TRC | Test (the report's own tests) | |
-| REL | Test where scriptable; first real candidate and promotion recorded in the log | |
+| REL | REL-01: green CI run on a pull request (log). REL-02: tests of the version determination, the bridge `--version` and the version and commit in the firmware image. REL-03 – REL-06: first candidate, promotion, tag ruleset and delivery done by the owner and recorded in the log | REL-03 – REL-06 stay on the "not yet implemented" list until their log rows exist. |
 | FW | Test (unit, host); demonstration on the bench (log) | Visible/audible behaviour (FW-01, FW-04, FW-06, FW-07) also demonstrated on hardware. |
 | BRG | Test (pytest, fake serial); demonstration of autostart and replug (log) | BRG-06 replug and BRG-09 autostart need the real container and device. |
 | AGT | Test (recorded payloads); demonstration with real Claude Code and Copilot (log) | AGT-02 needs Linux, WSL2 and devcontainer runs. |
@@ -66,7 +66,7 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 
 | Prefix | IDs |
 |---|---|
-| REL | REL-01 – REL-06 |
+| REL | REL-03 – REL-06 |
 | FW | FW-01 – FW-12 |
 | BRG | BRG-01 – BRG-12 |
 | AGT | AGT-01 – AGT-09 |

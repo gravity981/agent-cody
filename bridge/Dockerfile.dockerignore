@@ -1,0 +1,11 @@
+# Build context of bridge/Dockerfile (repository root): only what the image needs
+*
+!pyproject.toml
+!uv.lock
+!.python-version
+!LICENSE
+!cad/pyproject.toml
+!tools/pyproject.toml
+!bridge/pyproject.toml
+!bridge/src/
+**/__pycache__

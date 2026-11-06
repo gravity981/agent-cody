@@ -8,7 +8,13 @@ cd "$(dirname "$0")/.." || exit 1
 # The checkout may belong to another user than the container user (CI)
 export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.directory GIT_CONFIG_VALUE_0="$PWD"
 
-echo "Version: ${VERSION:-<local>}  Commit: ${COMMIT:-<local>}"
+# shellcheck source=ci/lib.sh
+source ci/lib.sh
+# Version and commit of this build (REL-02): from CI, or determined locally
+VERSION=$(cody_version)
+COMMIT=$(cody_commit)
+export VERSION COMMIT
+echo "Version: $VERSION  Commit: $COMMIT"
 
 rm -rf reports
 mkdir -p reports
@@ -26,8 +32,9 @@ check() {
 
 check "Python workspace" uv sync --frozen
 check "Static checks" tools/static-checks
-check "Python tests" uv run --frozen pytest --junit-xml=reports/pytest.xml
+# Firmware first: the Python tests also check the built image (REL-02)
 check "Firmware build" bash -c 'cd firmware && pio run --environment esp32c3'
+check "Python tests" uv run --frozen pytest --junit-xml=reports/pytest.xml
 if [[ -d firmware/test ]]; then
   check "Firmware unit tests" bash -c \
     'cd firmware && pio test --environment native --junit-output-path ../reports/firmware-unit.xml'

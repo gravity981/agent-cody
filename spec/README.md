@@ -97,6 +97,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-06 | Step 1b: REL-01 is verified by a manual log row (a green CI run on a pull request) and stays on the "not yet implemented" list until that row exists; skipped tests count as no evidence; a `req_` token not followed by `<2–4 capitals>_<2 digits>` is a malformed tag; latest manual record = newest date, then lowest row. | verification.md 3 |
 | 2026-11-06 | CI caches the devcontainer image on GHCR (`<repo>-devcontainer`, pushed on pushes to `main`, used as cache by every run); devcontainers/ci and docker/login-action pinned to commit SHAs; the devcontainer image slimmed (PlatformIO only for the ESP32-C3, no download caches). | delivery.md 2 |
 | 2026-11-06 | The project is licensed under MIT, copyright Nicolas Marty (`LICENSE`). Third-party assets keep their own licence and are marked where they are stored. | README.md (repository) |
+| 2026-11-06 | Step 1c: REL-03 – REL-06 verified by log rows after the first candidate and promotion and stay on the "not yet implemented" list until then; firmware released as one combined image; `LICENSE` in the release files and licence label on the bridge image; GHCR access with `GITHUB_TOKEN`. | verification.md 4, delivery.md 2 |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points
