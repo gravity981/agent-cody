@@ -36,7 +36,7 @@ class Requirement:
 
 @dataclass
 class Evidence:
-    source: str  # test name or "log: <date> <verifier>"
+    source: str  # test name or "log: <date>"
     result: str  # pass / fail / skipped
 
 
@@ -218,10 +218,10 @@ def read_log(path: Path, rep: Report) -> None:
     row = 0
     for line in section.splitlines():
         cells = _cells(line)
-        if not cells or len(cells) != 6 or cells[0] == "Requirements" or set(cells[0]) <= {"-"}:
+        if not cells or len(cells) != 5 or cells[0] == "Requirements" or set(cells[0]) <= {"-"}:
             continue
         row += 1
-        req_cell, date_cell, verifier, _env, result, _notes = cells
+        req_cell, date_cell, _env, result, _notes = cells
         try:
             when = date.fromisoformat(date_cell)
         except ValueError:
@@ -236,7 +236,7 @@ def read_log(path: Path, rep: Report) -> None:
         for rid in ids:
             if not _check_known(rep, rid, f"verification-log.md row {row}"):
                 continue
-            ev = Evidence(f"log: {date_cell} {verifier}", result)
+            ev = Evidence(f"log: {date_cell}", result)
             prev = latest.get(rid)
             if prev is None or (when, row) >= (prev[0], prev[1]):
                 latest[rid] = (when, row, ev)

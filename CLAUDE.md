@@ -25,7 +25,7 @@ The specification in `spec/` is the source of truth; the project's files impleme
 
 ## Requirement traceability
 
-- Every active requirement is verified by at least one piece of evidence, and each piece of evidence names the requirement IDs it verifies, using the tag convention in `spec/verification.md` (e.g. a test named `[ABC-01] does something`).
+- Every active requirement is verified by at least one piece of evidence, and each piece of evidence names the requirement IDs it verifies, using the tag convention in `spec/verification.md` (e.g. a test named `test_req_ABC_01_does_something`).
 - What can't be automated is recorded in `spec/verification-log.md` by the person who did the check. Never add a record for a check you didn't observe.
 - The requirement report (`reports/requirements.md`, last step of `ci/check`) lists requirement → evidence → result. CI fails if an implemented requirement has no passing evidence. Requirements not implemented yet are listed in `spec/verification.md` ("Not yet implemented"); shrink that list as stages are delivered.
 

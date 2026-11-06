@@ -25,6 +25,7 @@ cody-tools = { workspace = true }
 
 [tool.ruff]
 line-length = 100
+extend-include = ["hooks/install-claude-code"]  # Python script without .py
 target-version = "py314"
 
 [tool.ruff.lint]

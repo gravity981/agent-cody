@@ -2,7 +2,7 @@
 
 Cody (Coding Agent Desk Companion) is a small 3D-printed desk figure of a cartoon developer sitting at a laptop. It shows developers who work with AI coding agents (Claude Code, GitHub Copilot in VS Code) what their agent is doing: while the agent works, the figure's two arms type, driven by a single geared DC motor; an RGB LED and a buzzer signal the other states (idle, thinking, approval needed, completed, error). The project delivers printable CAD parts, ESP32 firmware driving ready-made electronics modules over USB, and a computer-side bridge with the agent hooks.
 
-**Status: draft.** Implementation follows [implementation-plan.md](implementation-plan.md) once the spec is approved.
+**Status: approved (2026-11-06).** Implementation follows [implementation-plan.md](implementation-plan.md). Changes to requirements or the architecture are still possible; they are decided with the project owner and recorded (see "Decisions").
 
 This folder is the **source of truth**. The project's files (code, models, drawings, configuration) implement the spec. When they and the spec disagree, either the files get fixed or the spec gets changed explicitly. Silent deviations are not allowed.
 
@@ -56,9 +56,9 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 |---|---|---|---|---|---|
 | TRC | Requirement traceability | 1 | 7 | 1 | implemented |
 | REL | CI, versions and releases | 2 | 6 | 1 | implemented |
-| FW | Firmware | 3 | 12 | 2 | specified |
-| BRG | Host bridge | 4 | 14 | 2 | specified |
-| AGT | Agent integrations | 5 | 11 | 2, 3 | specified |
+| FW | Firmware | 3 | 12 | 2 | in progress |
+| BRG | Host bridge | 4 | 14 | 2 | in progress |
+| AGT | Agent integrations | 5 | 11 | 2, 3 | in progress |
 | ELE | Electronics | 6 | 7 | 2, 4, 5 | specified |
 | FIG | Figure and mechanism | 7 | 17 | 4, 5 | specified |
 | DOC | Build documentation | 8 | 7 | 2, 4, 5 | specified |
@@ -99,5 +99,5 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 
 - **Meshy.ai licence of generated models** (before stage 5). Free-tier outputs are believed to be CC BY 4.0 (to be checked). Options: (a) free tier with attribution in the repo (the mesh then stays under CC BY 4.0 next to the MIT-licensed project); (b) paid tier for private ownership; (c) sculpt the head yourself. Recommendation: (a) if the terms confirm it.
 - **N20 gear ratio** (before stage 4): 300 or 500 rpm, both bought; chosen with the crank prototype. The other modules are chosen (docs/parts-list.md).
-- **Docker container and serial replug / reachability from devcontainers** (TD-04, stage 2). Recommendation: prove in step 2b; fall back to a native systemd service if it doesn't work.
+- **Docker container and serial replug** (TD-04, stage 2). Reaching the bridge from devcontainers was shown in step 2c. Recommendation: prove first plug-in and replug in step 2d; fall back to a native systemd service if it doesn't work.
 - **Does Copilot read user-level Claude Code hook configuration?** (AGT-08, stage 3). Recommendation: check at stage 3 start; dedupe in the bridge either way.

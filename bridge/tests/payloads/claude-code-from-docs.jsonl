@@ -1,0 +1,4 @@
+{"session_id": "session-1", "transcript_path": "/home/user/.claude/projects/project/session-1.jsonl", "cwd": "/home/user/project", "hook_event_name": "Notification", "message": "<redacted>", "notification_type": "permission_prompt"}
+{"session_id": "session-1", "transcript_path": "/home/user/.claude/projects/project/session-1.jsonl", "cwd": "/home/user/project", "hook_event_name": "Notification", "message": "<redacted>", "notification_type": "idle_prompt"}
+{"session_id": "session-1", "transcript_path": "/home/user/.claude/projects/project/session-1.jsonl", "cwd": "/home/user/project", "hook_event_name": "StopFailure", "error_type": "server_error"}
+{"session_id": "session-1", "transcript_path": "/home/user/.claude/projects/project/session-1.jsonl", "cwd": "/home/user/project", "hook_event_name": "SessionEnd", "reason": "prompt_input_exit"}

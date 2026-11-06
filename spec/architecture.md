@@ -4,11 +4,11 @@ How the requirements in [requirements.md](requirements.md) are met. Requirements
 
 ## 1. Context and scope
 
-Cody is built for the owner's own desk; the repository is open, but there is no build kit for others.
+Cody is built for the owner's own desk; the repository is open, and others can rebuild it from the parts list and assembly instructions (DOC).
 
 ```mermaid
 flowchart LR
-    CC["Claude Code<br/>(Linux, WSL2, devcontainer)"] -->|"http hook<br/>POST /hooks/claude-code"| BR
+    CC["Claude Code<br/>(Linux, WSL2, devcontainer)"] -->|"command hook (curl)<br/>POST /hooks/claude-code"| BR
     CP["GitHub Copilot<br/>(VS Code agent mode)"] -->|"command hook (curl)<br/>POST /hooks/copilot"| BR
     BR["Bridge<br/>(Docker container on Linux/WSL2)"] -->|"USB serial<br/>text protocol"| FW
     FW["ESP32-C3 firmware"] --> MD["Motor driver → geared motor → crank → arms"]
@@ -18,7 +18,7 @@ flowchart LR
 
 External systems: Claude Code and GitHub Copilot (their hook mechanisms), the host's USB port (data and all power), Meshy.ai (generates the head mesh, used manually), GitHub (CI, releases, GHCR).
 
-Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device; a build kit for others.
+Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device.
 
 ## 2. Constraints
 
@@ -37,7 +37,7 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device; a build k
 | `firmware/` | ESP32-C3 firmware with host unit tests | C++, Arduino-ESP32, PlatformIO (TD-01, TD-02) |
 | `bridge/` | Host bridge: HTTP in, serial out, config, Dockerfile, compose file | Python, Docker (TD-03, TD-04) |
 | `cli/` | Host command `cody`: status and manual state (BRG-11, BRG-12), setup (AGT-10) | Bash, curl |
-| `hooks/` | Hook configuration for Claude Code and Copilot, setup guide | JSON, shell |
+| `hooks/` | Hook installers and configuration for Claude Code and Copilot, setup guide | Python (standard library), shell, JSON |
 | `cad/` | Code-CAD models, head mesh pipeline, model checks, print notes | Python, build123d, manifold3d (TD-05) |
 | `electronics/` | Wiring diagram | Markdown |
 | `docs/` | Build documentation: parts list and assembly instructions (DOC) | Markdown, pictures and renders |
@@ -52,11 +52,15 @@ The hooks contain no logic: they forward the agent's own hook payload. All mappi
 - Port `8765`. The bridge listens only on loopback and the local Docker interfaces, including the default bridge gateway `172.17.0.1` (BRG-08): its container uses the host network and binds exactly the configured addresses (`listen`, default `127.0.0.1` and `172.17.0.1`); only loopback and Docker's address range `172.16.0.0/12` are accepted. The hooks are command hooks using curl that try `localhost`, then `host.docker.internal`, then `172.17.0.1`, within 1 s in total (AGT-07), so the same configuration works on the host and in devcontainers (AGT-11), also with Docker Engine in WSL2, where `host.docker.internal` is not defined. Devcontainers that share the Claude Code configuration (e.g. the `claude-config` volume) are set up once; they need curl.
 - `cody setup` (AGT-10) starts the bridge container with autostart, writes the hooks of both agents at user level, checks the device connection and reports what is missing (e.g. usbipd on WSL2).
 - `POST /hooks/claude-code`: Claude Code's hook JSON as is, sent by the curl command hook configured in `~/.claude/settings.json`. Session key: `session_id`; event: `hook_event_name`.
+- Claude Code hook: one inline shell command per event, with no file paths, so the same text works on the host and in containers:
+  `p=$(cat); for h in 127.0.0.1 host.docker.internal 172.17.0.1; do printf '%s' "$p" | curl -s -o /dev/null --connect-timeout 0.3 -m 0.3 -H 'Expect:' --data-binary @- "http://$h:8765/hooks/claude-code" 2>/dev/null && break; done; exit 0`
+  It never prints anything (stdout of some hooks goes into Claude's context), always exits 0, and takes at most about 0.9 s; the hook's own `timeout` is 2 s. The payload is piped, not passed as an argument, because tool outputs can be several MB; the bridge accepts up to 32 MB. `Expect:` stops curl from waiting for a `100 Continue` the bridge never sends.
+- `hooks/install-claude-code` (Python, standard library only) merges these hooks into `$CLAUDE_CONFIG_DIR/settings.json` or `~/.claude/settings.json`, keeps all other settings, replaces earlier Cody hooks and can remove them (`--uninstall`). It is run once on the host and once for the devcontainers' shared `claude-config` volume (AGT-03); `cody setup` reuses it (AGT-10). `--record FILE` additionally appends every payload to a file, for recording real payloads as test fixtures (sanitised before they are committed). It needs any Python 3 (3.10 or newer) and no packages: in the repository run it with `uv run python hooks/install-claude-code`, elsewhere with the Python at hand (`python3 cody-install-claude-code-<version>`, the release file). It is shipped as a release file (delivery.md 2). The setup guide lists what installing and running the hooks needs on each machine: Python 3.10 or newer for the installer; curl and a POSIX shell wherever Claude Code runs (host and every devcontainer); the bridge running on the host.
 - `POST /hooks/copilot`: Copilot's hook JSON, sent by a command hook (`curl -m 1 --data-binary @- …`) configured in `~/.copilot/hooks/`. Session key: workspace folder (`cwd`) (AGT-06).
 - `GET /status`: device connection, firmware version, sessions with their states, merged state (BRG-11).
 - `POST /state`: sets a state manually (`{"state": "WORKING"}`), as its own session `manual` (BRG-12); `DELETE /state` removes it, otherwise it ends by the session timeout.
 - Host command `cody` (`cli/`): a shell script using curl on these endpoints: `cody status`, `cody state <STATE>`, `cody state clear`, `cody --version`; `cody setup` follows with AGT-10. Installed by copying it to `~/.local/bin`.
-- Hooks time out after 1 s and never fail the agent (AGT-07).
+- Hooks return within 1 s and never fail the agent (AGT-07).
 
 **Claude Code mapping (AGT-01):**
 
@@ -224,14 +228,14 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 | Firmware | `VERSION?` command (FW-11) and the `READY <version>` line at boot; version in the `.bin` file name |
 | Bridge | `--version` and `GET /status` (BRG-10); image tag and OCI labels |
 | Print files | Version in file names and in the 3MF metadata |
-| Hook configs, parts list, assembly instructions, wiring | Version in file names of the release files |
+| Hook installer, parts list, assembly instructions, wiring | Version in file names of the release files |
 
 ## 7. Risks and open technical questions
 
 | Risk | Mitigation |
 |---|---|
 | Motor, LED and buzzer exceed 500 mA (ELE-04), especially at motor start | Small N20 motor, PWM soft start, LED brightness limited; measured in stage 4. |
-| Serial plug & play inside the Docker container (TD-04, BRG-06) | Mount `/dev` with a cgroup rule; step 2b must demonstrate first plug-in and replug in the container; if it fails, switch to a native service (new TD). |
+| Serial plug & play inside the Docker container (TD-04, BRG-06) | Mount `/dev` with a cgroup rule; step 2d must demonstrate first plug-in and replug in the container; if it fails, switch to a native service (new TD). |
 | Copilot hook API (Preview) changes or reads Claude Code hook configs too (AGT-08) | Mapping in the bridge, not in hooks; recorded payloads in tests; dedupe by endpoint and payload format. |
 | Crank fits in the torso with 3–8 mm hand travel (FIG-07, FIG-10) | Mechanism prototype first (stage 4), before the character. |
 | Meshy mesh not printable or not watertight | manifold3d repair in the pipeline; regenerate. |

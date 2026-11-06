@@ -15,7 +15,7 @@ from .mapping import AGENTS, PayloadError
 from .sessions import State
 
 log = logging.getLogger(__name__)
-MAX_BODY = 1_000_000
+MAX_BODY = 32_000_000  # tool outputs in hook payloads can be several MB
 
 
 def make_handler(bridge: Bridge, clock=time.monotonic) -> type[BaseHTTPRequestHandler]:
