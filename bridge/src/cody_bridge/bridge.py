@@ -1,7 +1,7 @@
-"""The bridge core: sessions, merged state and the device (BRG-01 – BRG-04, BRG-12).
+"""The bridge core: sessions, merged state and the device (BRG-01 – BRG-04, BRG-12, BRG-15).
 
-Thread-safe: HTTP threads call `event`, `set_manual`, `clear_manual` and
-`status`; the loop thread calls `tick`.
+Thread-safe: HTTP threads call `event`, `set_manual`, `clear_manual`,
+`clear_sessions` and `status`; the loop thread calls `tick`.
 """
 
 from __future__ import annotations
@@ -55,6 +55,11 @@ class Bridge:
         with self._lock:
             self.sessions.end(*MANUAL)
             self._apply(now, "manual clear")
+
+    def clear_sessions(self, now: float) -> None:
+        with self._lock:
+            self.sessions.clear()
+            self._apply(now, "sessions cleared")
 
     def tick(self, now: float) -> None:
         with self._lock:

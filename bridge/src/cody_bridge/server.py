@@ -1,4 +1,4 @@
-"""HTTP endpoints (BRG-01, BRG-08, BRG-11, BRG-12; spec/architecture.md 4.1)."""
+"""HTTP endpoints (BRG-01, BRG-08, BRG-11, BRG-12, BRG-15; spec/architecture.md 4.1)."""
 
 from __future__ import annotations
 
@@ -88,10 +88,14 @@ def make_handler(bridge: Bridge, clock=time.monotonic) -> type[BaseHTTPRequestHa
                 self._reply(HTTPStatus.NOT_FOUND, "not found\n")
 
         def do_DELETE(self) -> None:  # noqa: N802
-            if urlparse(self.path).path != "/state":
+            path = urlparse(self.path).path
+            if path == "/state":
+                bridge.clear_manual(clock())
+            elif path == "/sessions":
+                bridge.clear_sessions(clock())
+            else:
                 self._reply(HTTPStatus.NOT_FOUND, "not found\n")
                 return
-            bridge.clear_manual(clock())
             self._reply(HTTPStatus.OK, "ok\n")
 
     return Handler

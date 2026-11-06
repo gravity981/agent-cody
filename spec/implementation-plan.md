@@ -78,6 +78,9 @@ Requirements: FW-01, FW-04, FW-06, FW-07, FW-09, BRG-06, ELE-01 – ELE-03, ELE-
 **2e – Build documentation for the status light.** Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, bridge, hooks) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
 Requirements: DOC-01, DOC-02, DOC-05, DOC-06.
 
+**2f – Clearing sessions.** Added during the stage (2026-11-06), done before 2d: `cody session clear` and `DELETE /sessions` remove all sessions (architecture.md 4.1).
+Requirements: BRG-15.
+
 ### Stage 3 – Copilot integration
 
 **Before the stage starts:**

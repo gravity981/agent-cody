@@ -59,7 +59,8 @@ The hooks contain no logic: they forward the agent's own hook payload. All mappi
 - `POST /hooks/copilot`: Copilot's hook JSON, sent by a command hook (`curl -m 1 --data-binary @- …`) configured in `~/.copilot/hooks/`. Session key: workspace folder (`cwd`) (AGT-06).
 - `GET /status`: device connection, firmware version, sessions with their states, merged state (BRG-11).
 - `POST /state`: sets a state manually (`{"state": "WORKING"}`), as its own session `manual` (BRG-12); `DELETE /state` removes it, otherwise it ends by the session timeout.
-- Host command `cody` (`cli/`): a shell script using curl on these endpoints: `cody status`, `cody state <STATE>`, `cody state clear`, `cody --version`; `cody setup` follows with AGT-10. Installed by copying it to `~/.local/bin`.
+- `DELETE /sessions`: removes all sessions, including the manual one; the merged state becomes IDLE (BRG-15).
+- Host command `cody` (`cli/`): a shell script using curl on these endpoints: `cody status`, `cody state <STATE>`, `cody state clear`, `cody session clear` (BRG-15), `cody --version`; `cody setup` follows with AGT-10. Installed by copying it to `~/.local/bin`.
 - Hooks return within 1 s and never fail the agent (AGT-07).
 
 **Claude Code mapping (AGT-01):**

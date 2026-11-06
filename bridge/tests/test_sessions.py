@@ -1,4 +1,4 @@
-"""Session merging and timeouts (BRG-02, BRG-04)."""
+"""Session merging, timeouts and clearing (BRG-02, BRG-04, BRG-15)."""
 
 from __future__ import annotations
 
@@ -69,4 +69,14 @@ def test_req_BRG_04_timeout_is_configurable_and_counts_from_the_last_event() -> 
     s.expire(109)
     assert s.merged() == State.WORKING
     s.expire(110)
+    assert s.merged() == State.IDLE
+
+
+def test_req_BRG_15_clear_drops_all_sessions_and_merges_to_idle() -> None:
+    s = Sessions(600)
+    s.update("claude-code", "1", State.WORKING, 0)
+    s.update("claude-code", "2", State.ERROR, 0)
+    s.update("manual", "manual", State.APPROVAL, 0)
+    s.clear()
+    assert s.all() == []
     assert s.merged() == State.IDLE

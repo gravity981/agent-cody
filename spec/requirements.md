@@ -68,6 +68,7 @@ A background process on the host (Linux, WSL2) that receives agent events from t
 | BRG-12 | A state can be set manually from the command line, for testing and demos. | Could |
 | BRG-13 | The bridge writes a formatted log (time, level, message): every change of the merged state with its cause and whether it reached the device, also without a device; device connects and losses; at the configurable debug level also every received event and every command and reply on the serial line. | Must |
 | BRG-14 | The bridge's log takes at most 2 files of at most 10 MB each. | Must |
+| BRG-15 | All sessions, including a manual state, can be cleared from the command line, which sets the merged state to IDLE; for resetting the bridge when a session is stale. | Could |
 
 ## 5. Agent integrations (AGT)
 

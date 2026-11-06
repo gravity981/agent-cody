@@ -1,4 +1,4 @@
-"""HTTP endpoints and the host command `cody` (BRG-01, BRG-08 – BRG-12)."""
+"""HTTP endpoints and the host command `cody` (BRG-01, BRG-08 – BRG-12, BRG-15)."""
 
 from __future__ import annotations
 
@@ -144,6 +144,24 @@ def test_req_BRG_12_cody_state_refuses_unknown_states(running: Running) -> None:
     assert result.returncode == 2
     assert running.bridge.sessions.all() == []
     assert running.request("POST", "/state", {"state": "SLEEPING"})[0] == 400
+
+
+def test_req_BRG_15_cody_session_clear_removes_all_sessions(running: Running) -> None:
+    claude = {"session_id": "s1", "hook_event_name": "UserPromptSubmit"}
+    assert running.request("POST", "/hooks/claude-code", claude)[0] == 200
+    assert running.cody("state", "APPROVAL").returncode == 0
+    assert running.bridge.sessions.merged() == State.APPROVAL
+    assert running.cody("session", "clear").returncode == 0
+    assert running.bridge.sessions.all() == []
+    assert running.bridge.sessions.merged() == State.IDLE
+    assert running.port.commands[-1] == "STATE:IDLE"
+
+
+def test_req_BRG_15_cody_session_needs_clear(running: Running) -> None:
+    running.cody("state", "WORKING")
+    assert running.cody("session").returncode == 2
+    assert running.cody("session", "drop").returncode == 2
+    assert running.bridge.sessions.merged() == State.WORKING
 
 
 def test_req_BRG_10_cody_version() -> None:

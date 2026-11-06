@@ -3,6 +3,7 @@
 #   cody status            device, sessions and merged state (BRG-11)
 #   cody state <STATE>     set a state manually, e.g. WORKING (BRG-12)
 #   cody state clear       remove the manual state
+#   cody session clear     remove all sessions, e.g. a stale one (BRG-15)
 #   cody --version
 set -euo pipefail
 
@@ -11,7 +12,7 @@ url="${CODY_BRIDGE_URL:-http://127.0.0.1:8765}"
 states="IDLE WORKING THINKING APPROVAL COMPLETED ERROR"
 
 usage() {
-  sed -n '3,6s/^#   //p' "$0" >&2
+  sed -n '3,7s/^#   //p' "$0" >&2
   exit 2
 }
 
@@ -41,6 +42,10 @@ case "${1:-}" in
       echo "cody: STATE is one of: $states, or clear" >&2
       exit 2
     fi
+    ;;
+  session)
+    [[ $# -eq 2 && "$2" == clear ]] || usage
+    request -X DELETE "$url/sessions" > /dev/null
     ;;
   *)
     usage

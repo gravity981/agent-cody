@@ -50,6 +50,10 @@ class Sessions:
     def end(self, agent: str, session: str) -> None:
         self._sessions.pop((agent, session), None)
 
+    def clear(self) -> None:
+        """Drops all sessions, including the manual one (BRG-15)."""
+        self._sessions.clear()
+
     def expire(self, now: float) -> None:
         """Drops sessions in WORKING, THINKING or APPROVAL without events for the timeout."""
         for key, s in list(self._sessions.items()):
