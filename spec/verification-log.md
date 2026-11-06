@@ -10,3 +10,5 @@ Manual verification: inspections, demonstrations, checks on real hardware or in 
 
 | Requirements | Date | Verifier | Environment | Result | Notes |
 |---|---|---|---|---|---|
+| REL-01 | 2026-11-06 | Nicolas Marty | GitHub Actions, PR #<n> (run <link or number>) | pass | ci/check ran in the devcontainer on the PR and passed; requirement report in the run summary |
+
