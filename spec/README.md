@@ -96,13 +96,14 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-06 | Tag ruleset for `v*` restricts updates and deletions and blocks force pushes, but not creation: GitHub can't add the built-in GitHub Actions actor to a bypass list. Rejected: own GitHub App with token in the workflows (setup, secrets, workflow changes). REL-05 reworded. | requirements.md 2, delivery.md 3 |
 | 2026-11-06 | Step 1b: REL-01 is verified by a manual log row (a green CI run on a pull request) and stays on the "not yet implemented" list until that row exists; skipped tests count as no evidence; a `req_` token not followed by `<2–4 capitals>_<2 digits>` is a malformed tag; latest manual record = newest date, then lowest row. | verification.md 3 |
 | 2026-11-06 | CI caches the devcontainer image on GHCR (`<repo>-devcontainer`, pushed on pushes to `main`, used as cache by every run); devcontainers/ci and docker/login-action pinned to commit SHAs; the devcontainer image slimmed (PlatformIO only for the ESP32-C3, no download caches). | delivery.md 2 |
+| 2026-11-06 | The project is licensed under MIT, copyright Nicolas Marty (`LICENSE`). Third-party assets keep their own licence and are marked where they are stored. | README.md (repository) |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points
 
 <!-- Questions that are not decided yet, each with options and a recommendation. Move them to "Decisions" once settled. -->
 
-- **Meshy.ai licence of generated models** (before stage 5). Free-tier outputs are believed to be CC BY 4.0 (to be checked). Options: (a) free tier with attribution in the repo; (b) paid tier for private ownership; (c) sculpt the head yourself. Recommendation: (a) if the terms confirm it.
+- **Meshy.ai licence of generated models** (before stage 5). Free-tier outputs are believed to be CC BY 4.0 (to be checked). Options: (a) free tier with attribution in the repo (the mesh then stays under CC BY 4.0 next to the MIT-licensed project); (b) paid tier for private ownership; (c) sculpt the head yourself. Recommendation: (a) if the terms confirm it.
 - **Exact module models** (before stage 2): motor driver breakout (DRV8833 candidate), WS2812 module, buzzer module, N20 motor and gear ratio (before stage 4). Recommendation: choose together at stage start within ELE-04 and ELE-06.
 - **Docker container and serial replug / reachability from devcontainers** (TD-04, stage 2). Recommendation: prove in step 2b; fall back to a native systemd service if it doesn't work.
 - **Does Copilot read user-level Claude Code hook configuration?** (AGT-08, stage 3). Recommendation: check at stage 3 start; dedupe in the bridge either way.
