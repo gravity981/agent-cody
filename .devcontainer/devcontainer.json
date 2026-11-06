@@ -20,8 +20,8 @@
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
   },
-  // Installs the workspace members (bridge, cad, tools) into the prebuilt environment
-  "postCreateCommand": "uv sync --frozen",
+  // Fixes toolchain ownership in CI and installs the workspace members
+  "postCreateCommand": ".devcontainer/post-create.sh",
   "customizations": {
     "vscode": {
       "extensions": [

@@ -81,6 +81,9 @@ jobs:
     name: Full check
     needs: prepare
     uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      packages: write # ci.yml's devcontainer image cache (no push here: not a push to main)
 
   release:
     name: Build and publish

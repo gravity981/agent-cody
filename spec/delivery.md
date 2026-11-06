@@ -33,6 +33,8 @@ Versions follow [Semantic Versioning](https://semver.org).
 
 The devcontainer: the workflows build `.devcontainer/` and run the entry points inside it (devcontainers/ci), so CI uses the same pinned tools as development (PlatformIO with the ESP32 toolchain, Python with build123d and manifold3d, Docker CLI for the bridge image).
 
+Image cache: `ci.yml` pushes the built devcontainer image to GHCR as `ghcr.io/<owner>/<repo>-devcontainer` on every push to `main` and uses it as build cache in every run (`cacheFrom`), so the toolchain is rebuilt only when `.devcontainer/` or the lock files change. Pull requests and release candidates only read the cache. The job needs `packages: write`; the caller in `release-candidate.yml` grants it too. In CI the post-create step (`.devcontainer/post-create.sh`) gives the toolchain folders to the runner's UID, which devcontainers/ci assigns to the container user.
+
 ### Entry points
 
 The workflows are the same for every project and know nothing about its technology. What is checked, built and published is defined by executables in `ci/`, written in stage 1 in whatever the toolchain offers (shell, Python, PowerShell, Make, a CAD tool's batch mode, …).
