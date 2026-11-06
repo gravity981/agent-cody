@@ -57,7 +57,7 @@ and fails if an implemented requirement has no passing evidence, if any evidence
 | FW | Test (unit, host); demonstration on the bench (log) | Visible/audible behaviour (FW-01, FW-04, FW-06, FW-07) also demonstrated on hardware. |
 | BRG | Test (pytest, fake serial); demonstration of autostart and replug (log) | BRG-06 replug and BRG-09 autostart need the real container and device. |
 | AGT | Test (recorded payloads, bridge discovery); demonstration with real Claude Code and Copilot (log) | AGT-02 and AGT-11 need runs on WSL2 (counts as Linux) and in a devcontainer; AGT-10 is demonstrated on a fresh host. |
-| ELE | Inspection (BOM, wiring, modules); measurement (USB meter); demonstration (8 h run) | All manual. |
+| ELE | Inspection (BOM, wiring, modules); measurement (USB meter, multimeter); demonstration (8 h run) | All manual. ELE-03: the motor's stall current is measured on the bench (shaft held briefly at 5 V) and compared with the driver's continuous rating. |
 | FIG | Analysis (CI model checks: FIG-02 – FIG-04, FIG-17); inspection and demonstration (log) | Look, travel, noise, stability, endurance and service are judged on the printed assembly. |
 | DOC | Test where scriptable (DOC-06: release files present; links and referenced files exist); inspection (log); DOC-07 demonstration by a test builder (log) | The owner builds along the instructions for each milestone. |
 

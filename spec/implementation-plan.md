@@ -57,6 +57,7 @@ Requirements: REL-02 – REL-06.
 - Electronics bought: ESP32-C3 SuperMini (two), WS2812 module, passive buzzer module, motor driver breakout, a small N20 geared motor for the bench, cables (models chosen with the owner, within ELE-06).
 - On WSL2: usbipd-win installed.
 - *Status at stage start (2026-11-06): parts ordered (docs/parts-list.md), not delivered yet; cables, breadboard and multimeter to be provided by the owner; usbipd-win to be installed before the bench checks. Steps 2a – 2c start without hardware; the bench work is step 2d.*
+- *Status after step 2c (2026-11-06): parts not delivered yet, usbipd-win not set up; step 2d waits for both. Decided for 2d: the devcontainer gets `/dev` for flashing (architecture.md 4.2), the wiring diagram is an SVG block diagram with named pins and nets, generated with schemdraw (architecture.md 3, 5.1), the stall current for ELE-03 is measured on the bench (verification.md 4).*
 
 **Steps:**
 
