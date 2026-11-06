@@ -54,8 +54,8 @@ LOG = """# Log
 
 ## Records
 
-| Requirements | Date | Verifier | Environment | Result | Notes |
-|---|---|---|---|---|---|
+| Requirements | Date | Environment | Result | Notes |
+|---|---|---|---|---|
 {rows}
 """
 
@@ -179,31 +179,23 @@ def test_req_TRC_03_skipped_test_is_no_evidence(tmp_path: Path) -> None:
 
 
 def test_req_TRC_04_newest_record_counts(tmp_path: Path) -> None:
-    rows = (
-        "| ABC-01 | 2026-02-01 | Ann | bench | pass | |\n"
-        "| ABC-01 | 2026-01-01 | Ann | bench | fail | |"
-    )
+    rows = "| ABC-01 | 2026-02-01 | bench | pass | |\n| ABC-01 | 2026-01-01 | bench | fail | |"
     rep = report.build(make_repo(tmp_path, log_rows=rows))
-    assert [(e.source, e.result) for e in rep.evidence["ABC-01"]] == [
-        ("log: 2026-02-01 Ann", "pass")
-    ]
+    assert [(e.source, e.result) for e in rep.evidence["ABC-01"]] == [("log: 2026-02-01", "pass")]
     assert rep.errors == []
 
 
 def test_req_TRC_04_same_date_lower_row_counts(tmp_path: Path) -> None:
     rows = (
-        "| ABC-01 | 2026-02-01 | Ann | bench | pass | |\n"
-        "| ABC-01, ABC-02 | 2026-02-01 | Bob | bench | fail | |"
+        "| ABC-01 | 2026-02-01 | bench | pass | |\n| ABC-01, ABC-02 | 2026-02-01 | bench | fail | |"
     )
     rep = report.build(make_repo(tmp_path, log_rows=rows))
     assert [e.result for e in rep.evidence["ABC-01"]] == ["fail"]
-    assert "ABC-01: failing evidence log: 2026-02-01 Bob" in rep.errors
+    assert "ABC-01: failing evidence log: 2026-02-01" in rep.errors
 
 
 def test_req_TRC_04_invalid_rows_are_errors(tmp_path: Path) -> None:
-    rows = (
-        "| ABC-01 | 1.2.2026 | Ann | bench | pass | |\n| ABC-01 | 2026-02-01 | Ann | bench | ok | |"
-    )
+    rows = "| ABC-01 | 1.2.2026 | bench | pass | |\n| ABC-01 | 2026-02-01 | bench | ok | |"
     rep = report.build(make_repo(tmp_path, log_rows=rows, results=OK_RESULTS))
     assert any("invalid date" in e for e in rep.errors)
     assert any("result must be pass or fail" in e for e in rep.errors)

@@ -2,7 +2,7 @@
 
 Cody (Coding Agent Desk Companion) is a small 3D-printed desk figure of a cartoon developer sitting at a laptop. It shows developers who work with AI coding agents (Claude Code, GitHub Copilot in VS Code) what their agent is doing: while the agent works, the figure's two arms type, driven by a single geared DC motor; an RGB LED and a buzzer signal the other states (idle, thinking, approval needed, completed, error). The project delivers printable CAD parts, ESP32 firmware driving ready-made electronics modules over USB, and a computer-side bridge with the agent hooks.
 
-**Status: draft.** Implementation follows [implementation-plan.md](implementation-plan.md) once the spec is approved.
+**Status: approved (2026-11-06).** Implementation follows [implementation-plan.md](implementation-plan.md). Changes to requirements or the architecture are still possible; they are decided with the project owner and recorded (see "Decisions").
 
 This folder is the **source of truth**. The project's files (code, models, drawings, configuration) implement the spec. When they and the spec disagree, either the files get fixed or the spec gets changed explicitly. Silent deviations are not allowed.
 
@@ -54,11 +54,11 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 
 | Prefix | Topic | Section in requirements.md | Reqs (active) | Stage | Status |
 |---|---|---|---|---|---|
-| TRC | Requirement traceability | 1 | 7 | 1 | specified |
-| REL | CI, versions and releases | 2 | 6 | 1 | specified |
-| FW | Firmware | 3 | 12 | 2 | specified |
-| BRG | Host bridge | 4 | 12 | 2 | specified |
-| AGT | Agent integrations | 5 | 9 | 2, 3 | specified |
+| TRC | Requirement traceability | 1 | 7 | 1 | implemented |
+| REL | CI, versions and releases | 2 | 6 | 1 | implemented |
+| FW | Firmware | 3 | 12 | 2 | in progress |
+| BRG | Host bridge | 4 | 14 | 2 | in progress |
+| AGT | Agent integrations | 5 | 11 | 2, 3 | in progress |
 | ELE | Electronics | 6 | 7 | 2, 4, 5 | specified |
 | FIG | Figure and mechanism | 7 | 17 | 4, 5 | specified |
 | DOC | Build documentation | 8 | 7 | 2, 4, 5 | specified |
@@ -88,6 +88,11 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-06 | Plug & play for the device connection, incl. replug: BRG-06 reworded (no port setting, no manual step after a one-time host setup); serial port in BRG-07 is an optional override; on WSL2 a one-time usbipd setup with auto-attach is accepted; Docker stays, plug & play in the container must be shown in step 2b. | requirements.md 4, architecture.md 2 and 7 |
 | 2026-11-06 | Tag ruleset for `v*` restricts updates and deletions and blocks force pushes, but not creation: GitHub can't add the built-in GitHub Actions actor to a bypass list. Rejected: own GitHub App with token in the workflows (setup, secrets, workflow changes). REL-05 reworded. | requirements.md 2, delivery.md 3 |
 | 2026-11-06 | Others can rebuild Cody: the project delivers a parts list and assembly instructions (new topic DOC), written for a maker without the owner's help, in the repository and as release files, growing with stages 2, 4 and 5. ELE-07 reduced to the wiring diagram. | requirements.md 8 |
+| 2026-11-06 | The bridge stays (dropping it would need the device and a hook program in every devcontainer); setup effort is reduced instead: one command sets up bridge and hooks (AGT-10), and the same hook configuration works on the host and in devcontainers (AGT-11). | requirements.md 5, architecture.md 4.1 |
+| 2026-11-06 | Stage 2 start: AGT-02 counts WSL2 as Linux; ELE-03 margin 1.5 × stall current; ELE-06 counted per piece without spares and shipping; host command `cody` as a shell script (status and manual state in stage 2, setup in stage 3); hooks are curl command hooks with fallback addresses (Docker Engine in WSL2 has no `host.docker.internal`); build documentation released as CSV and PDF. | requirements.md 5–6, architecture.md 3–4, delivery.md 2 |
+| 2026-11-06 | The bridge logs state changes (also without a device) and, at debug level, events and serial traffic (BRG-13); the log goes to Docker's log, rotated by Docker at 10 MB × 2 files (BRG-14). | requirements.md 4, architecture.md 4.4 |
+| 2026-11-06 | Wiring diagram (ELE-07) as an SVG block diagram with named pins and nets, generated from Python with schemdraw (added in step 2d). | architecture.md 3, 5.1 |
+| 2026-11-06 | New BRG-15: `cody session clear` (`DELETE /sessions`) clears all sessions, to reset the bridge when a session is stale (e.g. Claude Code killed without `SessionEnd`). | requirements.md 4, architecture.md 4.1 |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points
@@ -95,7 +100,6 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 <!-- Questions that are not decided yet, each with options and a recommendation. Move them to "Decisions" once settled. -->
 
 - **Meshy.ai licence of generated models** (before stage 5). Free-tier outputs are believed to be CC BY 4.0 (to be checked). Options: (a) free tier with attribution in the repo (the mesh then stays under CC BY 4.0 next to the MIT-licensed project); (b) paid tier for private ownership; (c) sculpt the head yourself. Recommendation: (a) if the terms confirm it.
-- **Release format of the build documentation** (step 2e, DOC-06). Options: (a) parts list as CSV plus instructions as one PDF rendered from the Markdown; (b) the Markdown with its pictures as a zip; (c) PDF only. Recommendation: (a), printable and easy to shop from.
-- **Exact module models** (before stage 2): motor driver breakout (DRV8833 candidate), WS2812 module, buzzer module, N20 motor and gear ratio (before stage 4). Recommendation: choose together at stage start within ELE-04 and ELE-06.
-- **Docker container and serial replug / reachability from devcontainers** (TD-04, stage 2). Recommendation: prove in step 2b; fall back to a native systemd service if it doesn't work.
+- **N20 gear ratio** (before stage 4): 300 or 500 rpm, both bought; chosen with the crank prototype. The other modules are chosen (docs/parts-list.md).
+- **Docker container and serial replug** (TD-04, stage 2). Reaching the bridge from devcontainers was shown in step 2c. Recommendation: prove first plug-in and replug in step 2d; fall back to a native systemd service if it doesn't work.
 - **Does Copilot read user-level Claude Code hook configuration?** (AGT-08, stage 3). Recommendation: check at stage 3 start; dedupe in the bridge either way.

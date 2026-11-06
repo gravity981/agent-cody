@@ -66,6 +66,9 @@ A background process on the host (Linux, WSL2) that receives agent events from t
 | BRG-10 | It reports its version and commit (REL-02). | Must |
 | BRG-11 | A status command shows whether the device is connected, its firmware version, the sessions with their states, and the merged state. | Should |
 | BRG-12 | A state can be set manually from the command line, for testing and demos. | Could |
+| BRG-13 | The bridge writes a formatted log (time, level, message): every change of the merged state with its cause and whether it reached the device, also without a device; device connects and losses; at the configurable debug level also every received event and every command and reply on the serial line. | Must |
+| BRG-14 | The bridge's log takes at most 2 files of at most 10 MB each. | Must |
+| BRG-15 | All sessions, including a manual state, can be cleared from the command line, which sets the merged state to IDLE; for resetting the bridge when a session is stale. | Could |
 
 ## 5. Agent integrations (AGT)
 
@@ -74,7 +77,7 @@ Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). 
 | ID | Requirement | Prio |
 |---|---|---|
 | AGT-01 | Claude Code sessions drive all six states. | Must |
-| AGT-02 | The Claude Code integration works with Claude Code running on Linux, in WSL2 and in a devcontainer. | Must |
+| AGT-02 | The Claude Code integration works with Claude Code running on Linux (including WSL2) and in a devcontainer. | Must |
 | AGT-03 | The Claude Code hooks are set up once at user level and apply to every project. | Must |
 | AGT-04 | GitHub Copilot agent mode in VS Code drives the states IDLE, THINKING, WORKING and COMPLETED. | Must |
 | AGT-05 | GitHub Copilot drives APPROVAL and ERROR, once VS Code provides events for them. | Could |
@@ -82,6 +85,8 @@ Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). 
 | AGT-07 | If the bridge is unreachable, a hook returns within 1 s and never blocks or fails the agent. | Must |
 | AGT-08 | No agent event is counted twice (e.g. Copilot also reads Claude Code hook configuration). | Must |
 | AGT-09 | The hook setup for both agents is described step by step in the repository. | Should |
+| AGT-10 | One command sets up Cody on a host: it starts the bridge with autostart, installs the Claude Code and Copilot hooks at user level, checks the connection to the device, and reports what is missing. | Must |
+| AGT-11 | The same hook configuration works on the host and in devcontainers; the hooks find the bridge on `localhost` or on the Docker host. | Must |
 
 ## 6. Electronics (ELE)
 
@@ -91,10 +96,10 @@ Electronics built from ready-made modules only, powered from the host's USB port
 |---|---|---|
 | ELE-01 | The electronics consist only of ready-made development boards and breakout modules; no custom PCB and no discrete circuits. | Must |
 | ELE-02 | Soldering is limited to header pins and wires onto modules; all other connections are pluggable (JST, Dupont, screw terminals). | Must |
-| ELE-03 | The motor is driven only through a ready-made motor driver breakout with PWM, rated for the motor's stall current with margin. | Must |
+| ELE-03 | The motor is driven only through a ready-made motor driver breakout with PWM, whose continuous current rating is at least 1.5 × the motor's stall current. | Must |
 | ELE-04 | The whole device is powered from one USB port of the host through a single cable; its total current, including motor start, stays at or below 500 mA. There is no second supply. | Must |
 | ELE-05 | Motor start and switching never reset the ESP32 or interrupt the USB connection. | Must |
-| ELE-06 | The purchased parts (electronics and mechanics, without filament and tools) cost at most CHF 25. | Must |
+| ELE-06 | The purchased parts of one Cody (electronics and mechanics, without filament and tools) cost at most CHF 25, counted per piece used (pack price divided by pack size), without spares and shipping. | Must |
 | ELE-07 | A wiring diagram (modules, pins, connectors) is in the repository; the purchased parts are listed in the parts list (DOC-01). | Must |
 
 ## 7. Figure and mechanism (FIG)

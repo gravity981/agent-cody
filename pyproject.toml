@@ -16,6 +16,7 @@ dev = [
     "pytest==9.2.0",
     "ruff==0.17.3",
     "ocp-vscode==4.2.0",
+    "schemdraw==0.23",  # wiring diagram (electronics/wiring.py)
 ]
 
 [tool.uv.sources]
@@ -25,6 +26,7 @@ cody-tools = { workspace = true }
 
 [tool.ruff]
 line-length = 100
+extend-include = ["hooks/install-claude-code"]  # Python script without .py
 target-version = "py314"
 
 [tool.ruff.lint]
@@ -32,5 +34,6 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM"]
 
 [tool.pytest.ini_options]
 addopts = ["-ra", "--import-mode=importlib"]
-testpaths = ["tools", "bridge", "cad"]
+testpaths = ["tools", "bridge", "cad", "electronics"]
+pythonpath = ["bridge/tests"]  # shared test helpers (fakes.py)
 junit_family = "xunit2"

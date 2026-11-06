@@ -1,9 +1,31 @@
-# Cody bridge @VERSION@ (spec/delivery.md 4).
-#   docker compose -f <this file> up
+# Cody bridge @VERSION@ (spec/delivery.md 4, spec/architecture.md 4.1 and 4.4).
+#   docker compose -f <this file> up -d
+# It starts again with Docker (autostart, BRG-09). Settings: ~/.config/cody/bridge.toml.
 # To try a release candidate before promotion, set its image tag:
-#   CODY_BRIDGE_TAG=<version>-rc.<M> docker compose -f <this file> up
-# Skeleton from step 1c: prints version and commit; the bridge follows in stage 2.
+#   CODY_BRIDGE_TAG=<version>-rc.<M> docker compose -f <this file> up -d
+name: cody
 services:
   bridge:
     image: @IMAGE@:${CODY_BRIDGE_TAG:-@VERSION@}
-    command: ["--version"]
+    restart: unless-stopped
+    # host network: the bridge binds 127.0.0.1 and the Docker gateway itself (BRG-08)
+    network_mode: host
+    # plug & play (BRG-06): all of /dev, so a replugged device appears;
+    # access only to USB serial devices (ttyACM, major 166)
+    volumes:
+      - /dev:/dev
+      - ${HOME}/.config/cody:/config:ro
+      # log times in the host's time zone
+      - /etc/localtime:/etc/localtime:ro
+    device_cgroup_rules:
+      - "c 166:* rmw"
+    group_add:
+      - dialout
+    environment:
+      CODY_CONFIG: /config/bridge.toml
+    # log rotated by Docker: at most 2 files of 10 MB (BRG-14); read with 'docker compose logs'
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "2"
