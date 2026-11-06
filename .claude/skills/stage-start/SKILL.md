@@ -18,7 +18,7 @@ description: Prepares an implementation stage - checks branch and working tree, 
 For each item under "Before the stage starts":
 
 - settled (decision recorded in the spec) → say so, with where;
-- open → ask now, with options and a recommendation; record the answer in the spec and in "Decisions" in `spec/README.md`;
+- open → ask now, with options and a recommendation; record the answer in the spec, and in "Decisions" in `spec/README.md` only if it changes requirements or the architecture;
 - needs something only the user can provide (access, hardware, material, accounts) → list it; ask whether the stage can start without it.
 
 ## 3. Steps

@@ -36,7 +36,7 @@ Good technology choices matter as much as good features. For each key technology
 3. Evaluate them with the user against weighted criteria (template in `spec/architecture.md` 5.2). Be honest about weaknesses of the preferred option.
 4. Let the user decide, then write a decision record `TD-<nn>` in `spec/architecture.md` 5.2 and a row in the stack overview (5.1).
 
-Smaller choices (formats, conventions, minor libraries) are asked with options too and recorded as a row in "Decisions" in `spec/README.md`.
+Smaller choices (formats, conventions, minor libraries) are asked with options too and recorded in the section they belong to; a row in "Decisions" in `spec/README.md` only if they change requirements or the architecture.
 
 ## Flow
 

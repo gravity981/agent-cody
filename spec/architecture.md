@@ -1,6 +1,6 @@
 # Cody – Architecture
 
-How the requirements in [requirements.md](requirements.md) are met. Requirements say *what*; this document says *how*. Every choice that was open is recorded: key technologies as decision records in section 5, everything else as a row in "Decisions" in [README.md](README.md).
+How the requirements in [requirements.md](requirements.md) are met. Requirements say *what*; this document says *how*. Every choice that was open is recorded: key technologies as decision records in section 5, everything else in the section it belongs to; choices that change the architecture also get a row in "Decisions" in [README.md](README.md).
 
 ## 1. Context and scope
 
@@ -109,9 +109,9 @@ At boot the device sends `READY <version>`; the bridge then resends settings and
 | Bridge | Python | 3.14 | TD-03 |
 | Bridge runtime | Docker container, image on GHCR | – | TD-04 |
 | CAD | build123d; head mesh from Meshy.ai, processed with manifold3d | build123d 0.13.0, manifold3d 3.5.4 | TD-05 |
-| CI environment | Devcontainer (devcontainers/ci), Docker via docker-outside-of-docker | – | README.md "Decisions" |
-| Python dependencies | uv workspace (members `bridge`, `cad`, `tools`) with one lockfile `uv.lock`; tests with pytest | uv 0.13.7, pytest 9.2.0 | README.md "Decisions" |
-| Static checks | ruff (Python), clang-format (C++), shellcheck (shell) | ruff 0.17.3, clang-format 23.1.5, shellcheck 0.11.0 | README.md "Decisions" |
+| CI environment | Devcontainer (devcontainers/ci), Docker via docker-outside-of-docker | – | delivery.md 2 |
+| Python dependencies | uv workspace (members `bridge`, `cad`, `tools`) with one lockfile `uv.lock`; tests with pytest | uv 0.13.7, pytest 9.2.0 | this table |
+| Static checks | ruff (Python), clang-format (C++), shellcheck (shell) | ruff 0.17.3, clang-format 23.1.5, shellcheck 0.11.0 | this table |
 
 Every tool has a pinned version and is installed in the devcontainer (`.devcontainer/`), never only on someone's machine. How CI gets the same tools is decided in delivery.md 2.
 

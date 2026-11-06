@@ -19,7 +19,7 @@ The specification in `spec/` is the source of truth; the project's files impleme
 ## Working with the spec
 
 - **Ask, don't assume.** When the spec leaves something open or is ambiguous, ask before implementing. Never fill a gap with your own assumption. Offer concrete options with a recommendation (first, marked as recommended) so the question is quick to answer.
-- Once a gap is decided, write the decision into the spec: in the requirement or section it belongs to, plus a row in "Decisions" in `spec/README.md`, so the spec stays complete.
+- Once a gap is decided, write the decision into the spec in the requirement or section it belongs to, so the spec stays complete. Add a row to "Decisions" in `spec/README.md` only for decisions that change requirements or the architecture (scope, requirements, building blocks, interfaces, key technologies, delivery); smaller choices stay in their section only.
 - Requirements live in tables in `spec/requirements.md` with IDs (`| ABC-01 | Requirement | Prio |`, prefix of 2–4 capital letters per topic). Never renumber or reuse an ID; add new ones at the end of the topic; withdraw instead of deleting.
 - When implementation shows the spec is wrong or incomplete, point it out and propose a spec change. Don't silently deviate.
 

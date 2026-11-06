@@ -46,7 +46,7 @@ Requirements live in tables in [requirements.md](requirements.md), one section p
 
 ### Decisions
 
-Every gap or ambiguity that was decided is recorded: in the requirement or section it belongs to, and with a line in the table below. Decisions are never made silently.
+Every gap or ambiguity that was decided is recorded in the requirement or section it belongs to. Decisions are never made silently. The table below lists only the important ones: decisions that change requirements (scope, cuts, new or reworded requirements) or the architecture (building blocks, interfaces, key technologies, delivery). Smaller choices (tool versions, conventions, verification details, CI setup) are recorded only in their section.
 
 ## Topics and status
 
@@ -68,7 +68,6 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 |---|---|---|
 | 2026-11-05 | Built for the owner's own desk; repo open, no build kit for others (no polished BOM, assembly guide or toolchain-free flashing). | README.md (this table) |
 | 2026-11-05 | Claude Code and GitHub Copilot (VS Code) integrations are both Must. | requirements.md (AGT) |
-| 2026-11-05 | Status light (ESP32, LED, buzzer, bridge, hooks) comes before the arm mechanism and the character, for value early. | implementation-plan.md |
 | 2026-11-05 | A host-side bridge (localhost HTTP in, USB serial out) is used, because hooks run in containers/WSL that can't open the serial port, and it merges sessions. Alternatives rejected: hook writes serial directly; Wi-Fi on the ESP32. | requirements.md (BRG) |
 | 2026-11-05 | The bridge runs on Linux and WSL2 (USB attached with usbipd-win on WSL); containerizing it is evaluated in architecture. | architecture.md 2 |
 | 2026-11-05 | Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device. | architecture.md 1 |
@@ -84,20 +83,9 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-05 | Bridge runs as a Docker container; image published on GHCR (ci/publish, ci/promote). | architecture.md TD-04 |
 | 2026-11-05 | CAD in build123d; head generated with Meshy.ai and processed with manifold3d. | architecture.md TD-05 |
 | 2026-11-05 | Interfaces: hooks forward the agent's own payload to the bridge (port 8765), all mapping in the bridge; serial text protocol with OK/ERR replies, VOLUME 0–3 (0 = mute), READY line at boot. | architecture.md 4 |
-| 2026-11-05 | CI runs in the devcontainer. | delivery.md 2 |
 | 2026-11-05 | Delivery: download from the GitHub release, plus the bridge image on GHCR. | delivery.md 4 |
-| 2026-11-05 | MAJOR version for serial protocol or bridge HTTP API breaks, or printed parts that no longer fit the previous release. | delivery.md 1 |
-| 2026-11-05 | Verification: unit tests and CAD model checks in CI (JUnit XML, names with `req_ABC_01`); hardware, real agents and look verified manually. | verification.md |
-| 2026-11-05 | Stages: 1 walking skeleton, 2 status light with Claude Code (M1), 3 Copilot (M2), 4 mechanism prototype, 5 character and assembly (M3). | implementation-plan.md |
-| 2026-11-05 | Stage 1: first release contains skeletons (firmware sends `READY <version>`, bridge image answers `--version`, compose file); Python dependencies with uv and lockfiles; static checks ruff, clang-format, shellcheck; Docker in the devcontainer via docker-outside-of-docker; bridge image on GHCR is public. | implementation-plan.md stage 1, delivery.md 2, architecture.md 5.1 |
-| 2026-11-06 | Step 1a: Python 3.14 (newest supported by build123d/OCP); ESP32 toolchain baked into the devcontainer image; one uv workspace with a single lockfile instead of one lockfile per project; binary files in plain git, marked binary (no LFS). | architecture.md 5.1 |
 | 2026-11-06 | Plug & play for the device connection, incl. replug: BRG-06 reworded (no port setting, no manual step after a one-time host setup); serial port in BRG-07 is an optional override; on WSL2 a one-time usbipd setup with auto-attach is accepted; Docker stays, plug & play in the container must be shown in step 2b. | requirements.md 4, architecture.md 2 and 7 |
 | 2026-11-06 | Tag ruleset for `v*` restricts updates and deletions and blocks force pushes, but not creation: GitHub can't add the built-in GitHub Actions actor to a bypass list. Rejected: own GitHub App with token in the workflows (setup, secrets, workflow changes). REL-05 reworded. | requirements.md 2, delivery.md 3 |
-| 2026-11-06 | Step 1b: REL-01 is verified by a manual log row (a green CI run on a pull request) and stays on the "not yet implemented" list until that row exists; skipped tests count as no evidence; a `req_` token not followed by `<2–4 capitals>_<2 digits>` is a malformed tag; latest manual record = newest date, then lowest row. | verification.md 3 |
-| 2026-11-06 | CI caches the devcontainer image on GHCR (`<repo>-devcontainer`, pushed on pushes to `main`, used as cache by every run); devcontainers/ci and docker/login-action pinned to commit SHAs; the devcontainer image slimmed (PlatformIO only for the ESP32-C3, no download caches). | delivery.md 2 |
-| 2026-11-06 | The project is licensed under MIT, copyright Nicolas Marty (`LICENSE`). Third-party assets keep their own licence and are marked where they are stored. | README.md (repository) |
-| 2026-11-06 | Step 1c: REL-03 – REL-06 verified by log rows after the first candidate and promotion and stay on the "not yet implemented" list until then; firmware released as one combined image; `LICENSE` in the release files and licence label on the bridge image; GHCR access with `GITHUB_TOKEN`. | verification.md 4, delivery.md 2 |
-| 2026-11-06 | The original idea file (`spec/idea.md`) is removed because it conflicted with the spec; the spec is the only description of the project. It remains in the git history. | README.md (this document) |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points
