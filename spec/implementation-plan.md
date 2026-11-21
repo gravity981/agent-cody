@@ -92,7 +92,7 @@ Requirements: BRG-06, BRG-09, BRG-16 – BRG-18.
 Requirements: AGT-02, AGT-12, BRG-08.
 
 **2j – Local web interface — implementation done; manual verification pending.** Serve the status/configuration website from the Windows Go bridge, embedded in the binary; add the tray action that opens it in the default browser. Show device, session and relay information and the correct hook-routing hints; edit and save the selected settings, clearly state that restart is required, and offer Restart now. Keep the site loopback-only and protect browser mutations with same-origin checks.
-*Implementation status (2026-11-21): automated `ci/check` passes; manual Windows verification of the tray launch and website status, configuration and restart remains.*
+*Implementation status (2026-11-21): automated `ci/check` passes; the user confirmed the tray launch, hook/relay guidance and session timeout input. Manual Windows verification of saving settings and applying them through Restart now remains.*
 Requirements: BRG-20 – BRG-22.
 
 **2k – Bridge-backed hardware test panel.** Replace the devcontainer's direct-serial panel with the test section of the Windows bridge website. The bridge remains the sole serial owner, suppresses normal device writes during testing, continues merging agent events, and restores the latest merged state on stop or after the 10 s panel-heartbeat timeout. Remove the old panel's serial ownership and direct-serial tests.
