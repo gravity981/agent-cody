@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Cody</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Local bridge</p>
+        <h1>Cody</h1>
+      </header>
+
+      <section aria-labelledby="status-heading">
+        <h2 id="status-heading">Status</h2>
+        <p id="status-message" role="status">Loading bridge status...</p>
+        <dl id="status-details" class="details"></dl>
+        <h3>WSL relays</h3>
+        <div id="relay-list"></div>
+        <div class="routing">
+          <h3>Configure Claude Code hooks to use the relay</h3>
+          <ol>
+            <li>In Cody's WSL relay configuration, include the distribution that runs Docker Engine. If you change the list, save the settings and select <strong>Restart now</strong>. Wait for that distribution's Docker Engine gateway address to appear above.</li>
+            <li>In the Docker Engine devcontainer where Claude Code runs, go to the Cody repository root and run the installer command shown for that distribution. Run it in the environment that owns Claude Code's settings file; a shared Claude configuration volume only needs one install. Run it again if the relay port changes, then restart Claude Code to reload its hooks.</li>
+          </ol>
+          <p>The hooks try <code>127.0.0.1:8765</code>, then <code>host.docker.internal:8765</code>, then <code>172.17.0.1:&lt;relay-port&gt;</code>. The installer's <code>--port</code> sets only the last target, using the port shown above for the same distribution.</p>
+          <p>For Claude Code running directly on Windows or in WSL, omit <code>--port</code>; those hooks use <code>127.0.0.1:8765</code>. Docker Desktop devcontainers also use the default port and do not use this WSL relay setting.</p>
+        </div>
+        <h3>Sessions</h3>
+        <div id="session-list"></div>
+      </section>
+
+      <section aria-labelledby="settings-heading">
+        <h2 id="settings-heading">Configuration</h2>
+        <p>Changes are saved to the Cody configuration file and take effect after a restart.</p>
+        <form id="settings-form">
+          <fieldset>
+            <legend>WSL relays</legend>
+            <label class="check">
+              <input id="use-default-distro" type="checkbox">
+              Use WSL's default distribution
+            </label>
+            <label for="wsl-distros">WSL distributions, one per line</label>
+            <textarea id="wsl-distros" rows="3" spellcheck="false"></textarea>
+          </fieldset>
+
+          <fieldset>
+            <legend>Device and bridge</legend>
+            <label for="speed">Motor speed <span class="hint">(0-255)</span></label>
+            <input id="speed" type="number" min="0" max="255" step="1" required>
+
+            <label for="volume">Sound volume</label>
+            <select id="volume">
+              <option value="0">Muted</option>
+              <option value="1">Low</option>
+              <option value="2">Medium</option>
+              <option value="3">High</option>
+            </select>
+
+            <label for="session-timeout">Session timeout <span class="hint">(minutes)</span></label>
+            <input id="session-timeout" type="number" min="0" step="any" required>
+
+            <label for="serial-port">Serial-port override <span class="hint">(blank uses auto-detection)</span></label>
+            <input id="serial-port" type="text" autocomplete="off">
+
+            <label for="log-level">Log level</label>
+            <select id="log-level">
+              <option value="info">Info</option>
+              <option value="debug">Debug</option>
+            </select>
+          </fieldset>
+
+          <div class="actions">
+            <button type="submit">Save settings</button>
+            <p id="settings-message" role="status"></p>
+          </div>
+        </form>
+        <div id="restart-panel" class="restart-panel" hidden>
+          <p>Restart Cody to apply the saved settings.</p>
+          <button id="restart-button" type="button">Restart now</button>
+          <p id="restart-message" role="status"></p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

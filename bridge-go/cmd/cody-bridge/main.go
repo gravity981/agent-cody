@@ -20,10 +20,7 @@ import (
 	"github.com/gravity981/agent-cody/bridge-go/internal/sessions"
 )
 
-const (
-	httpAddress = "127.0.0.1:8765"
-	loopPeriod  = 100 * time.Millisecond
-)
+const loopPeriod = 100 * time.Millisecond
 
 func main() {
 	os.Exit(run(os.Args[1:]))
@@ -65,7 +62,7 @@ func run(args []string) int {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	if err := runBridge(ctx, path, nil); err != nil {
+	if err := runBridge(ctx, path, nil, nil); err != nil {
 		fmt.Fprintf(os.Stderr, "cody-bridge: %v\n", err)
 		return 1
 	}
@@ -80,6 +77,7 @@ func runBridge(
 	ctx context.Context,
 	configPath string,
 	publishStatus func(bridge.Status),
+	restart func(),
 ) (resultErr error) {
 	cfg, err := config.Load(configPath)
 	if err != nil {
@@ -101,7 +99,9 @@ func runBridge(
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	relayDone, err := startWSLRelays(runCtx, cfg, logger)
+	relayStatuses := newRelayStatusRegistry(cfg.WSLDistros)
+	relayLogger := statusTrackingRelayLogger{logger: logger, registry: relayStatuses}
+	relayDone, err := startWSLRelays(runCtx, cfg, relayLogger)
 	if err != nil {
 		logger.Warningf("start WSL relay: %v", err)
 		relayDone = nil
@@ -124,8 +124,12 @@ func runBridge(
 	activeSessions := sessions.New(time.Duration(cfg.SessionTimeoutMin * float64(time.Minute)))
 	app := bridge.New(activeSessions, link, logger, version, commit)
 	server := &http.Server{
-		Addr:              httpAddress,
-		Handler:           httpapi.NewHandler(app, time.Now),
+		Addr: httpapi.SiteAddress,
+		Handler: httpapi.NewHandler(app, time.Now, httpapi.WebsiteOptions{
+			ConfigPath:    configPath,
+			RelayStatuses: relayStatuses.Snapshot,
+			Restart:       restart,
+		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

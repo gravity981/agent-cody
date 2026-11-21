@@ -51,6 +51,39 @@ func Test_req_BRG_07_ParsesAndValidatesConfig(t *testing.T) {
 	}
 }
 
+func Test_req_BRG_22_SaveConfigPreservesDefaultAndExplicitDistroLists(t *testing.T) {
+	t.Run("default distro", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "cody", "bridge.toml")
+		config := Defaults()
+		if err := Save(path, config); err != nil {
+			t.Fatal(err)
+		}
+		got, err := Load(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.WSLDistros != nil {
+			t.Fatalf("wsl_distros = %#v, want nil default", got.WSLDistros)
+		}
+	})
+
+	t.Run("explicitly disabled", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "bridge.toml")
+		config := Defaults()
+		config.WSLDistros = []string{}
+		if err := Save(path, config); err != nil {
+			t.Fatal(err)
+		}
+		got, err := Load(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.WSLDistros == nil || len(got.WSLDistros) != 0 {
+			t.Fatalf("wsl_distros = %#v, want explicit empty list", got.WSLDistros)
+		}
+	})
+}
+
 func Test_req_BRG_07_RejectsInvalidConfig(t *testing.T) {
 	for _, content := range []string{
 		"speed = 256\n",

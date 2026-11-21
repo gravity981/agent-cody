@@ -6,6 +6,7 @@ import (
 
 	"github.com/gravity981/agent-cody/bridge-go/internal/bridge"
 	"github.com/gravity981/agent-cody/bridge-go/internal/device"
+	"github.com/gravity981/agent-cody/bridge-go/internal/httpapi"
 	"github.com/gravity981/agent-cody/bridge-go/internal/sessions"
 )
 
@@ -75,5 +76,18 @@ func Test_req_BRG_17_IconDirectoryEntryPointsToCompleteDIB(t *testing.T) {
 	}
 	if got, want := binary.LittleEndian.Uint32(icon[14:18]), uint32(len(icon)-22); got != want {
 		t.Fatalf("image size = %d, want %d", got, want)
+	}
+}
+
+func Test_req_BRG_20_OpenCodyUsesTheLocalWebsiteInTheDefaultBrowser(t *testing.T) {
+	openedURL := ""
+	if err := OpenCody(func(url string) error {
+		openedURL = url
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if want := httpapi.SiteOrigin + "/"; openedURL != want {
+		t.Fatalf("opened URL = %q, want %q", openedURL, want)
 	}
 }

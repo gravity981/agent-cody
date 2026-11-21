@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gravity981/agent-cody/bridge-go/internal/bridge"
@@ -14,6 +15,9 @@ import (
 
 const MaxBodyBytes = 32_000_000
 
+const SiteAddress = "127.0.0.1:8765"
+const SiteOrigin = "http://" + SiteAddress
+
 type Bridge interface {
 	Event(mapping.Event, time.Time)
 	SetManual(sessions.State, time.Time)
@@ -22,7 +26,7 @@ type Bridge interface {
 	Status(time.Time) bridge.Status
 }
 
-func NewHandler(b Bridge, clock func() time.Time) http.Handler {
+func NewHandler(b Bridge, clock func() time.Time, website WebsiteOptions) http.Handler {
 	if clock == nil {
 		clock = time.Now
 	}
@@ -93,7 +97,24 @@ func NewHandler(b Bridge, clock func() time.Time) http.Handler {
 		b.ClearSessions(clock())
 		writeText(w, http.StatusOK, "ok\n")
 	})
-	return mux
+	registerWebsiteRoutes(mux, b, clock, website)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if isWebsiteRequest(r.URL.Path) && r.Host != SiteAddress {
+			writeAPIError(w, http.StatusForbidden, "request host is not allowed")
+			return
+		}
+		if r.Method != http.MethodGet && r.Method != http.MethodHead &&
+			r.Header.Get("Origin") != "" && !sameOrigin(r) {
+			writeAPIError(w, http.StatusForbidden, "request origin is not allowed")
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
+}
+
+func isWebsiteRequest(path string) bool {
+	return path == "/" || path == "/index.html" || path == "/app.js" ||
+		path == "/style.css" || strings.HasPrefix(path, "/api/")
 }
 
 func readObject(w http.ResponseWriter, r *http.Request) (map[string]any, bool) {

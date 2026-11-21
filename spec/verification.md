@@ -70,7 +70,7 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 | Prefix | IDs |
 |---|---|
 | FW | FW-01, FW-04, FW-06, FW-07, FW-09 |
-| BRG | BRG-06, BRG-16 – BRG-24 |
+| BRG | BRG-06, BRG-16 – BRG-19, BRG-23 – BRG-24 |
 | AGT | AGT-02, AGT-04 – AGT-06, AGT-08 – AGT-10, AGT-12 |
 | ELE | ELE-01 – ELE-07 |
 | FIG | FIG-01 – FIG-17 |

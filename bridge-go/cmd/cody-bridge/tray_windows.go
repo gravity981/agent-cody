@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
+	"syscall"
 
 	"fyne.io/systray"
 	"github.com/gravity981/agent-cody/bridge-go/internal/autostart"
@@ -78,6 +79,7 @@ func runWindowsTray(configPath string) (int, bool) {
 		if autostartErr != nil {
 			autostartItem.Disable()
 		}
+		openCodyItem := systray.AddMenuItem("Open Cody", "Open the Cody website in your default browser")
 		openConfigItem := systray.AddMenuItem("Open config", "Open the Cody bridge configuration")
 		openLogItem := systray.AddMenuItem("Open log", "Open the Cody bridge log")
 		restartItem := systray.AddMenuItem("Restart", "Restart Cody and apply configuration changes")
@@ -93,6 +95,7 @@ func runWindowsTray(configPath string) (int, bool) {
 			stateItem,
 			sessionsItem,
 			autostartItem,
+			openCodyItem,
 			openConfigItem,
 			openLogItem,
 			restartItem,
@@ -150,13 +153,14 @@ func windowsTrayLoop(
 	executable string,
 	version string,
 	deviceItem, stateItem, sessionsItem, autostartItem *systray.MenuItem,
-	openConfigItem, openLogItem, restartItem, quitItem *systray.MenuItem,
+	openCodyItem, openConfigItem, openLogItem, restartItem, quitItem *systray.MenuItem,
 	initialAutostart bool,
 ) {
 	defer close(done)
 	statusUpdates := make(chan bridge.Status, 1)
 	var cancel context.CancelFunc
 	var serviceResult chan error
+	restartRequests := make(chan struct{}, 1)
 	autostartOn := initialAutostart
 	lastState := sessions.State("")
 	lastDevice := ""
@@ -177,12 +181,18 @@ func windowsTrayLoop(
 			}
 		}
 	}
+	requestRestart := func() {
+		select {
+		case restartRequests <- struct{}{}:
+		default:
+		}
+	}
 	startService := func() {
 		ctx, stop := context.WithCancel(context.Background())
 		cancel = stop
 		serviceResult = make(chan error, 1)
 		go func(result chan<- error) {
-			result <- runBridge(ctx, configPath, publishStatus)
+			result <- runBridge(ctx, configPath, publishStatus, requestRestart)
 		}(serviceResult)
 	}
 	stopService := func() {
@@ -198,6 +208,11 @@ func windowsTrayLoop(
 		cancel = nil
 		serviceResult = nil
 	}
+	restartService := func() {
+		stopService()
+		startService()
+		lastState = ""
+	}
 	startService()
 
 	for {
@@ -205,6 +220,8 @@ func windowsTrayLoop(
 		case <-exit:
 			stopService()
 			return
+		case <-restartRequests:
+			restartService()
 		case status := <-statusUpdates:
 			if status.State != lastState {
 				icon, err := trayview.Icon(status.State)
@@ -264,6 +281,8 @@ func windowsTrayLoop(
 			}
 		case <-openConfigItem.ClickedCh:
 			openInNotepad(configPath)
+		case <-openCodyItem.ClickedCh:
+			openCodyWebsite()
 		case <-openLogItem.ClickedCh:
 			logPath, err := config.DefaultLogPath()
 			if err != nil {
@@ -272,12 +291,31 @@ func windowsTrayLoop(
 			}
 			openInNotepad(logPath)
 		case <-restartItem.ClickedCh:
-			stopService()
-			startService()
-			lastState = ""
+			restartService()
 		case <-quitItem.ClickedCh:
 			systray.Quit()
 		}
+	}
+}
+
+func openCodyWebsite() {
+	if err := trayview.OpenCody(func(url string) error {
+		command := exec.Command("rundll32.exe", "url.dll,FileProtocolHandler", url)
+		command.SysProcAttr = &syscall.SysProcAttr{
+			HideWindow:    true,
+			CreationFlags: windows.CREATE_NO_WINDOW,
+		}
+		if err := command.Start(); err != nil {
+			return fmt.Errorf("start default browser: %w", err)
+		}
+		go func() {
+			if err := command.Wait(); err != nil {
+				showWindowsError(fmt.Errorf("open Cody website: %w", err))
+			}
+		}()
+		return nil
+	}); err != nil {
+		showWindowsError(fmt.Errorf("open Cody website: %w", err))
 	}
 }
 
