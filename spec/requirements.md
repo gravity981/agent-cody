@@ -50,7 +50,7 @@ The ESP32 firmware turns simple commands from the bridge into physical behaviour
 
 ## 4. Host bridge (BRG)
 
-A background process on the host that receives agent events from the hooks over local HTTP, merges the state of all sessions and drives the device over USB serial (FW). On Windows it is a desktop app in the notification area (BRG-16 – BRG-18); on Linux it runs as a Docker container until the native Linux build (BRG-19).
+A background process on the host that receives agent events from the hooks over local HTTP, merges the state of all sessions and drives the device over USB serial (FW). On Windows it is a tray app with a local web interface (BRG-16 – BRG-18, BRG-20 – BRG-24); on Linux it runs as a Docker container until the native Linux build (BRG-19).
 
 | ID | Requirement | Prio |
 |---|---|---|
@@ -73,6 +73,11 @@ A background process on the host that receives agent events from the hooks over 
 | BRG-17 | The notification-area icon shows the merged state by its colour. | Should |
 | BRG-18 | On Windows, the bridge is installed and uninstalled with an installer, without admin rights. | Must |
 | BRG-19 | The bridge runs natively on Linux and macOS. | Should |
+| BRG-20 | The Windows tray menu opens Cody's local web interface in the default browser; the bridge does not open a native Cody window. | Must |
+| BRG-21 | The web interface shows bridge version and commit, firmware version, device connection, merged state, sessions, each configured WSL distro's relay port, and routing guidance distinguishing WSL-host hooks from Docker Engine devcontainer hooks. | Must |
+| BRG-22 | The web interface edits and saves the WSL distro list, motor speed, sound volume/mute, session timeout, optional serial-port override and log level; it clearly indicates that changes require a restart and offers Restart now. | Must |
+| BRG-23 | On user request, the updater checks the latest stable Cody GitHub release and shows installed and available firmware versions; release/network errors are reported, not treated as "no update". Flashing requires confirmation before download. It offers an update only when the release is newer, except that an unknown installed version may be updated after explicit confirmation. | Must |
+| BRG-24 | The updater verifies the firmware asset's SHA-256 digest before flashing, shows progress and errors, and restores bridge device operation afterward; if automatic bootloader entry fails, it provides manual recovery instructions and retry. | Must |
 
 ## 5. Agent integrations (AGT)
 
@@ -147,7 +152,7 @@ Written so that a maker with a 3D printer and a soldering iron can build a Cody 
 
 ## 9. Hardware test panel (TST)
 
-A developer-only bench tool for exercising the firmware and its peripherals. It is not part of the bridge or a release artifact.
+A developer-only bench tool for exercising the firmware and its peripherals. Its controls are served by the Windows bridge's local web interface; it does not open USB serial directly.
 
 | ID | Requirement | Prio |
 |---|---|---|
@@ -156,5 +161,6 @@ A developer-only bench tool for exercising the firmware and its peripherals. It 
 | TST-03 | The panel can start and stop the motor and set speed (0–255), PWM frequency (1–30 kHz), startup kick (0–100 ms) and DRV8833 fast or slow decay. Motor settings apply to normal WORKING behavior until changed or reboot. | Must |
 | TST-04 | The panel can show a raw RGB test colour (0–255 per channel), subject to the existing 50% brightness cap; raw LED tests do not change normal state colours. | Must |
 | TST-05 | The panel can play the APPROVAL, SUCCESS and WARNING sounds and set volume (0–3); volume applies to normal state sounds until changed or reboot, while test sounds are one-shot. | Must |
-| TST-06 | The browser panel runs as a developer tool in the devcontainer, connects directly to USB serial, and displays connection status and device replies/errors; it does not depend on or modify the bridge. | Must |
-| TST-07 | Test settings are volatile and reset on reboot. Exiting test mode or losing the panel session clears raw test outputs and stops the motor; the firmware timeout also stops the motor and enters disconnected behavior. Motor settings and volume remain active across normal state changes and test-mode exit until changed or reboot. | Must |
+| TST-06 | The developer test panel is part of the Windows bridge's local web interface, uses the bridge's device connection, and displays connection status, replies and errors without opening USB serial itself. | Must |
+| TST-07 | Test settings are volatile and reset on reboot. Exiting test mode clears raw test outputs and stops the motor; loss of the device connection is covered by the firmware timeout, which stops the motor and enters disconnected behavior. Motor settings and volume remain active across normal state changes and test-mode exit until changed or reboot. | Must |
+| TST-08 | During test mode the bridge remains the sole serial owner and suspends normal device writes while continuing to merge agent events; on panel stop or 10 s without a panel heartbeat, it exits test mode and applies the latest merged state. | Must |

@@ -10,7 +10,7 @@ Cody is built for the owner's own desk; the repository is open, and others can r
 flowchart LR
     CC["Claude Code<br/>(Windows, Linux, WSL2, devcontainer)"] -->|"command hook (curl)<br/>POST /hooks/claude-code"| BR
     CP["GitHub Copilot<br/>(VS Code agent mode)"] -->|"command hook (curl)<br/>POST /hooks/copilot"| BR
-    BR["Bridge<br/>(tray app on Windows, with WSL relay;<br/>Docker container on Linux until stage 6)"] -->|"USB serial<br/>text protocol"| FW
+    BR["Bridge<br/>(tray app and local website on Windows, with WSL relay;<br/>Docker container on Linux until stage 6)"] -->|"USB serial<br/>text protocol"| FW
     FW["ESP32-C3 firmware"] --> MD["Motor driver → geared motor → crank → arms"]
     FW --> LED["WS2812 LED"]
     FW --> BZ["Passive buzzer"]
@@ -25,7 +25,7 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device.
 - Power and data through one USB port of the host, ≤ 500 mA in total (ELE-04).
 - Parts budget ≤ CHF 25 (ELE-06); printer Prusa MK3S+, FDM, PLA/PETG (FIG-03).
 - Ready-made modules only; soldering limited to header pins and wires (ELE-01, ELE-02).
-- Host: Windows or Linux. On Windows the bridge app (TD-06) opens the ESP32's COM port directly; WSL2 and its devcontainers reach it through the WSL relay (4.6), in any WSL networking mode. `usbipd-win` is only needed to flash from a devcontainer (4.2). On Linux the bridge runs as a Docker container (TD-04) until the native Linux build (BRG-19, stage 6).
+- Host: Windows or Linux. On Windows the bridge app (TD-06) opens the ESP32's COM port directly and serves the local website (TD-08); WSL2 and its devcontainers reach the bridge through the WSL relay (4.6), in any WSL networking mode. `usbipd-win` is only needed to flash firmware from a devcontainer (4.2). On Linux the bridge runs as a Docker container (TD-04) until the native Linux build (BRG-19, stage 6).
 - Claude Code on native Windows runs command hooks in Git Bash (PowerShell without Git for Windows), so Git for Windows is needed there for the curl hooks; the setup guide says so.
 - GitHub Copilot's agent hooks are in Preview and may change; they provide no session id and no events for approval or failed turns.
 
@@ -37,13 +37,13 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device.
 | `ci/` | Entry points for CI and releases (delivery.md 2) | Shell |
 | `firmware/` | ESP32-C3 firmware with host unit tests | C++, Arduino-ESP32, PlatformIO (TD-01, TD-02) |
 | `bridge/` | Host bridge for Linux: HTTP in, serial out, config, Dockerfile, compose file. Frozen (fixes only) since 2026-11-21; retired in stage 6 | Python, Docker (TD-03, TD-04) |
-| `bridge-go/` | Bridge app for Windows (tray, autostart, HTTP in, serial out, config, log) and the WSL relay (4.6) in one Go module; NSIS installer script. Native Linux and macOS builds in stage 6 | Go, NSIS (TD-06) |
+| `bridge-go/` | Bridge app for Windows (tray, autostart, HTTP API and website, serial out, config, log, updater) and the WSL relay (4.6) in one Go module; NSIS installer script. Native Linux and macOS builds in stage 6 | Go, NSIS (TD-06, TD-08, TD-09) |
 | `cli/` | Host command `cody`: status and manual state (BRG-11, BRG-12), setup (AGT-10) | Bash, curl |
 | `hooks/` | Hook installers and configuration for Claude Code and Copilot, setup guide | Python (standard library), shell, JSON |
 | `cad/` | Code-CAD models, head mesh pipeline, model checks, print notes | Python, build123d, manifold3d (TD-05) |
 | `electronics/` | Wiring diagram: SVG block diagram of the modules with named pins and named nets, generated from a Python script | Python, schemdraw |
 | `docs/` | Build documentation: parts list and assembly instructions (DOC) | Markdown, pictures and renders |
-| `tools/` | Requirement report and developer-only hardware test panel | Python; local browser UI for the test panel (TD-07) |
+| `tools/` | Requirement report and developer utilities; the hardware test panel is served by `bridge-go/` | Python |
 
 ## 4. Interfaces
 
@@ -60,6 +60,7 @@ The hooks contain no logic: they forward the agent's own hook payload. All mappi
 - `hooks/install-claude-code` (Python, standard library only) merges these hooks into `$CLAUDE_CONFIG_DIR/settings.json` or `~/.claude/settings.json`, keeps all other settings, replaces earlier Cody hooks and can remove them (`--uninstall`). It is run once on the host and once for the devcontainers' shared `claude-config` volume (AGT-03); `cody setup` reuses it (AGT-10). `--port PORT` sets the `172.17.0.1` target port (default `8765`); for Docker Engine in WSL2, pass the relay listener port shown in its log. `--record FILE` additionally appends every payload to a file, for recording real payloads as test fixtures (sanitised before they are committed). It needs any Python 3 (3.10 or newer) and no packages: in the repository run it with `uv run python hooks/install-claude-code`, elsewhere with the Python at hand (`python3 cody-install-claude-code-<version>`, the release file). It is shipped as a release file (delivery.md 2). The setup guide lists what installing and running the hooks needs on each machine: Python 3.10 or newer for the installer; curl and a POSIX shell wherever Claude Code runs (host and every devcontainer; Git for Windows on a Windows host); the bridge running on the host.
 - `POST /hooks/copilot`: Copilot's hook JSON, sent by a command hook (`curl -m 1 --data-binary @- …`) configured in `~/.copilot/hooks/`. Session key: workspace folder (`cwd`) (AGT-06).
 - `GET /status`: device connection, firmware version, sessions with their states, merged state (BRG-11).
+- `GET /`: Windows bridge website (status, configuration, test panel and updater); opened by the tray menu on the Windows host. It is served from the same loopback listener; no separate WSL/container UI access path is provided.
 - `POST /state`: sets a state manually (`{"state": "WORKING"}`), as its own session `manual` (BRG-12); `DELETE /state` removes it, otherwise it ends by the session timeout.
 - `DELETE /sessions`: removes all sessions, including the manual one; the merged state becomes IDLE (BRG-15).
 - Host command `cody` (`cli/`): a shell script using curl on these endpoints: `cody status`, `cody state <STATE>`, `cody state clear`, `cody session clear` (BRG-15), `cody --version`; `cody setup` follows with AGT-10. Installed by copying it to `~/.local/bin`; on Windows it runs in Git Bash. It reaches the Windows app from WSL through the relay.
@@ -105,11 +106,11 @@ USB CDC of the ESP32-C3, 115200 baud, ASCII lines terminated by `\n` (a `\r` bef
 
 At boot the device sends `READY <version>`; the bridge then resends settings and state (BRG-06). Every valid command, including `PING`, counts as activity for the 30 s timeout (FW-06); the first one after power-up or a disconnect ends the "disconnected" pattern (FW-07). Sending the current state again doesn't replay its sound (FW-04: sounds play when a state is entered).
 
-**Developer test panel (TST):** the panel runs in the devcontainer, binds its local HTTP server to `127.0.0.1:8766`, and VS Code forwards that port to the browser. It opens the USB CDC serial port directly at 115200 baud using pyserial; the bridge must be stopped while the panel owns the port. A busy or inaccessible port is shown as an error. The panel sends a browser-session heartbeat; if the page disappears, it sends `TEST:STOP` when needed and releases serial. If the panel process or serial connection disappears unexpectedly, the existing 30 s firmware timeout stops the motor and enters the disconnected pattern.
+**Developer test panel (TST):** the panel is a section of the Windows bridge website, opened in the Windows browser. It uses the bridge's existing device connection; it does not open serial or require a devcontainer server. The bridge remains the sole serial owner. The panel sends a heartbeat every 2 s; closing the page stops the test immediately when possible, and a 10 s heartbeat expiry otherwise ends it. Normal agent events continue to update the merged state while device writes are suspended. On stop or expiry, the bridge sends `TEST:STOP` and applies the latest merged state.
 
 | Test command | Meaning | Req |
 |---|---|---|
-| `TEST:START` / `TEST:STOP` | Enter/exit test mode; exit clears raw test outputs and returns to IDLE | TST-01, TST-07 |
+| `TEST:START` / `TEST:STOP` | Enter/exit test mode; exit clears raw test outputs before the bridge restores the merged state | TST-01, TST-07, TST-08 |
 | `TEST:STATE:<IDLE\|WORKING\|THINKING\|APPROVAL\|COMPLETED\|ERROR>` | Apply a normal state preset without exiting test mode | TST-02 |
 | `TEST:MOTOR:START` / `TEST:MOTOR:STOP` | Start/stop the motor independently of the state preset | TST-03 |
 | `TEST:SPEED:<0-255>` | Set the shared motor speed | TST-03 |
@@ -120,9 +121,9 @@ At boot the device sends `READY <version>`; the bridge then resends settings and
 | `TEST:LED:<r>,<g>,<b>` | Temporarily show a colour, with the 50% brightness cap | TST-04 |
 | `TEST:BEEP:<APPROVAL\|SUCCESS\|WARNING>` | Play a test sound once | TST-05 |
 
-`TEST:*` commands other than `TEST:START` are accepted only in test mode. While test mode is active, normal `STATE`, `SPEED`, `VOLUME`, `LED` and `BEEP` commands are rejected so they cannot override it; `PING` and `VERSION?` remain available. Exiting test mode sets IDLE and clears manual motor/LED/sound overrides, but motor speed, frequency, kick, decay mode and volume remain in RAM and apply to normal state behavior until a later setting command or reboot. A test LED colour and test beep do not alter normal state colours or sounds.
+`TEST:*` commands other than `TEST:START` are accepted only in test mode. While test mode is active, normal `STATE`, `SPEED`, `VOLUME`, `LED` and `BEEP` commands are rejected so they cannot override it; `PING` and `VERSION?` remain available. Exiting test mode sets IDLE and clears manual motor/LED/sound overrides; the bridge then resends its current settings and latest merged state. Motor speed, frequency, kick, decay mode and volume remain in RAM and apply to normal state behavior until a later setting command or reboot. A test LED colour and test beep do not alter normal state colours or sounds.
 
-Flashing during development: the devcontainer mounts `/dev` with a device cgroup rule for USB CDC (`ttyACM`), like the bridge container, so `pio run -t upload` and the serial monitor work from VS Code. Only one process can open the port: the bridge is stopped while flashing (`docker compose stop`) and started again afterwards. On a Windows host the device reaches the devcontainer with `usbipd attach --wsl`, which takes it away from Windows: the Windows app sees a disconnect and finds the device again after `usbipd detach` (BRG-06).
+Flashing during firmware development: the devcontainer mounts `/dev` with a device cgroup rule for USB CDC (`ttyACM`), so `pio run -t upload` and the serial monitor work from VS Code. On a Windows host the device reaches the devcontainer with `usbipd attach --wsl`, which takes it away from Windows; the Windows app sees a disconnect and finds the device again after `usbipd detach` (BRG-06). For normal firmware updates, use the bridge updater in 4.7.
 
 ### 4.3 Device behaviour (defaults, tuned on the bench in step 2d)
 
@@ -161,13 +162,21 @@ Log (BRG-13, BRG-14): the bridge writes lines `YYYY-MM-DD HH:MM:SS LEVEL message
 
 **Windows app (TD-06):** same behaviour, protocol use, log format and levels as above; the differences:
 
-- Config `%APPDATA%\cody\bridge.toml`, same keys except `listen` (the app always listens on `127.0.0.1` only), plus `wsl_distros` (default: WSL's default distribution if WSL is installed; `[]` turns the relay off, 4.6). Read at start; the tray menu's "Restart" applies changes.
+- Config `%APPDATA%\cody\bridge.toml`, same keys except `listen` (the app always listens on `127.0.0.1` only), plus `wsl_distros` (default: WSL's default distribution if WSL is installed; `[]` turns the relay off, 4.6). Read at start; the website saves edits and marks that a restart is required.
 - The installer enables autostart by default; the tray menu's "Start automatically" checkbox can turn it off or back on without admin rights.
 - Device: found among the COM ports by USB vendor ID `303A` (go.bug.st/serial enumerator), accepted after `VERSION?` is answered (FW-11).
 - Log `%LOCALAPPDATA%\cody\bridge.log`, rotated by the app (lumberjack) at 10 MB with one old file kept, so at most 2 files of 10 MB (BRG-14); the relay's output goes into the same log, marked `relay <distro>`.
-- Tray (BRG-16, BRG-17): a notification-area icon in the colour of the merged state (colours of 4.3); its tooltip and menu show the version, the device connection (port and firmware version), the merged state and the number of sessions. Menu: "Start automatically" (tick box, BRG-09), "Open config", "Open log", "Restart", "Quit". Built as a GUI program (`-H=windowsgui`); WSL child processes are also created without console windows.
+- Tray (BRG-16, BRG-17, BRG-20): a notification-area icon in the colour of the merged state (colours of 4.3); its tooltip and menu show the version, device connection (port and firmware version), merged state and number of sessions. Menu: "Open Cody" (opens the local website in the default browser), "Start automatically" (tick box, BRG-09), "Open log", "Restart", "Quit". There is no native Cody window. The tray app remains a Windows GUI-subsystem program (`-H=windowsgui`); WSL child processes are also created without console windows.
 - Autostart (BRG-09, BRG-16): the tick box writes or removes the value `Cody` (path of `cody.exe`) under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`; no admin rights. Only one instance runs (a named mutex); a second start ends at once.
-- Installer (BRG-18): `cody-<version>-windows-setup.exe`, built with NSIS (`makensis` in the devcontainer) from `bridge-go/installer/`. Per user, without admin rights (`RequestExecutionLevel user`): installs `cody.exe` and `cody-linux` (the relay) into `%LOCALAPPDATA%\Programs\Cody`, adds a Start menu entry and an uninstaller listed under "Installed apps" with the version (HKCU), ends a running app before replacing files, and offers "Start Cody now" on its last page. The installer enables autostart by default. The uninstaller removes the files, the Start menu entry and the autostart value, and keeps config and log. Unsigned: SmartScreen asks once ("Run anyway").
+- Installer (BRG-18): `cody-<version>-windows-setup.exe`, built with NSIS (`makensis` in the devcontainer) from `bridge-go/installer/`. Per user, without admin rights (`RequestExecutionLevel user`): installs `cody.exe`, `cody-linux` (the relay), the pinned `espflash.exe` helper and its license notices into `%LOCALAPPDATA%\Programs\Cody`, adds a Start menu entry and an uninstaller listed under "Installed apps" with the version (HKCU), ends a running app before replacing files, and offers "Start Cody now" on its last page. The installer enables autostart by default. The uninstaller removes the files, the Start menu entry and the autostart value, and keeps config and log. Unsigned: SmartScreen asks once ("Run anyway").
+
+**Local website (BRG-20 – BRG-22, TD-08):** the existing Go `net/http` server serves embedded HTML, CSS and JavaScript at `http://127.0.0.1:8765/`; no separate frontend runtime or build toolchain. The page shows bridge version and commit, firmware version and connection status, merged state and sessions, each configured WSL distro's actual relay port, and route guidance: WSL-host hooks use `127.0.0.1:8765`; Docker Engine devcontainer hooks in WSL2 use `172.17.0.1:<relay-port>`. The latter is not the Windows bridge's internal port. The page edits `wsl_distros`, `speed`, `volume` (0 means mute), `session_timeout_min`, optional `serial_port`, and `log_level`. It validates and saves the existing TOML config file; edits are not live-applied. The page clearly says a restart is required and provides "Restart now". There is no login; the site is served only on loopback and browser mutation endpoints validate the same origin. This protects browser actions from cross-site requests but is not authentication against other local processes.
+
+#### Windows firmware updater (BRG-23, BRG-24, TD-09)
+
+The updater is initially Windows-only and is part of the local website. Checking is user-initiated; it queries the latest stable release of `gravity981/agent-cody`, displays the installed and available firmware versions, and requires explicit confirmation before downloading. Network and release errors are shown, never treated as "no update". If the installed version is known and equal to or newer than the release, it reports that no update is available. If the installed version is unknown, it identifies that fact and permits flashing only after explicit confirmation.
+
+After confirmation, the app downloads only `cody-firmware-<version>.bin` from that release and verifies its SHA-256 digest from GitHub release asset metadata before flashing. Missing or mismatched digests fail closed. The app suspends device writes, releases the selected COM port and runs the pinned Windows `espflash` helper to write the combined image at address `0x0`. The helper runs without a console window; its output is captured and shown as website progress and errors. It first attempts automatic bootloader entry; if that fails, the page gives manual bootloader instructions and allows a retry. The bridge reacquires the port after success or failure, then resends settings and the latest merged agent state and displays the resulting firmware version or an explicit failure.
 
 ### 4.5 Mechanical interfaces
 
@@ -180,7 +189,7 @@ Log (BRG-13, BRG-14): the bridge writes lines `YYYY-MM-DD HH:MM:SS LEVEL message
 WSL2 in NAT mode and devcontainers in Docker Engine in WSL2 cannot reach `127.0.0.1` of Windows, and no network mode is forced on them. The Windows app therefore brings the bridge into WSL:
 
 - For each distribution in `wsl_distros`, the app starts `wsl.exe -d <distro> -e <install folder as /mnt/… path>/cody-linux relay` and starts it again (after 5 s) when it ends. While the app runs, it keeps that WSL distribution running.
-- The relay (Linux build of the same Go module) listens in WSL on `127.0.0.1:8765` and on `172.17.0.1` using the first available port in `8766`–`8770` (retried every 5 s while the Docker gateway is unavailable or all candidate ports are occupied). Set the hook installer’s `--port` to the actual gateway listener port shown in the relay log. The relay accepts only loopback and `172.16.0.0/12` (BRG-08), and tunnels every TCP connection as a yamux stream over its stdin/stdout to the app, which connects it to its own `127.0.0.1:8765`. Before yamux starts, the relay writes a binary marker; the app waits for it and discards any preceding WSL startup output so it cannot corrupt the tunnel stream. All endpoints work through it (hooks, `cody status`, …); the `cody` command remains unchanged.
+- The relay (Linux build of the same Go module) listens in WSL on `127.0.0.1:8765` and on `172.17.0.1` using the first available port in `8766`–`8770` (retried every 5 s while the Docker gateway is unavailable or all candidate ports are occupied). Set the hook installer’s `--port` to the actual gateway listener port shown in the relay log. The relay accepts only loopback and `172.16.0.0/12` (BRG-08), and tunnels every TCP connection as a yamux stream over its stdin/stdout to the app, which connects it to its own `127.0.0.1:8765`. Before yamux starts, the relay writes a binary marker; the app waits for it and discards any preceding WSL startup output so it cannot corrupt the tunnel stream. Hook and CLI endpoints are supported through it; the website is intended for the Windows browser and has no separate WSL/container UI route. The `cody` command remains unchanged.
 - No TCP from WSL to Windows, so no firewall rule and no dependency on the networking mode. In mirrored mode `127.0.0.1` in WSL may already reach the app directly and reserve port `8765`; if so, the relay serves `172.17.0.1` only, on its selected alternate port.
 - The Linux Docker bridge must not run in the same WSL distribution (it would own its configured listen ports); on a Windows host the Windows app replaces it.
 
@@ -201,7 +210,8 @@ WSL2 in NAT mode and devcontainers in Docker Engine in WSL2 cannot reach `127.0.
 | Python dependencies | uv workspace (members `bridge`, `cad`, `tools`) with one lockfile `uv.lock`; tests with pytest | uv 0.13.7, pytest 9.2.0 | this table |
 | Static checks | ruff (Python), clang-format (C++), shellcheck (shell), gofmt and go vet (Go, from step 2g) | ruff 0.17.3, clang-format 23.1.5, shellcheck 0.11.0, Go's own tools | this table |
 | Wiring diagram (ELE-07) | schemdraw (Python), SVG output | pinned in `uv.lock` when added in step 2d | this table |
-| Developer hardware test panel | Python standard library HTTP server, HTML/JavaScript, pyserial | Python 3.14; pyserial 3.5 | TD-07 |
+| Bridge website and hardware test panel | Go `net/http`, embedded HTML/CSS/JavaScript; test controls through the bridge-owned device connection | Go 1.27.4; no frontend runtime | TD-08 |
+| Windows firmware updater helper | `espflash` standalone Windows binary; version and SHA-256 pinned in release build | v4.7.0 at decision time | TD-09 |
 
 Every tool has a pinned version and is installed in the devcontainer (`.devcontainer/`), never only on someone's machine. How CI gets the same tools is decided in delivery.md 2.
 
@@ -283,7 +293,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 #### TD-07 Developer hardware test panel: local browser UI in the devcontainer
 
-**Status:** decided (2026-11-21)
+**Status:** decided (2026-11-21); superseded by TD-08
 
 **Context:** TST-01 – TST-07. The owner needs a usable bench panel with fields and buttons, while the USB device is attached to the devcontainer. The tool is developer-only and must not change or depend on the bridge.
 
@@ -293,13 +303,37 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 **Consequences:** pyserial is a direct dependency of `cody-tools`; VS Code forwards port 8766 and opens the panel. Only one process can open the USB port, so the bridge is stopped during testing. The UI shows serial connection errors rather than silently falling back. Host-side tests use a fake serial device; output tuning and decay-mode behavior still require bench verification.
 
+#### TD-08 Windows control interface: embedded local website
+
+**Status:** decided (2026-11-21)
+
+**Context:** BRG-20 – BRG-22 and TST-06, TST-08. The owner wants status, configuration and hardware test controls, and later the updater, without a native settings window. The bridge already has a loopback HTTP server and a Go tray icon.
+
+**Options evaluated:** a native Win32 window (no new dependency, but custom Windows UI code and not reusable); Fyne (cross-platform widgets, but [Windows cross-compilation requires cgo and a target C toolchain](https://docs.fyne.io/started/cross-compiling/), conflicting with the current no-cgo build); an embedded local website (uses the existing HTTP server and existing HTML/JavaScript panel patterns, no frontend runtime or additional service).
+
+**Decision:** retain the tray icon as the status indicator and launcher, with "Open Cody" opening the default browser at `http://127.0.0.1:8765/`. Serve embedded HTML/CSS/JavaScript from the Go app. The site has status, configuration, test panel and updater sections; the test panel is served by the bridge and never opens serial directly. The site is loopback-only, has no login, and checks same-origin on mutating browser routes.
+
+**Consequences:** the website's configuration writes the existing TOML file and requires an app restart. The devcontainer's Python/pyserial panel is replaced. Same-origin checks protect browser mutation routes from cross-site requests, not from other local processes; the existing no-auth local bridge model remains.
+
+#### TD-09 Firmware updater helper: espflash sidecar
+
+**Status:** decided (2026-11-21)
+
+**Context:** BRG-23 and BRG-24. Firmware updates must run from the Windows bridge, which owns the COM port, and must flash the existing combined image at address `0x0` without requiring Python on the user's machine.
+
+**Options evaluated:** [`espflash`](https://github.com/esp-rs/espflash) standalone binary (native Windows executable, ESP32-C3 support, `write-bin`, dual MIT/Apache-2.0 license); Espressif [`esptool`](https://github.com/espressif/esptool) standalone binary (mature and official, but substantially larger and GPL-2.0-or-later); implement the serial bootloader protocol in Go (avoids a sidecar, but adds substantial protocol, reliability and recovery work).
+
+**Decision:** bundle the pinned Windows x86-64 `espflash` v4.7.0 helper with the installer, including its license notices. Verify the firmware release asset digest before invoking it; use `write-bin` at `0x0`.
+
+**Consequences:** the Windows installer grows by the helper binary; the build pins its upstream version and SHA-256. The updater is Windows-only in stage 2; native Linux/macOS updater support is not included in BRG-19 or stage 6 unless separately specified.
+
 ## 6. Version information
 
 | Artifact | How it reveals version and commit (REL-02) |
 |---|---|
 | Firmware | `VERSION?` command (FW-11) and the `READY <version>` line at boot; version in the `.bin` file name |
 | Bridge (Docker) | `--version` and `GET /status` (BRG-10); image tag and OCI labels |
-| Bridge app (Windows) and relay | `GET /status` and the tray menu (BRG-10); version in the installer's file name and under "Installed apps"; `cody-linux --version` |
+| Bridge app (Windows) and relay | `GET /status`, the website and tray menu (BRG-10, BRG-21); version in the installer's file name and under "Installed apps"; `cody-linux --version` |
 | Print files | Version in file names and in the 3MF metadata |
 | Hook installer, parts list, assembly instructions, wiring | Version in file names of the release files |
 

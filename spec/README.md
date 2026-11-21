@@ -57,18 +57,18 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | TRC | Requirement traceability | 1 | 7 | 1 | implemented |
 | REL | CI, versions and releases | 2 | 6 | 1 | implemented |
 | FW | Firmware | 3 | 12 | 2 | in progress |
-| BRG | Host bridge | 4 | 19 | 2, 6 | in progress |
+| BRG | Host bridge | 4 | 24 | 2, 6 | in progress |
 | AGT | Agent integrations | 5 | 12 | 2, 3 | in progress |
 | ELE | Electronics | 6 | 7 | 2, 4, 5 | specified |
 | FIG | Figure and mechanism | 7 | 17 | 4, 5 | specified |
 | DOC | Build documentation | 8 | 7 | 2, 4, 5 | specified |
-| TST | Hardware test panel | 9 | 7 | 2 | in progress |
+| TST | Hardware test panel | 9 | 8 | 2 | in progress |
 
 ## Decisions
 
 | Date | Decision | Recorded in |
 |---|---|---|
-| 2026-11-05 | Built for the owner's own desk; repo open, no build kit for others (no polished BOM, assembly guide or toolchain-free flashing). *Build kit part superseded on 2026-11-06 (DOC).* | README.md (this table) |
+| 2026-11-05 | Built for the owner's own desk; repo open, no build kit for others (no polished BOM, assembly guide or toolchain-free initial flashing). *Build kit part superseded on 2026-11-06 (DOC); firmware updating from the running Windows bridge was added separately on 2026-11-21.* | README.md (this table) |
 | 2026-11-05 | Claude Code and GitHub Copilot (VS Code) integrations are both Must. | requirements.md (AGT) |
 | 2026-11-05 | A host-side bridge (localhost HTTP in, USB serial out) is used, because hooks run in containers/WSL that can't open the serial port, and it merges sessions. Alternatives rejected: hook writes serial directly; Wi-Fi on the ESP32. | requirements.md (BRG) |
 | 2026-11-05 | The bridge runs on Linux and WSL2 (USB attached with usbipd-win on WSL); containerizing it is evaluated in architecture. | architecture.md 2 |
@@ -95,9 +95,10 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-06 | Wiring diagram (ELE-07) as an SVG block diagram with named pins and nets, generated from Python with schemdraw (added in step 2d). | architecture.md 3, 5.1 |
 | 2026-11-06 | New BRG-15: `cody session clear` (`DELETE /sessions`) clears all sessions, to reset the bridge when a session is stale (e.g. Claude Code killed without `SessionEnd`). | requirements.md 4, architecture.md 4.1 |
 | 2026-11-21 | Bridge redesigned (TD-06): a Go tray app on Windows with "Start automatically" (no Windows service), installed with an NSIS installer without admin rights; WSL2 and its devcontainers reach it through a relay that the app starts with `wsl.exe`, so no WSL networking mode is forced. New BRG-16 – BRG-19, AGT-12; AGT-02 includes Windows. The Python Docker bridge stays for Linux, frozen; native Linux and macOS in the new stage 6, which retires it. Steps 2g – 2i added to stage 2 after 2d; Docker replug dropped from 2d. `cody` shell command and Python hook installer stay; consolidation decided at stage 3 start. | requirements.md 4–5, architecture.md 2–4, 5, TD-06, implementation-plan.md |
-| 2026-11-21 | Added TST: a dev-only browser panel in the devcontainer directly owns USB serial, without bridge changes. The permanent firmware test mode exercises all peripherals; motor tunings and volume apply across normal states until changed or reboot, while raw LED and sound tests are temporary. Settings are not saved across reboot. | requirements.md 9, architecture.md 4.2, 5.1–5.2, TD-07, implementation-plan.md |
+| 2026-11-21 | Initial TST design: a dev-only browser panel in the devcontainer directly owns USB serial. Superseded by the local bridge website decision below; the firmware test mode and volatile tuning behavior remain. | requirements.md 9, architecture.md TD-07, implementation-plan.md |
 | 2026-11-21 | In WSL mirrored networking, Windows owns bridge port 8765, so the Docker-gateway relay uses the first available port in 8766–8770. The hook installer can set the gateway target port explicitly (`--port`, default 8765); hooks require the expected bridge response and no longer probe a port range. | architecture.md 4.1, 4.6 |
 | 2026-11-21 | The Windows tray app starts its WSL child processes without showing console windows. | requirements.md 4, architecture.md 4.3, 4.6 |
+| 2026-11-21 | The Windows tray remains a launcher/status indicator; Cody serves one embedded local website for status, configuration, the bridge-backed test panel and firmware updates. The site is loopback-only with same-origin checks for browser mutations; settings require restart. The updater is Windows-first and uses a pinned espflash helper. | requirements.md 4, 9; architecture.md 4, 5, TD-08, TD-09; delivery.md 2; implementation-plan.md |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points
