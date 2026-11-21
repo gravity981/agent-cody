@@ -162,11 +162,12 @@ Log (BRG-13, BRG-14): the bridge writes lines `YYYY-MM-DD HH:MM:SS LEVEL message
 **Windows app (TD-06):** same behaviour, protocol use, log format and levels as above; the differences:
 
 - Config `%APPDATA%\cody\bridge.toml`, same keys except `listen` (the app always listens on `127.0.0.1` only), plus `wsl_distros` (default: WSL's default distribution if WSL is installed; `[]` turns the relay off, 4.6). Read at start; the tray menu's "Restart" applies changes.
+- The installer enables autostart by default; the tray menu's "Start automatically" checkbox can turn it off or back on without admin rights.
 - Device: found among the COM ports by USB vendor ID `303A` (go.bug.st/serial enumerator), accepted after `VERSION?` is answered (FW-11).
 - Log `%LOCALAPPDATA%\cody\bridge.log`, rotated by the app (lumberjack) at 10 MB with one old file kept, so at most 2 files of 10 MB (BRG-14); the relay's output goes into the same log, marked `relay <distro>`.
 - Tray (BRG-16, BRG-17): a notification-area icon in the colour of the merged state (colours of 4.3); its tooltip and menu show the version, the device connection (port and firmware version), the merged state and the number of sessions. Menu: "Start automatically" (tick box, BRG-09), "Open config", "Open log", "Restart", "Quit". Built as a GUI program (`-H=windowsgui`), so it opens no console window.
 - Autostart (BRG-09, BRG-16): the tick box writes or removes the value `Cody` (path of `cody.exe`) under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`; no admin rights. Only one instance runs (a named mutex); a second start ends at once.
-- Installer (BRG-18): `cody-<version>-windows-setup.exe`, built with NSIS (`makensis` in the devcontainer) from `bridge-go/installer/`. Per user, without admin rights (`RequestExecutionLevel user`): installs `cody.exe` and `cody-linux` (the relay) into `%LOCALAPPDATA%\Programs\Cody`, adds a Start menu entry and an uninstaller listed under "Installed apps" with the version (HKCU), ends a running app before replacing files, and offers "Start Cody now" on its last page. The uninstaller removes the files, the Start menu entry and the autostart value, and keeps config and log. Unsigned: SmartScreen asks once ("Run anyway").
+- Installer (BRG-18): `cody-<version>-windows-setup.exe`, built with NSIS (`makensis` in the devcontainer) from `bridge-go/installer/`. Per user, without admin rights (`RequestExecutionLevel user`): installs `cody.exe` and `cody-linux` (the relay) into `%LOCALAPPDATA%\Programs\Cody`, adds a Start menu entry and an uninstaller listed under "Installed apps" with the version (HKCU), ends a running app before replacing files, and offers "Start Cody now" on its last page. The 2h installer contains `cody.exe`; step 2i adds `cody-linux` when the WSL relay is implemented. The installer enables autostart by default. The uninstaller removes the files, the Start menu entry and the autostart value, and keeps config and log. Unsigned: SmartScreen asks once ("Run anyway").
 
 ### 4.5 Mechanical interfaces
 
@@ -194,7 +195,7 @@ WSL2 in NAT mode and devcontainers in Docker Engine in WSL2 cannot reach `127.0.
 | Bridge (Linux, until stage 6) | Python | 3.14 | TD-03 |
 | Bridge runtime (Linux, until stage 6) | Docker container, image on GHCR | – | TD-04 |
 | Bridge app (Windows) and WSL relay | Go; fyne.io/systray, go.bug.st/serial, hashicorp/yamux, pelletier/go-toml/v2, natefinch/lumberjack; tests with go test and gotestsum (JUnit) | Go 1.27.4, gotestsum 1.13.0; libraries pinned in `go.sum` | TD-06 |
-| Windows installer | NSIS (`makensis`) | 3.x from the devcontainer's Debian package, version pinned when added in step 2h | TD-06 |
+| Windows installer | NSIS (`makensis`) | 3.08-3+deb12u1 from Debian Bookworm | TD-06 |
 | CAD | build123d; head mesh from Meshy.ai, processed with manifold3d | build123d 0.13.0, manifold3d 3.5.4 | TD-05 |
 | CI environment | Devcontainer (devcontainers/ci), Docker via docker-outside-of-docker | – | delivery.md 2 |
 | Python dependencies | uv workspace (members `bridge`, `cad`, `tools`) with one lockfile `uv.lock`; tests with pytest | uv 0.13.7, pytest 9.2.0 | this table |

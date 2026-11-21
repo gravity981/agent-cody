@@ -1,11 +1,13 @@
 # Development environment and CI environment (spec/delivery.md 2).
 # Every tool has a pinned version (spec/architecture.md 5.1).
 ARG UV_VERSION=0.13.7
+ARG NSIS_VERSION=3.08-3+deb12u1
 FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
 
 FROM mcr.microsoft.com/devcontainers/base:bookworm@sha256:99f5250dd2d5f8b11046d5662dd94c1e3c1dae56b560c7caad5ceb7edf349046
 
 ARG UV_VERSION
+ARG NSIS_VERSION
 
 # Mount point for the shared claude-config volume, owned by vscode so the empty
 # volume inherits that ownership on first mount
@@ -14,7 +16,7 @@ RUN mkdir -p /home/vscode/.claude && chown vscode:vscode /home/vscode/.claude
 # Host compiler for the firmware unit tests (PlatformIO native environment);
 # libgl1 for OpenCascade (build123d)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential xz-utils libgl1 \
+    && apt-get install -y --no-install-recommends build-essential xz-utils libgl1 "nsis=${NSIS_VERSION}" \
     && rm -rf /var/lib/apt/lists/*
 
 # Go toolchain, checksum-verified; gotestsum supplies the JUnit output consumed by cody-report

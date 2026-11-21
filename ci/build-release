@@ -25,6 +25,9 @@ sed -e "s#@IMAGE@#$(cody_bridge_image)#g" -e "s#@VERSION@#$VERSION#g" bridge/com
 sed -e "s#^CODY_VERSION=\"0.0.0+unknown\"#CODY_VERSION=\"$VERSION\"#" cli/cody > "$RELEASE_DIR/cody-$VERSION"
 chmod +x "$RELEASE_DIR/cody-$VERSION"
 
+# Windows tray app and per-user installer (BRG-16 – BRG-18)
+RELEASE_DIR="$RELEASE_DIR" ci/build-windows-installer
+
 # Wiring diagram (ELE-07)
 cp electronics/wiring.svg "$RELEASE_DIR/cody-wiring-$VERSION.svg"
 

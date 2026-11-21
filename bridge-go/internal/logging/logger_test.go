@@ -9,6 +9,19 @@ import (
 	"time"
 )
 
+type closeTrackingWriter struct {
+	closed bool
+}
+
+func (w *closeTrackingWriter) Write(data []byte) (int, error) {
+	return len(data), nil
+}
+
+func (w *closeTrackingWriter) Close() error {
+	w.closed = true
+	return nil
+}
+
 func Test_req_BRG_13_FormatsLogsAndHonorsDebugLevel(t *testing.T) {
 	var output bytes.Buffer
 	logger := New(&output, "info")
@@ -28,6 +41,16 @@ func Test_req_BRG_13_FormatsLogsAndHonorsDebugLevel(t *testing.T) {
 	logger.Debugf("-> PING")
 	if !strings.HasSuffix(output.String(), "DEBUG -> PING\n") {
 		t.Fatalf("debug log missing: %s", output.String())
+	}
+}
+
+func TestLoggerCloseClosesItsWriter(t *testing.T) {
+	writer := &closeTrackingWriter{}
+	if err := New(writer, "info").Close(); err != nil {
+		t.Fatal(err)
+	}
+	if !writer.closed {
+		t.Fatal("logger did not close its writer")
 	}
 }
 

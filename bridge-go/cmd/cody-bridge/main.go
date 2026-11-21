@@ -55,24 +55,43 @@ func run(args []string) int {
 			return 2
 		}
 	}
-	cfg, err := config.Load(path)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "cody-bridge: config: %v\n", err)
-		return 2
+	if code, handled := runWindowsTray(path); handled {
+		return code
 	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	if err := runBridge(ctx, path, nil); err != nil {
+		fmt.Fprintf(os.Stderr, "cody-bridge: %v\n", err)
+		return 1
+	}
+	return 0
+}
 
+func runBridge(
+	ctx context.Context,
+	configPath string,
+	publishStatus func(bridge.Status),
+) (resultErr error) {
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return fmt.Errorf("config: %w", err)
+	}
 	logPath, err := config.DefaultLogPath()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "cody-bridge: log path: %v\n", err)
-		return 1
+		return fmt.Errorf("log path: %w", err)
 	}
 	logger, err := logging.NewRotating(logPath, cfg.LogLevel)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "cody-bridge: logging: %v\n", err)
-		return 1
+		return fmt.Errorf("logging: %w", err)
 	}
+	defer func() {
+		if err := logger.Close(); err != nil {
+			resultErr = errors.Join(resultErr, fmt.Errorf("close log: %w", err))
+		}
+	}()
+
 	version, commit := buildinfo.Current()
-	logger.Infof("cody-bridge %s %s, config %s", version, commit, path)
+	logger.Infof("cody-bridge %s %s, config %s", version, commit, configPath)
 
 	serialPort := ""
 	if cfg.SerialPort != nil {
@@ -93,28 +112,39 @@ func run(args []string) int {
 			serverErrors <- err
 		}
 	}()
+	if publishStatus != nil {
+		publishStatus(app.Status(time.Now()))
+	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
 	ticker := time.NewTicker(loopPeriod)
 	defer ticker.Stop()
-
+	statusTicker := time.NewTicker(time.Second)
+	defer statusTicker.Stop()
 	for {
 		select {
 		case now := <-ticker.C:
 			app.Tick(now)
+		case now := <-statusTicker.C:
+			if publishStatus != nil {
+				publishStatus(app.Status(now))
+			}
 		case err := <-serverErrors:
 			logger.Warningf("HTTP server stopped: %v", err)
 			link.Close(time.Now())
-			return 1
+			return fmt.Errorf("HTTP server stopped: %w", err)
 		case <-ctx.Done():
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			if err := server.Shutdown(shutdownCtx); err != nil {
-				logger.Warningf("HTTP server shutdown: %v", err)
-			}
+			err := server.Shutdown(shutdownCtx)
 			cancel()
 			link.Close(time.Now())
-			return 0
+			if err != nil {
+				logger.Warningf("HTTP server shutdown: %v", err)
+				if closeErr := server.Close(); closeErr != nil {
+					err = errors.Join(err, closeErr)
+				}
+				return fmt.Errorf("HTTP server shutdown: %w", err)
+			}
+			return nil
 		}
 	}
 }

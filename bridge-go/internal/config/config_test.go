@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -54,5 +55,34 @@ func Test_req_BRG_07_RejectsInvalidConfig(t *testing.T) {
 		if _, err := Load(path); err == nil {
 			t.Errorf("Load accepted %q", content)
 		}
+	}
+}
+
+func Test_req_BRG_16_DefaultConfigAndLogPathsUseUserDataRoots(t *testing.T) {
+	root := t.TempDir()
+	configRoot := filepath.Join(root, "roaming")
+	cacheRoot := filepath.Join(root, "local")
+	if runtime.GOOS == "windows" {
+		t.Setenv("APPDATA", configRoot)
+		t.Setenv("LOCALAPPDATA", cacheRoot)
+	} else {
+		t.Setenv("XDG_CONFIG_HOME", configRoot)
+		t.Setenv("XDG_CACHE_HOME", cacheRoot)
+	}
+
+	configPath, err := DefaultConfigPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(configRoot, "cody", "bridge.toml"); configPath != want {
+		t.Fatalf("DefaultConfigPath() = %q, want %q", configPath, want)
+	}
+
+	logPath, err := DefaultLogPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(cacheRoot, "cody", "bridge.log"); logPath != want {
+		t.Fatalf("DefaultLogPath() = %q, want %q", logPath, want)
 	}
 }

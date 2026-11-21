@@ -66,6 +66,15 @@ func (l *Logger) Debugf(format string, args ...any) {
 	}
 }
 
+func (l *Logger) Close() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if closer, ok := l.out.(io.Closer); ok {
+		return closer.Close()
+	}
+	return nil
+}
+
 func (l *Logger) write(level, format string, args ...any) {
 	message := fmt.Sprintf(format, args...)
 	l.mu.Lock()
