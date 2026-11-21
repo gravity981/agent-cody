@@ -8,9 +8,9 @@ Cody is built for the owner's own desk; the repository is open, and others can r
 
 ```mermaid
 flowchart LR
-    CC["Claude Code<br/>(Linux, WSL2, devcontainer)"] -->|"command hook (curl)<br/>POST /hooks/claude-code"| BR
+    CC["Claude Code<br/>(Windows, Linux, WSL2, devcontainer)"] -->|"command hook (curl)<br/>POST /hooks/claude-code"| BR
     CP["GitHub Copilot<br/>(VS Code agent mode)"] -->|"command hook (curl)<br/>POST /hooks/copilot"| BR
-    BR["Bridge<br/>(Docker container on Linux/WSL2)"] -->|"USB serial<br/>text protocol"| FW
+    BR["Bridge<br/>(tray app on Windows, with WSL relay;<br/>Docker container on Linux until stage 6)"] -->|"USB serial<br/>text protocol"| FW
     FW["ESP32-C3 firmware"] --> MD["Motor driver → geared motor → crank → arms"]
     FW --> LED["WS2812 LED"]
     FW --> BZ["Passive buzzer"]
@@ -25,7 +25,8 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device.
 - Power and data through one USB port of the host, ≤ 500 mA in total (ELE-04).
 - Parts budget ≤ CHF 25 (ELE-06); printer Prusa MK3S+, FDM, PLA/PETG (FIG-03).
 - Ready-made modules only; soldering limited to header pins and wires (ELE-01, ELE-02).
-- Host: Linux or WSL2. On WSL2 the ESP32's USB device reaches WSL through `usbipd-win`. A one-time host setup is accepted for plug & play (BRG-06): install usbipd, `usbipd bind` the device once, and start `usbipd attach --wsl --auto-attach` at Windows login (e.g. a scheduled task); afterwards plug and replug need no action. The setup is described in the repository.
+- Host: Windows or Linux. On Windows the bridge app (TD-06) opens the ESP32's COM port directly; WSL2 and its devcontainers reach it through the WSL relay (4.6), in any WSL networking mode. `usbipd-win` is only needed to flash from a devcontainer (4.2). On Linux the bridge runs as a Docker container (TD-04) until the native Linux build (BRG-19, stage 6).
+- Claude Code on native Windows runs command hooks in Git Bash (PowerShell without Git for Windows), so Git for Windows is needed there for the curl hooks; the setup guide says so.
 - GitHub Copilot's agent hooks are in Preview and may change; they provide no session id and no events for approval or failed turns.
 
 ## 3. Overview
@@ -35,7 +36,8 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device.
 | `spec/` | Specification | Markdown |
 | `ci/` | Entry points for CI and releases (delivery.md 2) | Shell |
 | `firmware/` | ESP32-C3 firmware with host unit tests | C++, Arduino-ESP32, PlatformIO (TD-01, TD-02) |
-| `bridge/` | Host bridge: HTTP in, serial out, config, Dockerfile, compose file | Python, Docker (TD-03, TD-04) |
+| `bridge/` | Host bridge for Linux: HTTP in, serial out, config, Dockerfile, compose file. Frozen (fixes only) since 2026-11-21; retired in stage 6 | Python, Docker (TD-03, TD-04) |
+| `bridge-go/` | Bridge app for Windows (tray, autostart, HTTP in, serial out, config, log) and the WSL relay (4.6) in one Go module; NSIS installer script. Native Linux and macOS builds in stage 6 | Go, NSIS (TD-06) |
 | `cli/` | Host command `cody`: status and manual state (BRG-11, BRG-12), setup (AGT-10) | Bash, curl |
 | `hooks/` | Hook installers and configuration for Claude Code and Copilot, setup guide | Python (standard library), shell, JSON |
 | `cad/` | Code-CAD models, head mesh pipeline, model checks, print notes | Python, build123d, manifold3d (TD-05) |
@@ -49,18 +51,18 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device.
 
 The hooks contain no logic: they forward the agent's own hook payload. All mapping lives in the bridge, so it is tested in CI with recorded payloads.
 
-- Port `8765`. The bridge listens only on loopback and the local Docker interfaces, including the default bridge gateway `172.17.0.1` (BRG-08): its container uses the host network and binds exactly the configured addresses (`listen`, default `127.0.0.1` and `172.17.0.1`); only loopback and Docker's address range `172.16.0.0/12` are accepted. The hooks are command hooks using curl that try `localhost`, then `host.docker.internal`, then `172.17.0.1`, within 1 s in total (AGT-07), so the same configuration works on the host and in devcontainers (AGT-11), also with Docker Engine in WSL2, where `host.docker.internal` is not defined. Devcontainers that share the Claude Code configuration (e.g. the `claude-config` volume) are set up once; they need curl.
-- `cody setup` (AGT-10) starts the bridge container with autostart, writes the hooks of both agents at user level, checks the device connection and reports what is missing (e.g. usbipd on WSL2).
+- Port `8765`. The Docker bridge on Linux listens only on loopback and the local Docker interfaces, including the default bridge gateway `172.17.0.1` (BRG-08): its container uses the host network and binds exactly the configured addresses (`listen`, default `127.0.0.1` and `172.17.0.1`); only loopback and Docker's address range `172.16.0.0/12` are accepted. The hooks are command hooks using curl that try `localhost`, then `host.docker.internal`, then `172.17.0.1`, within 1 s in total (AGT-07), so the same configuration works on the host and in devcontainers (AGT-11), also with Docker Engine in WSL2, where `host.docker.internal` is not defined. On Windows the bridge app listens only on `127.0.0.1`: the Windows host reaches it on `127.0.0.1`, Docker Desktop devcontainers on `host.docker.internal`, and WSL2 and devcontainers in Docker Engine in WSL2 through the WSL relay on `127.0.0.1` and `172.17.0.1` in WSL (4.6), so the hooks stay the same (AGT-12). Devcontainers that share the Claude Code configuration (e.g. the `claude-config` volume) are set up once; they need curl.
+- `cody setup` (AGT-10) starts the bridge (container, or the Windows app; whether the Go program takes over `cody` and the hook installer is decided at stage 3 start) with autostart, writes the hooks of both agents at user level, checks the device connection and reports what is missing (e.g. usbipd on WSL2).
 - `POST /hooks/claude-code`: Claude Code's hook JSON as is, sent by the curl command hook configured in `~/.claude/settings.json`. Session key: `session_id`; event: `hook_event_name`.
 - Claude Code hook: one inline shell command per event, with no file paths, so the same text works on the host and in containers:
   `p=$(cat); for h in 127.0.0.1 host.docker.internal 172.17.0.1; do printf '%s' "$p" | curl -s -o /dev/null --connect-timeout 0.3 -m 0.3 -H 'Expect:' --data-binary @- "http://$h:8765/hooks/claude-code" 2>/dev/null && break; done; exit 0`
   It never prints anything (stdout of some hooks goes into Claude's context), always exits 0, and takes at most about 0.9 s; the hook's own `timeout` is 2 s. The payload is piped, not passed as an argument, because tool outputs can be several MB; the bridge accepts up to 32 MB. `Expect:` stops curl from waiting for a `100 Continue` the bridge never sends.
-- `hooks/install-claude-code` (Python, standard library only) merges these hooks into `$CLAUDE_CONFIG_DIR/settings.json` or `~/.claude/settings.json`, keeps all other settings, replaces earlier Cody hooks and can remove them (`--uninstall`). It is run once on the host and once for the devcontainers' shared `claude-config` volume (AGT-03); `cody setup` reuses it (AGT-10). `--record FILE` additionally appends every payload to a file, for recording real payloads as test fixtures (sanitised before they are committed). It needs any Python 3 (3.10 or newer) and no packages: in the repository run it with `uv run python hooks/install-claude-code`, elsewhere with the Python at hand (`python3 cody-install-claude-code-<version>`, the release file). It is shipped as a release file (delivery.md 2). The setup guide lists what installing and running the hooks needs on each machine: Python 3.10 or newer for the installer; curl and a POSIX shell wherever Claude Code runs (host and every devcontainer); the bridge running on the host.
+- `hooks/install-claude-code` (Python, standard library only) merges these hooks into `$CLAUDE_CONFIG_DIR/settings.json` or `~/.claude/settings.json`, keeps all other settings, replaces earlier Cody hooks and can remove them (`--uninstall`). It is run once on the host and once for the devcontainers' shared `claude-config` volume (AGT-03); `cody setup` reuses it (AGT-10). `--record FILE` additionally appends every payload to a file, for recording real payloads as test fixtures (sanitised before they are committed). It needs any Python 3 (3.10 or newer) and no packages: in the repository run it with `uv run python hooks/install-claude-code`, elsewhere with the Python at hand (`python3 cody-install-claude-code-<version>`, the release file). It is shipped as a release file (delivery.md 2). The setup guide lists what installing and running the hooks needs on each machine: Python 3.10 or newer for the installer; curl and a POSIX shell wherever Claude Code runs (host and every devcontainer; Git for Windows on a Windows host); the bridge running on the host.
 - `POST /hooks/copilot`: Copilot's hook JSON, sent by a command hook (`curl -m 1 --data-binary @- …`) configured in `~/.copilot/hooks/`. Session key: workspace folder (`cwd`) (AGT-06).
 - `GET /status`: device connection, firmware version, sessions with their states, merged state (BRG-11).
 - `POST /state`: sets a state manually (`{"state": "WORKING"}`), as its own session `manual` (BRG-12); `DELETE /state` removes it, otherwise it ends by the session timeout.
 - `DELETE /sessions`: removes all sessions, including the manual one; the merged state becomes IDLE (BRG-15).
-- Host command `cody` (`cli/`): a shell script using curl on these endpoints: `cody status`, `cody state <STATE>`, `cody state clear`, `cody session clear` (BRG-15), `cody --version`; `cody setup` follows with AGT-10. Installed by copying it to `~/.local/bin`.
+- Host command `cody` (`cli/`): a shell script using curl on these endpoints: `cody status`, `cody state <STATE>`, `cody state clear`, `cody session clear` (BRG-15), `cody --version`; `cody setup` follows with AGT-10. Installed by copying it to `~/.local/bin`; on Windows it runs in Git Bash. It reaches the Windows app from WSL through the relay.
 - Hooks return within 1 s and never fail the agent (AGT-07).
 
 **Claude Code mapping (AGT-01):**
@@ -103,7 +105,7 @@ USB CDC of the ESP32-C3, 115200 baud, ASCII lines terminated by `\n` (a `\r` bef
 
 At boot the device sends `READY <version>`; the bridge then resends settings and state (BRG-06). Every valid command, including `PING`, counts as activity for the 30 s timeout (FW-06); the first one after power-up or a disconnect ends the "disconnected" pattern (FW-07). Sending the current state again doesn't replay its sound (FW-04: sounds play when a state is entered).
 
-Flashing during development: the devcontainer mounts `/dev` with a device cgroup rule for USB CDC (`ttyACM`), like the bridge container, so `pio run -t upload` and the serial monitor work from VS Code. Only one process can open the port: the bridge is stopped while flashing (`docker compose stop`) and started again afterwards.
+Flashing during development: the devcontainer mounts `/dev` with a device cgroup rule for USB CDC (`ttyACM`), like the bridge container, so `pio run -t upload` and the serial monitor work from VS Code. Only one process can open the port: the bridge is stopped while flashing (`docker compose stop`) and started again afterwards. On a Windows host the device reaches the devcontainer with `usbipd attach --wsl`, which takes it away from Windows: the Windows app sees a disconnect and finds the device again after `usbipd detach` (BRG-06).
 
 ### 4.3 Device behaviour (defaults, tuned on the bench in step 2d)
 
@@ -132,17 +134,35 @@ Default pins of the ESP32-C3 SuperMini (avoiding the boot pins 2, 8, 9 and the U
 
 ### 4.4 Bridge configuration (BRG-07)
 
-`~/.config/cody/bridge.toml` on the host, mounted read-only into the container by the compose file; a missing file or key means the default. Keys: `serial_port` (optional override), `speed` (default 128), `volume` (default 2), `session_timeout_min` (default 10), `listen` (default `["127.0.0.1", "172.17.0.1"]`), `log_level` (`"info"` or `"debug"`, default `"info"`).
+**Docker bridge (Linux, until stage 6):** `~/.config/cody/bridge.toml` on the host, mounted read-only into the container by the compose file; a missing file or key means the default. Keys: `serial_port` (optional override), `speed` (default 128), `volume` (default 2), `session_timeout_min` (default 10), `listen` (default `["127.0.0.1", "172.17.0.1"]`), `log_level` (`"info"` or `"debug"`, default `"info"`).
 
 The bridge is a Python program with the standard library's threaded HTTP server and pyserial for the port and device discovery. It finds the device among the serial ports by Espressif's USB vendor ID (`303A`) and accepts it only after `VERSION?` is answered (FW-11). It sends `PING` every 5 s (BRG-05).
 
 Log (BRG-13, BRG-14): the bridge writes lines `YYYY-MM-DD HH:MM:SS LEVEL message` to stdout, for example `2026-11-06 14:02:11 INFO  state WORKING (sent) <- claude-code 3f2a1c PreToolUse`. Docker keeps them in its json-file log, limited by the compose file to 2 files of 10 MB (`max-size`, `max-file`); read with `docker compose logs`. Info: state changes with cause and delivery, device connects and losses, config. Debug: every event, and every command (`->`) and reply (`<-`) on the serial line. The container uses the host network and sees replugged devices through `/dev` mounted with a device cgroup rule for `ttyACM` devices.
+
+**Windows app (TD-06):** same behaviour, protocol use, log format and levels as above; the differences:
+
+- Config `%APPDATA%\cody\bridge.toml`, same keys except `listen` (the app always listens on `127.0.0.1` only), plus `wsl_distros` (default: WSL's default distribution if WSL is installed; `[]` turns the relay off, 4.6). Read at start; the tray menu's "Restart" applies changes.
+- Device: found among the COM ports by USB vendor ID `303A` (go.bug.st/serial enumerator), accepted after `VERSION?` is answered (FW-11).
+- Log `%LOCALAPPDATA%\cody\bridge.log`, rotated by the app (lumberjack) at 10 MB with one old file kept, so at most 2 files of 10 MB (BRG-14); the relay's output goes into the same log, marked `relay <distro>`.
+- Tray (BRG-16, BRG-17): a notification-area icon in the colour of the merged state (colours of 4.3); its tooltip and menu show the version, the device connection (port and firmware version), the merged state and the number of sessions. Menu: "Start automatically" (tick box, BRG-09), "Open config", "Open log", "Restart", "Quit". Built as a GUI program (`-H=windowsgui`), so it opens no console window.
+- Autostart (BRG-09, BRG-16): the tick box writes or removes the value `Cody` (path of `cody.exe`) under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`; no admin rights. Only one instance runs (a named mutex); a second start ends at once.
+- Installer (BRG-18): `cody-<version>-windows-setup.exe`, built with NSIS (`makensis` in the devcontainer) from `bridge-go/installer/`. Per user, without admin rights (`RequestExecutionLevel user`): installs `cody.exe` and `cody-linux` (the relay) into `%LOCALAPPDATA%\Programs\Cody`, adds a Start menu entry and an uninstaller listed under "Installed apps" with the version (HKCU), ends a running app before replacing files, and offers "Start Cody now" on its last page. The uninstaller removes the files, the Start menu entry and the autostart value, and keeps config and log. Unsigned: SmartScreen asks once ("Run anyway").
 
 ### 4.5 Mechanical interfaces
 
 - Head ↔ torso: socket designed in code CAD and cut into the head mesh by the pipeline (TD-05).
 - Electronics: modules mounted on a removable plate or compartment in the platform; USB port accessible from outside (FIG-14).
 - Status LED (FW-01): the WS2812 sits in the laptop lid, behind the screen printed in white or translucent PLA. The screen faces the figure, so the light falls on its face, hands and hoodie and reaches the user indirectly, without glare. A small hole in the back of the lid lets some light through towards the user. The lid is fixed (no hinge); the three LED wires run through it into the platform; the LED is reachable for service (FIG-14). Lid size and angle must leave the typing hands visible from the user's side (FIG-01).
+
+### 4.6 WSL relay (AGT-12)
+
+WSL2 in NAT mode and devcontainers in Docker Engine in WSL2 cannot reach `127.0.0.1` of Windows, and no network mode is forced on them. The Windows app therefore brings the bridge into WSL:
+
+- For each distribution in `wsl_distros`, the app starts `wsl.exe -d <distro> -e <install folder as /mnt/… path>/cody-linux relay` and starts it again (after 5 s) when it ends. While the app runs, it keeps that WSL distribution running.
+- The relay (Linux build of the same Go module) listens in WSL on `127.0.0.1:8765` and `172.17.0.1:8765` (retried every 5 s while Docker's bridge is missing), accepts only loopback and `172.16.0.0/12` (BRG-08), and tunnels every TCP connection as a yamux stream over its stdin/stdout to the app, which connects it to its own `127.0.0.1:8765`. All endpoints work through it (hooks, `cody status`, …); hooks and the `cody` command stay unchanged.
+- No TCP from WSL to Windows, so no firewall rule and no dependency on the networking mode. In mirrored mode `127.0.0.1` in WSL may already reach the app directly; if the relay can't bind `127.0.0.1:8765` there, it serves `172.17.0.1` only.
+- The Linux Docker bridge must not run in the same WSL distribution (port `8765` taken); on a Windows host the Windows app replaces it.
 
 ## 5. Technology stack
 
@@ -152,12 +172,14 @@ Log (BRG-13, BRG-14): the bridge writes lines `YYYY-MM-DD HH:MM:SS LEVEL message
 |---|---|---|---|
 | Controller board | ESP32-C3 SuperMini | – | TD-01 |
 | Firmware framework | Arduino-ESP32 3.x with PlatformIO (pioarduino platform) | PlatformIO 6.2.0, pioarduino 55.03.312-1; toolchain baked into the devcontainer image | TD-02 |
-| Bridge | Python | 3.14 | TD-03 |
-| Bridge runtime | Docker container, image on GHCR | – | TD-04 |
+| Bridge (Linux, until stage 6) | Python | 3.14 | TD-03 |
+| Bridge runtime (Linux, until stage 6) | Docker container, image on GHCR | – | TD-04 |
+| Bridge app (Windows) and WSL relay | Go; fyne.io/systray, go.bug.st/serial, hashicorp/yamux, pelletier/go-toml/v2, natefinch/lumberjack; tests with go test and gotestsum (JUnit) | Go 1.27; libraries pinned in `go.sum`, gotestsum pinned in the devcontainer, when added in step 2g | TD-06 |
+| Windows installer | NSIS (`makensis`) | 3.x from the devcontainer's Debian package, version pinned when added in step 2h | TD-06 |
 | CAD | build123d; head mesh from Meshy.ai, processed with manifold3d | build123d 0.13.0, manifold3d 3.5.4 | TD-05 |
 | CI environment | Devcontainer (devcontainers/ci), Docker via docker-outside-of-docker | – | delivery.md 2 |
 | Python dependencies | uv workspace (members `bridge`, `cad`, `tools`) with one lockfile `uv.lock`; tests with pytest | uv 0.13.7, pytest 9.2.0 | this table |
-| Static checks | ruff (Python), clang-format (C++), shellcheck (shell) | ruff 0.17.3, clang-format 23.1.5, shellcheck 0.11.0 | this table |
+| Static checks | ruff (Python), clang-format (C++), shellcheck (shell), gofmt and go vet (Go, from step 2g) | ruff 0.17.3, clang-format 23.1.5, shellcheck 0.11.0, Go's own tools | this table |
 | Wiring diagram (ELE-07) | schemdraw (Python), SVG output | pinned in `uv.lock` when added in step 2d | this table |
 
 Every tool has a pinned version and is installed in the devcontainer (`.devcontainer/`), never only on someone's machine. How CI gets the same tools is decided in delivery.md 2.
@@ -192,7 +214,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 #### TD-03 Bridge language: Python
 
-**Status:** decided (2026-11-05)
+**Status:** decided (2026-11-05); since 2026-11-21 limited to the Linux Docker bridge, frozen, superseded by TD-06 in stage 6
 
 **Context:** BRG-01 – BRG-12: HTTP server, serial, config, CLI; Linux/WSL2.
 
@@ -204,7 +226,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 #### TD-04 Bridge runtime: Docker container, image on GHCR
 
-**Status:** decided (2026-11-05)
+**Status:** decided (2026-11-05); since 2026-11-21 Linux hosts only, superseded by TD-06 in stage 6
 
 **Context:** BRG-06 (reconnect after replug), BRG-08 (local interfaces only), BRG-09 (autostart), runs on Linux/WSL2.
 
@@ -226,12 +248,25 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 **Consequences:** Model checks (height, bed size, part count, files present) run in CI. Meshy's licence terms for generated models must allow use in an open repository (open point in README.md).
 
+#### TD-06 Bridge app: Go, tray app on Windows, WSL relay, NSIS installer
+
+**Status:** decided (2026-11-21)
+
+**Context:** The bridge in Docker on WSL2 needs usbipd and a proven serial replug in the container (TD-04 risk); Docker on macOS can't reach USB serial devices at all. Claude Code runs on the Windows host, in WSL2 and in devcontainers (Docker Desktop, Docker Engine in WSL2), without a forced networking mode (AGT-02, AGT-12). The user wants an app with a "start automatically" tick box, not a Windows service (BRG-16), installed with an installer (BRG-18); Linux and macOS follow (BRG-19).
+
+**Options evaluated:** Go (one static binary per OS, cross-compiles from the devcontainer without cgo on Windows and Linux, libraries for tray, serial with USB IDs, TOML, log rotation, stream multiplexing); Python with PyInstaller and pystray (reuses the bridge code, but heavy exe, antivirus false alarms, no small static relay for WSL); Rust (same strengths as Go, slower to write). For WSL access: relay started by the app through `wsl.exe` (chosen); relay as a systemd unit in WSL (second autostart, needs systemd); app listening on the WSL virtual adapter (firewall rule, misses devcontainers in Docker Engine in WSL2). Installer: NSIS (chosen, runs on Linux); Inno Setup (only under Wine, not supported there); plain exe.
+
+**Decision:** The bridge is rewritten in Go (`bridge-go/`) as a tray app for Windows with the WSL relay (4.4, 4.6); the installer is built with NSIS. The Python Docker bridge stays for Linux hosts, frozen at the stage 2 feature set (fixes only); stage 3 features go into the Go bridge only. Stage 6 adds native Linux and macOS builds and retires the Python bridge, the image and `ci/publish`/`ci/promote`. The `cody` shell command and the Python hook installer stay; moving them into the Go program is decided at stage 3 start (AGT-10).
+
+**Consequences:** Go toolchain, gotestsum and NSIS in the devcontainer; Go tests in `ci/check`, named `Test_req_BRG_02_…` so the requirement report reads them unchanged. Bridge logic, mapping and recorded payloads are tested on Linux in CI; Windows-only parts (tray, Run key, COM ports, `wsl.exe`, installer) are demonstrated on Windows (verification log). Two bridges exist until stage 6. The tray library must build for Windows without cgo (checked in step 2g; otherwise a pure-Go Windows tray library); macOS will need cgo for the tray (stage 6).
+
 ## 6. Version information
 
 | Artifact | How it reveals version and commit (REL-02) |
 |---|---|
 | Firmware | `VERSION?` command (FW-11) and the `READY <version>` line at boot; version in the `.bin` file name |
-| Bridge | `--version` and `GET /status` (BRG-10); image tag and OCI labels |
+| Bridge (Docker) | `--version` and `GET /status` (BRG-10); image tag and OCI labels |
+| Bridge app (Windows) and relay | `GET /status` and the tray menu (BRG-10); version in the installer's file name and under "Installed apps"; `cody-linux --version` |
 | Print files | Version in file names and in the 3MF metadata |
 | Hook installer, parts list, assembly instructions, wiring | Version in file names of the release files |
 
@@ -240,7 +275,10 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 | Risk | Mitigation |
 |---|---|
 | Motor, LED and buzzer exceed 500 mA (ELE-04), especially at motor start | Small N20 motor, PWM soft start, LED brightness limited; measured in stage 4. |
-| Serial plug & play inside the Docker container (TD-04, BRG-06) | Mount `/dev` with a cgroup rule; step 2d must demonstrate first plug-in and replug in the container; if it fails, switch to a native service (new TD). |
+| Serial plug & play inside the Docker container (TD-04, BRG-06) | No longer needed on Windows hosts (TD-06): BRG-06 is shown with the Windows app in step 2h. The Linux container's replug stays unproven until stage 6 replaces it. |
+| Tray library needs cgo on Windows (TD-06) | Checked with a `CGO_ENABLED=0` Windows build in step 2g; fallback: a pure-Go Windows tray library. |
+| Docker Desktop's `host.docker.internal` doesn't reach a listener on Windows `127.0.0.1`; the relay can't bind in WSL mirrored mode (AGT-12) | Shown in step 2i in each environment; if Docker Desktop fails, the app also listens on the address `host.docker.internal` reaches. |
+| Unsigned installer and exe: SmartScreen warning, antivirus false alarms | Documented in the setup guide; signing only if it becomes a real problem. |
 | Copilot hook API (Preview) changes or reads Claude Code hook configs too (AGT-08) | Mapping in the bridge, not in hooks; recorded payloads in tests; dedupe by endpoint and payload format. |
 | Drive fits in the bust with 3–8 mm hand travel (FIG-07, FIG-10); tight clearance between motor and arm sleeves (8.3) | Mechanism prototype first (stage 4), before the character; motor lower and eccentrics larger if needed. |
 | Meshy mesh not printable or not watertight | manifold3d repair in the pipeline; regenerate. |

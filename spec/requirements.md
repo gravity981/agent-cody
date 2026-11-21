@@ -50,7 +50,7 @@ The ESP32 firmware turns simple commands from the bridge into physical behaviour
 
 ## 4. Host bridge (BRG)
 
-A background process on the host (Linux, WSL2) that receives agent events from the hooks over local HTTP, merges the state of all sessions and drives the device over USB serial (FW).
+A background process on the host that receives agent events from the hooks over local HTTP, merges the state of all sessions and drives the device over USB serial (FW). On Windows it is a desktop app in the notification area (BRG-16 – BRG-18); on Linux it runs as a Docker container until the native Linux build (BRG-19).
 
 | ID | Requirement | Prio |
 |---|---|---|
@@ -69,6 +69,10 @@ A background process on the host (Linux, WSL2) that receives agent events from t
 | BRG-13 | The bridge writes a formatted log (time, level, message): every change of the merged state with its cause and whether it reached the device, also without a device; device connects and losses; at the configurable debug level also every received event and every command and reply on the serial line. | Must |
 | BRG-14 | The bridge's log takes at most 2 files of at most 10 MB each. | Must |
 | BRG-15 | All sessions, including a manual state, can be cleared from the command line, which sets the merged state to IDLE; for resetting the bridge when a session is stale. | Could |
+| BRG-16 | On Windows, the bridge runs as an app in the notification area; the user turns its start at login on or off there, without admin rights. | Must |
+| BRG-17 | The notification-area icon shows the merged state by its colour. | Should |
+| BRG-18 | On Windows, the bridge is installed and uninstalled with an installer, without admin rights. | Must |
+| BRG-19 | The bridge runs natively on Linux and macOS. | Should |
 
 ## 5. Agent integrations (AGT)
 
@@ -77,7 +81,7 @@ Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). 
 | ID | Requirement | Prio |
 |---|---|---|
 | AGT-01 | Claude Code sessions drive all six states. | Must |
-| AGT-02 | The Claude Code integration works with Claude Code running on Linux (including WSL2) and in a devcontainer. | Must |
+| AGT-02 | The Claude Code integration works with Claude Code running on Windows, on Linux (including WSL2) and in a devcontainer. | Must |
 | AGT-03 | The Claude Code hooks are set up once at user level and apply to every project. | Must |
 | AGT-04 | GitHub Copilot agent mode in VS Code drives the states IDLE, THINKING, WORKING and COMPLETED. | Must |
 | AGT-05 | GitHub Copilot drives APPROVAL and ERROR, once VS Code provides events for them. | Could |
@@ -87,6 +91,7 @@ Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). 
 | AGT-09 | The hook setup for both agents is described step by step in the repository. | Should |
 | AGT-10 | One command sets up Cody on a host: it starts the bridge with autostart, installs the Claude Code and Copilot hooks at user level, checks the connection to the device, and reports what is missing. | Must |
 | AGT-11 | The same hook configuration works on the host and in devcontainers; the hooks find the bridge on `localhost` or on the Docker host. | Must |
+| AGT-12 | The hooks reach the bridge in every WSL2 networking mode and from devcontainers on Docker Desktop and on Docker Engine in WSL2, without changing network settings. | Must |
 
 ## 6. Electronics (ELE)
 

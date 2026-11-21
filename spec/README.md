@@ -57,8 +57,8 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | TRC | Requirement traceability | 1 | 7 | 1 | implemented |
 | REL | CI, versions and releases | 2 | 6 | 1 | implemented |
 | FW | Firmware | 3 | 12 | 2 | in progress |
-| BRG | Host bridge | 4 | 14 | 2 | in progress |
-| AGT | Agent integrations | 5 | 11 | 2, 3 | in progress |
+| BRG | Host bridge | 4 | 19 | 2, 6 | in progress |
+| AGT | Agent integrations | 5 | 12 | 2, 3 | in progress |
 | ELE | Electronics | 6 | 7 | 2, 4, 5 | specified |
 | FIG | Figure and mechanism | 7 | 17 | 4, 5 | specified |
 | DOC | Build documentation | 8 | 7 | 2, 4, 5 | specified |
@@ -93,6 +93,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-06 | The bridge logs state changes (also without a device) and, at debug level, events and serial traffic (BRG-13); the log goes to Docker's log, rotated by Docker at 10 MB × 2 files (BRG-14). | requirements.md 4, architecture.md 4.4 |
 | 2026-11-06 | Wiring diagram (ELE-07) as an SVG block diagram with named pins and nets, generated from Python with schemdraw (added in step 2d). | architecture.md 3, 5.1 |
 | 2026-11-06 | New BRG-15: `cody session clear` (`DELETE /sessions`) clears all sessions, to reset the bridge when a session is stale (e.g. Claude Code killed without `SessionEnd`). | requirements.md 4, architecture.md 4.1 |
+| 2026-11-21 | Bridge redesigned (TD-06): a Go tray app on Windows with "Start automatically" (no Windows service), installed with an NSIS installer without admin rights; WSL2 and its devcontainers reach it through a relay that the app starts with `wsl.exe`, so no WSL networking mode is forced. New BRG-16 – BRG-19, AGT-12; AGT-02 includes Windows. The Python Docker bridge stays for Linux, frozen; native Linux and macOS in the new stage 6, which retires it. Steps 2g – 2i added to stage 2 after 2d; Docker replug dropped from 2d. `cody` shell command and Python hook installer stay; consolidation decided at stage 3 start. | requirements.md 4–5, architecture.md 2–4, 5, TD-06, implementation-plan.md |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points
@@ -101,6 +102,6 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 
 - **Meshy.ai licence of generated models** (before stage 5). Free-tier outputs are believed to be CC BY 4.0 (to be checked). Options: (a) free tier with attribution in the repo (the mesh then stays under CC BY 4.0 next to the MIT-licensed project); (b) paid tier for private ownership; (c) sculpt the head yourself. Recommendation: (a) if the terms confirm it.
 - **N20 gear ratio** (before stage 4): 300 or 500 rpm, both bought; chosen with the mechanism prototype. Recommendation: 300 rpm, which reaches 1–4 strokes/s without extra gears in the preferred concept (architecture.md 8.3). The other modules are chosen (docs/parts-list.md).
-- **Docker container and serial replug** (TD-04, stage 2). Reaching the bridge from devcontainers was shown in step 2c. Recommendation: prove first plug-in and replug in step 2d; fall back to a native systemd service if it doesn't work.
 - **Arm mechanism and figure construction** (stage 4 start). Concepts A – D in architecture.md 8.2; preferred: D, the chest cam drive with action-figure shoulder joints (8.3), and Meshy outer shapes with functional geometry in code (8.4). When confirmed: step 4a in implementation-plan.md (still "crankshaft with two pins at 180°, rods") is adapted, FIG-10 says "drive" instead of "crank", and TD-05 is revised for the bust and arms.
 - **Does Copilot read user-level Claude Code hook configuration?** (AGT-08, stage 3). Recommendation: check at stage 3 start; dedupe in the bridge either way.
+- **`cody` command and hook installer in Go?** (AGT-10, stage 3 start). Options: (a) the Go program takes over `cody` and `cody hooks install`, so a Windows host needs no Python; (b) keep the shell command and the Python installer. Recommendation: decide with `cody setup`; (a) if Windows-native Claude Code is used regularly.

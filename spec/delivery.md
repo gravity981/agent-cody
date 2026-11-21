@@ -31,7 +31,7 @@ Versions follow [Semantic Versioning](https://semver.org).
 
 ### CI environment
 
-The devcontainer: the workflows build `.devcontainer/` and run the entry points inside it (devcontainers/ci), so CI uses the same pinned tools as development (PlatformIO with the ESP32 toolchain, Python with build123d and manifold3d, Docker CLI for the bridge image).
+The devcontainer: the workflows build `.devcontainer/` and run the entry points inside it (devcontainers/ci), so CI uses the same pinned tools as development (PlatformIO with the ESP32 toolchain, Python with build123d and manifold3d, Go with gotestsum and NSIS for the bridge app, Docker CLI for the bridge image).
 
 Image cache: `ci.yml` pushes the built devcontainer image to GHCR as `ghcr.io/<owner>/<repo>-devcontainer` on every push to `main` and uses it as build cache in every run (`cacheFrom`), so the toolchain is rebuilt only when `.devcontainer/` or the lock files change. Pull requests and release candidates only read the cache. The job needs `packages: write`; the caller in `release-candidate.yml` grants it too. In CI the post-create step (`.devcontainer/post-create.sh`) gives the toolchain folders to the runner's UID, which devcontainers/ci assigns to the container user.
 
@@ -61,8 +61,8 @@ Everything a user needs to make Cody work is a release file; nothing has to be t
 
 | Entry point | Does in Cody |
 |---|---|
-| `ci/check` | Firmware unit tests (PlatformIO `native`), firmware build, bridge tests (pytest), hook mapping tests, CAD model checks, requirement report tests; then the requirement report. |
-| `ci/build-release` | Into `RELEASE_DIR`: firmware as one combined image `cody-firmware-<version>.bin` (bootloader, partition table and app, flashed at 0x0), print files (3MF/STL), compose file for the bridge, hook installer `cody-install-claude-code-<version>` (Python script) and setup guide, host command `cody-<version>` (shell script), parts list as CSV and assembly instructions as PDF rendered from the Markdown (DOC-06), wiring diagram, each with the version in its name; and `LICENSE`. |
+| `ci/check` | Firmware unit tests (PlatformIO `native`), firmware build, bridge tests (pytest), Go bridge app and relay tests (go test, gotestsum) and builds for Windows and Linux, hook mapping tests, CAD model checks, requirement report tests; then the requirement report. |
+| `ci/build-release` | Into `RELEASE_DIR`: firmware as one combined image `cody-firmware-<version>.bin` (bootloader, partition table and app, flashed at 0x0), print files (3MF/STL), Windows installer `cody-<version>-windows-setup.exe` (bridge app and WSL relay, TD-06), compose file for the Linux bridge (until stage 6), hook installer `cody-install-claude-code-<version>` (Python script) and setup guide, host command `cody-<version>` (shell script), parts list as CSV and assembly instructions as PDF rendered from the Markdown (DOC-06), wiring diagram, each with the version in its name; and `LICENSE`. |
 | `ci/publish` | Builds the bridge image and pushes it to GHCR as `cody-bridge:<version>-rc.<M>` (from `CANDIDATE_TAG`); needs `packages: write`. |
 | `ci/promote` | Adds the tags `<version>` and `latest` to the candidate's image on GHCR, without rebuilding; needs `packages: write`. |
 
@@ -101,7 +101,7 @@ flowchart LR
 
 ## 4. Delivery to users
 
-Download only, plus the bridge image on GHCR. The owner downloads the release files from the GitHub release, flashes the firmware, prints the parts, runs the hook installer, and starts the bridge with the compose file, which pulls `cody-bridge:<version>` from GHCR. Recorded in README.md "Decisions".
+Download only, plus the bridge image on GHCR until stage 6. The owner downloads the release files from the GitHub release, flashes the firmware, prints the parts, runs the hook installer, and starts the bridge: on Windows by running the installer and ticking "Start automatically" in the tray; on Linux with the compose file, which pulls `cody-bridge:<version>` from GHCR. Stage 6 replaces the image with native Linux and macOS builds as release files. Recorded in README.md "Decisions".
 
 ## 5. Environments
 

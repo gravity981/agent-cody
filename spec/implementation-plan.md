@@ -31,6 +31,7 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 | 3 | Copilot integration | M2 | open |
 | 4 | Mechanism prototype | | open |
 | 5 | Character and assembly | M3 | open |
+| 6 | Native bridge for Linux and macOS | | open |
 
 ### Stage 1 – Walking Skeleton
 
@@ -58,10 +59,11 @@ Requirements: REL-02 – REL-06.
 - On WSL2: usbipd-win installed.
 - *Status at stage start (2026-11-06): parts ordered (docs/parts-list.md), not delivered yet; cables, breadboard and multimeter to be provided by the owner; usbipd-win to be installed before the bench checks. Steps 2a – 2c start without hardware; the bench work is step 2d.*
 - *Status after step 2c (2026-11-06): parts not delivered yet, usbipd-win not set up; step 2d waits for both. Decided for 2d: the devcontainer gets `/dev` for flashing (architecture.md 4.2), the wiring diagram is an SVG block diagram with named pins and nets, generated with schemdraw (architecture.md 3, 5.1), the stall current for ELE-03 is measured on the bench (verification.md 4).*
+- *Redesign of the bridge (2026-11-21, TD-06): the Windows host needs usbipd-win only for flashing from the devcontainer, no longer for the bridge; steps 2g – 2i added after 2d.*
 
 **Steps:**
 
-Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived.
+Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived. Order after 2d (decided 2026-11-21, TD-06): 2g, 2h, 2i, then 2e.
 
 **2a – Firmware logic.** Serial protocol, state machine, LED effects, sounds with volume and motor control as logic with host unit tests (defaults in architecture.md 4.3); firmware builds for the ESP32-C3.
 Requirements: FW-02, FW-03, FW-05, FW-08, FW-10 – FW-12.
@@ -72,14 +74,23 @@ Requirements: BRG-01 – BRG-05, BRG-07 – BRG-14.
 **2c – Claude Code integration.** User-level curl command hooks that find the bridge on the host and in containers, event mapping with recorded payloads, timeout behaviour; real sessions on WSL2 and in a devcontainer (the bridge without a device is enough).
 Requirements: AGT-01 – AGT-03, AGT-07, AGT-11.
 
-**2d – Bench.** Parts arrived: firmware flashed, modules wired and soldered; LED effects, sounds, volume levels and the disconnected pattern shown and tuned on the device; plug & play of the device in the bridge container (first plug-in, replug, reset); wiring diagram.
-Requirements: FW-01, FW-04, FW-06, FW-07, FW-09, BRG-06, ELE-01 – ELE-03, ELE-07.
+**2d – Bench.** Parts arrived: firmware flashed, modules wired and soldered; LED effects, sounds, volume levels and the disconnected pattern shown and tuned on the device; wiring diagram. (Plug & play in the bridge container dropped on 2026-11-21: BRG-06 is shown with the Windows app in 2h.)
+Requirements: FW-01, FW-04, FW-06, FW-07, FW-09, ELE-01 – ELE-03, ELE-07.
 
-**2e – Build documentation for the status light.** Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, bridge, hooks) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
+**2e – Build documentation for the status light.** Done after 2i. Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, bridge app on Windows and Docker bridge on Linux, hooks, Git for Windows on a Windows host) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
 Requirements: DOC-01, DOC-02, DOC-05, DOC-06.
 
 **2f – Clearing sessions.** Added during the stage (2026-11-06), done before 2d: `cody session clear` and `DELETE /sessions` remove all sessions (architecture.md 4.1).
 Requirements: BRG-15.
+
+**2g – Go bridge core.** Added 2026-11-21 (TD-06). Go toolchain and gotestsum in the devcontainer; gofmt and go vet in `tools/static-checks`; Go tests in `ci/check`. In `bridge-go/`: the bridge logic ported from Python (HTTP endpoints, session merging, Claude Code mapping tested with the shared recorded payloads, timeouts, heartbeat, serial connection with a fake device, config, log with rotation, version); builds for Windows and Linux without cgo, including the tray library. The Python bridge stays as is (frozen).
+Requirements: BRG-01 – BRG-05, BRG-07, BRG-10, BRG-13 – BRG-15.
+
+**2h – Windows app and installer.** Tray icon in the state colour with menu, "Start automatically" (Run key), single instance, COM port discovery and plug & play (first plug-in, replug, reset, `usbipd attach`/`detach`), config and log under `%APPDATA%`/`%LOCALAPPDATA%`; NSIS installer `cody-<version>-windows-setup.exe` as a release file; shown on Windows with the device.
+Requirements: BRG-06, BRG-09, BRG-16 – BRG-18.
+
+**2i – WSL relay and reachability.** `cody-linux relay` started by the app through `wsl.exe`, tunnel over stdin/stdout; real Claude Code sessions drive the device from the Windows host (Git Bash), WSL2 in NAT and mirrored mode, a devcontainer in Docker Engine in WSL2 and a devcontainer on Docker Desktop; `cody` command from WSL; setup guide updated.
+Requirements: AGT-02, AGT-12, BRG-08.
 
 ### Stage 3 – Copilot integration
 
@@ -129,6 +140,22 @@ Requirements: FIG-14 – FIG-16, ELE-06.
 
 **5d – Complete build documentation.** Printing and full assembly instructions; parts list final; a test build by someone other than the owner.
 Requirements: DOC-04, DOC-07.
+
+### Stage 6 – Native bridge for Linux and macOS
+
+Added 2026-11-21 (TD-06).
+
+**Before the stage starts:**
+- A Mac (or a macOS CI runner) for building the tray with cgo and for the demonstrations.
+- Autostart on Linux (systemd user service or desktop autostart, with or without tray) and on macOS (login item, menu bar app) decided.
+
+**Steps:**
+
+**6a – Linux and macOS builds.** Native builds of the Go bridge with autostart and plug & play; delivered as release files; shown on a Linux host and a Mac.
+Requirements: BRG-19.
+
+**6b – Retire the Python bridge.** `bridge/`, the Docker image, the compose file, `ci/publish` and `ci/promote` removed; TD-03 and TD-04 marked superseded; setup guide and delivery.md updated.
+Requirements: none (part of BRG-19).
 
 ## 4. Status report template
 
