@@ -22,3 +22,4 @@ Manual verification: inspections, demonstrations, checks on real hardware or in 
 | FW-06 | 2026-11-21 | Assembled bench, ESP32-C3 firmware over USB serial | pass | After the 30 s command timeout, the white disconnected pulse appeared as specified |
 | FW-09 | 2026-11-21 | Assembled bench, ESP32-C3 firmware over USB serial | pass | Volume levels and mute worked; after wiring the coil buzzer through DRV8833 channel B, LED changes produced no audible buzzer noise |
 | BRG-16 | 2026-11-21 | Windows, installed Cody app | pass | Selecting "Open config" opened the config and created an empty TOML file |
+| AGT-11, AGT-12 | 2026-11-21 | Devcontainer (Docker Engine in WSL2), Claude Code, Windows Cody app, Ubuntu WSL relay | pass | User confirmed hook delivery after installing with `--port 8767`; relay log showed listener at `172.17.0.1:8767` |

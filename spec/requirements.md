@@ -69,7 +69,7 @@ A background process on the host that receives agent events from the hooks over 
 | BRG-13 | The bridge writes a formatted log (time, level, message): every change of the merged state with its cause and whether it reached the device, also without a device; device connects and losses; at the configurable debug level also every received event and every command and reply on the serial line. | Must |
 | BRG-14 | The bridge's log takes at most 2 files of at most 10 MB each. | Must |
 | BRG-15 | All sessions, including a manual state, can be cleared from the command line, which sets the merged state to IDLE; for resetting the bridge when a session is stale. | Could |
-| BRG-16 | On Windows, the bridge runs as an app in the notification area; the user turns its start at login on or off there, without admin rights. | Must |
+| BRG-16 | On Windows, the bridge runs as an app in the notification area and starts WSL processes without showing console windows; the user turns its start at login on or off there, without admin rights. | Must |
 | BRG-17 | The notification-area icon shows the merged state by its colour. | Should |
 | BRG-18 | On Windows, the bridge is installed and uninstalled with an installer, without admin rights. | Must |
 | BRG-19 | The bridge runs natively on Linux and macOS. | Should |

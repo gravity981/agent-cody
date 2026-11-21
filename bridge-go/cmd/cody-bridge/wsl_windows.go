@@ -13,14 +13,17 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/gravity981/agent-cody/bridge-go/internal/config"
 	"github.com/gravity981/agent-cody/bridge-go/internal/relay"
 	"github.com/gravity981/agent-cody/bridge-go/internal/wsl"
+	"golang.org/x/sys/windows"
 )
 
 const wslRestartDelay = 5 * time.Second
+const wslExitGracePeriod = 2 * time.Second
 
 func startWSLRelays(
 	ctx context.Context,
@@ -40,7 +43,12 @@ func startWSLRelays(
 
 	distros := cfg.WSLDistros
 	if distros == nil {
-		output, err := exec.CommandContext(ctx, wslExecutable, "--list", "--verbose").Output()
+		output, err := newWSLCommandContext(
+			ctx,
+			wslExecutable,
+			"--list",
+			"--verbose",
+		).Output()
 		if err != nil {
 			return nil, fmt.Errorf("list WSL distributions: %w", err)
 		}
@@ -112,7 +120,7 @@ func runWSLRelay(
 ) error {
 	commandCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	command := exec.CommandContext(
+	command := newWSLCommandContext(
 		commandCtx,
 		wslExecutable,
 		"-d", distro,
@@ -144,9 +152,17 @@ func runWSLRelay(
 	}()
 	relayResult := make(chan error, 1)
 	go func() {
+		reader, skipped, err := relay.ReadHandshake(stdout)
+		if err != nil {
+			relayResult <- err
+			return
+		}
+		if skipped != 0 {
+			logger.Warningf("discarded %d bytes before WSL relay handshake", skipped)
+		}
 		relayResult <- relay.RunServer(
 			commandCtx,
-			relayPipes{reader: stdout, writer: stdin},
+			relayPipes{reader: reader, readerCloser: stdout, writer: stdin},
 			relay.LoopbackAddress,
 			logger,
 		)
@@ -156,14 +172,46 @@ func runWSLRelay(
 	case <-ctx.Done():
 		cancel()
 		<-relayResult
-		_ = command.Wait()
 		<-stderrDone
+		_ = command.Wait()
 		return nil
 	case err := <-relayResult:
-		cancel()
-		waitErr := command.Wait()
-		<-stderrDone
 		if ctx.Err() != nil {
+			cancel()
+			<-stderrDone
+			_ = command.Wait()
+			return nil
+		}
+		timer := time.NewTimer(wslExitGracePeriod)
+		select {
+		case <-stderrDone:
+			timer.Stop()
+		case <-timer.C:
+			cancel()
+			<-stderrDone
+		case <-ctx.Done():
+			timer.Stop()
+			cancel()
+			<-stderrDone
+			_ = command.Wait()
+			return nil
+		}
+		waitResult := make(chan error, 1)
+		go func() {
+			waitResult <- command.Wait()
+		}()
+		waitTimer := time.NewTimer(wslExitGracePeriod)
+		var waitErr error
+		select {
+		case waitErr = <-waitResult:
+			waitTimer.Stop()
+		case <-waitTimer.C:
+			cancel()
+			waitErr = <-waitResult
+		case <-ctx.Done():
+			waitTimer.Stop()
+			cancel()
+			waitErr = <-waitResult
 			return nil
 		}
 		if err != nil {
@@ -180,6 +228,15 @@ func runWSLRelay(
 		}
 		return errors.New("WSL relay process exited")
 	}
+}
+
+func newWSLCommandContext(ctx context.Context, wslExecutable string, args ...string) *exec.Cmd {
+	command := exec.CommandContext(ctx, wslExecutable, args...)
+	command.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: windows.CREATE_NO_WINDOW,
+	}
+	return command
 }
 
 func copyRelayStderr(reader io.Reader, logger relay.Logger) {
@@ -213,14 +270,15 @@ func logRelayLine(line string, logger relay.Logger) {
 }
 
 type relayPipes struct {
-	reader io.ReadCloser
-	writer io.WriteCloser
+	reader       io.Reader
+	readerCloser io.Closer
+	writer       io.WriteCloser
 }
 
 func (p relayPipes) Read(data []byte) (int, error)  { return p.reader.Read(data) }
 func (p relayPipes) Write(data []byte) (int, error) { return p.writer.Write(data) }
 func (p relayPipes) Close() error {
-	return errors.Join(p.reader.Close(), p.writer.Close())
+	return errors.Join(p.readerCloser.Close(), p.writer.Close())
 }
 
 type prefixedRelayLogger struct {

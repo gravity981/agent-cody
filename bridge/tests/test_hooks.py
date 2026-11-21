@@ -7,8 +7,10 @@ import importlib.util
 import json
 import socket
 import subprocess
+import threading
 import time
 from collections.abc import Iterator
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
@@ -68,6 +70,23 @@ def test_req_AGT_03_installs_all_events_at_user_level(
         assert groups == [
             {"hooks": [{"type": "command", "command": installer.hook_command(), "timeout": 2}]}
         ]
+
+
+def test_req_AGT_03_custom_port_changes_only_docker_gateway_target(tmp_path: Path) -> None:
+    settings = tmp_path / "settings.json"
+    hooks = install(settings, "--port", "8768")["hooks"]
+    command = hooks["SessionStart"][0]["hooks"][0]["command"]
+    assert "http://127.0.0.1:8765/hooks/claude-code" in command
+    assert "http://host.docker.internal:8765/hooks/claude-code" in command
+    assert "http://172.17.0.1:8768/hooks/claude-code" in command
+    assert "172.17.0.1:8765" not in command
+    assert "172.17.0.1:8767" not in command
+
+
+@pytest.mark.parametrize("port", ["0", "65536", "not-a-port"])
+def test_req_AGT_03_rejects_invalid_port(tmp_path: Path, port: str) -> None:
+    with pytest.raises(SystemExit):
+        installer.main(["--settings", str(tmp_path / "settings.json"), "--port", port])
 
 
 def test_req_AGT_03_keeps_other_settings_and_is_idempotent(tmp_path: Path) -> None:
@@ -148,5 +167,51 @@ def test_req_AGT_11_large_payload_is_delivered(bridge_on_default_port: Bridge) -
 
 def test_req_AGT_11_command_tries_host_then_container_addresses() -> None:
     command = installer.hook_command()
-    assert "for h in 127.0.0.1 host.docker.internal 172.17.0.1; do" in command
+    assert "http://127.0.0.1:8765/hooks/claude-code" in command
+    assert "http://host.docker.internal:8765/hooks/claude-code" in command
+    assert "http://172.17.0.1:8765/hooks/claude-code" in command
+    assert "172.17.0.1:8766" not in command
+    assert '[ "$r" = ok ]' in command
     assert "/home/" not in command and "~" not in command  # no file paths
+
+
+def test_req_AGT_11_hook_rejects_non_cody_response_and_tries_next_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    responses = [b"not Cody", b"ok\n"]
+    received = [0, 0]
+    servers: list[ThreadingHTTPServer] = []
+    threads: list[threading.Thread] = []
+    targets = []
+
+    for index, response in enumerate(responses):
+
+        class Handler(BaseHTTPRequestHandler):
+            def do_POST(self, response: bytes = response, index: int = index) -> None:  # noqa: N802
+                received[index] += 1
+                self.send_response(200)
+                self.end_headers()
+                self.wfile.write(response)
+
+            def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        target = f"http://127.0.0.1:{server.server_port}/hooks/claude-code"
+        servers.append(server)
+        threads.append(thread)
+        targets.append(target)
+        thread.start()
+
+    monkeypatch.setattr(installer, "hook_targets", lambda port: targets)
+    try:
+        result, _ = run_hook({"session_id": "s1", "hook_event_name": "PreToolUse"})
+        assert result.returncode == 0
+        assert received == [1, 1]
+    finally:
+        for server in servers:
+            server.shutdown()
+            server.server_close()
+        for thread in threads:
+            thread.join()

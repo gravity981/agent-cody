@@ -23,9 +23,9 @@ import sys
 from pathlib import Path
 
 MARKER = "/hooks/claude-code"  # identifies Cody's hooks in settings.json
-HOSTS = ["127.0.0.1", "host.docker.internal", "172.17.0.1"]  # host, then containers
 PORT = 8765
-TIMEOUT_S = 2  # the hook's own limit; the command itself takes at most ~0.9 s
+TIMEOUT_S = 2  # the hook's own limit; each of its three curl attempts is capped at 0.1 s
+CURL_TIMEOUT_S = 0.1
 
 EVENTS = [
     "SessionStart",
@@ -41,13 +41,29 @@ EVENTS = [
 ]
 
 
-def hook_command(record: str | None = None) -> str:
+def parse_port(value: str) -> int:
+    port = int(value)
+    if not 1 <= port <= 65535:
+        raise argparse.ArgumentTypeError("must be between 1 and 65535")
+    return port
+
+
+def hook_targets(port: int = PORT) -> list[str]:
+    return [
+        f"http://127.0.0.1:{PORT}{MARKER}",
+        f"http://host.docker.internal:{PORT}{MARKER}",
+        f"http://172.17.0.1:{port}{MARKER}",
+    ]
+
+
+def hook_command(record: str | None = None, port: int = PORT) -> str:
     """The inline hook: forwards the payload, never prints, always exits 0 (AGT-07)."""
     save = f"printf '%s\\n' \"$p\" >> {shlex.quote(record)}; " if record else ""
     return (
-        f"p=$(cat); {save}for h in {' '.join(HOSTS)}; do "
-        f"printf '%s' \"$p\" | curl -s -o /dev/null --connect-timeout 0.3 -m 0.3 -H 'Expect:' "
-        f'--data-binary @- "http://$h:{PORT}{MARKER}" 2>/dev/null && break; '
+        f"p=$(cat); {save}for u in {' '.join(hook_targets(port))}; do "
+        f"r=$(printf '%s' \"$p\" | curl -fsS --connect-timeout {CURL_TIMEOUT_S} "
+        f"-m {CURL_TIMEOUT_S} -H 'Expect:' --data-binary @- \"$u\" 2>/dev/null) "
+        '&& [ "$r" = ok ] && break; '
         "done; exit 0"
     )
 
@@ -56,7 +72,7 @@ def is_cody(group: dict) -> bool:
     return any(MARKER in h.get("command", "") for h in group.get("hooks", []))
 
 
-def merged(settings: dict, record: str | None, uninstall: bool) -> dict:
+def merged(settings: dict, record: str | None, uninstall: bool, port: int = PORT) -> dict:
     hooks = settings.setdefault("hooks", {})
     for event in EVENTS:
         groups = [g for g in hooks.get(event, []) if not is_cody(g)]
@@ -64,7 +80,11 @@ def merged(settings: dict, record: str | None, uninstall: bool) -> dict:
             groups.append(
                 {
                     "hooks": [
-                        {"type": "command", "command": hook_command(record), "timeout": TIMEOUT_S}
+                        {
+                            "type": "command",
+                            "command": hook_command(record, port),
+                            "timeout": TIMEOUT_S,
+                        }
                     ]
                 }
             )
@@ -87,6 +107,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--uninstall", action="store_true", help="remove Cody's hooks")
     parser.add_argument("--record", metavar="FILE", help="also append every payload to FILE")
     parser.add_argument("--settings", type=Path, help="settings.json to change (default: user's)")
+    parser.add_argument(
+        "--port",
+        type=parse_port,
+        default=PORT,
+        help="port for the 172.17.0.1 Docker-gateway target (default: 8765)",
+    )
     args = parser.parse_args(argv)
 
     path = args.settings or settings_path() / "settings.json"
@@ -97,7 +123,9 @@ def main(argv: list[str] | None = None) -> int:
     if path.exists():
         shutil.copy2(path, path.with_suffix(".json.bak"))
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(merged(settings, args.record, args.uninstall), indent=2) + "\n")
+    path.write_text(
+        json.dumps(merged(settings, args.record, args.uninstall, args.port), indent=2) + "\n"
+    )
     action = "removed from" if args.uninstall else "installed in"
     print(f"Cody's Claude Code hooks {action} {path}")
     if shutil.which("curl") is None and not args.uninstall:

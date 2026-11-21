@@ -1,12 +1,14 @@
 package relay
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/netip"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -15,15 +17,55 @@ import (
 
 const (
 	LoopbackAddress = "127.0.0.1:8765"
-	DockerAddress   = "172.17.0.1:8765"
+	dockerHost      = "172.17.0.1"
+	dockerPortFirst = 8766
+	dockerPortLast  = 8770
 	dockerPrefix    = "172.16.0.0/12"
 	retryInterval   = 5 * time.Second
+	handshakeLimit  = 64 * 1024
 )
+
+var handshakeMarker = []byte{0, 'C', 'O', 'D', 'Y', '-', 'R', 'E', 'L', 'A', 'Y', 1, '\n'}
 
 type Logger interface {
 	Infof(string, ...any)
 	Warningf(string, ...any)
 	Debugf(string, ...any)
+}
+
+func WriteHandshake(writer io.Writer) error {
+	written, err := writer.Write(handshakeMarker)
+	if err != nil {
+		return fmt.Errorf("write relay handshake: %w", err)
+	}
+	if written != len(handshakeMarker) {
+		return io.ErrShortWrite
+	}
+	return nil
+}
+
+func ReadHandshake(reader io.Reader) (io.Reader, int, error) {
+	buffered := bufio.NewReader(reader)
+	matched := 0
+	for consumed := 1; consumed <= handshakeLimit; consumed++ {
+		value, err := buffered.ReadByte()
+		if err != nil {
+			return nil, consumed - 1, fmt.Errorf("read relay handshake: %w", err)
+		}
+		if value == handshakeMarker[matched] {
+			matched++
+			if matched == len(handshakeMarker) {
+				return buffered, consumed - len(handshakeMarker), nil
+			}
+			continue
+		}
+		if value == handshakeMarker[0] {
+			matched = 1
+		} else {
+			matched = 0
+		}
+	}
+	return nil, handshakeLimit, errors.New("relay handshake marker not found")
 }
 
 func RunClient(ctx context.Context, transport io.ReadWriteCloser, logger Logger) error {
@@ -103,21 +145,32 @@ func listenLoopback(ctx context.Context, session *yamux.Session, logger Logger) 
 func retryDockerListener(ctx context.Context, session *yamux.Session, logger Logger) {
 	waitingForDocker := false
 	for {
-		listener, err := net.Listen("tcp", DockerAddress)
+		listener, address, err := listenFirstAvailable(
+			dockerHost,
+			dockerPortFirst,
+			dockerPortLast,
+			net.Listen,
+		)
 		if err == nil {
 			waitingForDocker = false
-			logger.Infof("relay listening on %s", DockerAddress)
+			logger.Infof("relay listening on %s", address)
 			acceptConnections(ctx, listener, session, logger)
 			if ctx.Err() != nil || session.IsClosed() {
 				return
 			}
 		} else if errors.Is(err, syscall.EADDRNOTAVAIL) {
 			if !waitingForDocker {
-				logger.Infof("relay waiting for Docker bridge address %s", DockerAddress)
+				logger.Infof("relay waiting for Docker bridge address %s", dockerHost)
 				waitingForDocker = true
 			}
 		} else {
-			logger.Warningf("relay listen %s: %v", DockerAddress, err)
+			logger.Warningf(
+				"relay listen %s:%d-%d: %v",
+				dockerHost,
+				dockerPortFirst,
+				dockerPortLast,
+				err,
+			)
 		}
 		timer := time.NewTimer(retryInterval)
 		select {
@@ -130,6 +183,32 @@ func retryDockerListener(ctx context.Context, session *yamux.Session, logger Log
 		case <-timer.C:
 		}
 	}
+}
+
+func listenFirstAvailable(
+	host string,
+	firstPort, lastPort int,
+	listen func(string, string) (net.Listener, error),
+) (net.Listener, string, error) {
+	var conflicts []error
+	for port := firstPort; port <= lastPort; port++ {
+		address := net.JoinHostPort(host, strconv.Itoa(port))
+		listener, err := listen("tcp", address)
+		if err == nil {
+			return listener, address, nil
+		}
+		if !errors.Is(err, syscall.EADDRINUSE) {
+			return nil, "", fmt.Errorf("listen %s: %w", address, err)
+		}
+		conflicts = append(conflicts, fmt.Errorf("%s: %w", address, err))
+	}
+	return nil, "", fmt.Errorf(
+		"no available relay port on %s:%d-%d: %w",
+		host,
+		firstPort,
+		lastPort,
+		errors.Join(conflicts...),
+	)
 }
 
 func acceptConnections(

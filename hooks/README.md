@@ -19,8 +19,10 @@ The hooks use the same configuration on all platforms:
 
 - Windows host and WSL: `127.0.0.1`.
 - Docker Desktop devcontainer on Windows: `host.docker.internal`.
-- Devcontainer in Docker Engine in WSL2: `172.17.0.1`, through the relay in WSL.
+- Devcontainer in Docker Engine in WSL2: `172.17.0.1`, through the relay in WSL. The hook installer’s `--port` option sets the relay listener port for this target.
 - Linux devcontainer: `host.docker.internal` or `172.17.0.1`; it must run on the same host as the bridge.
+
+Hooks default to port `8765`. To use a WSL relay listening on another port, set `--port` to the port shown in the relay log; this changes only the `172.17.0.1` target. The `127.0.0.1` and `host.docker.internal` targets stay on `8765`. The WSL relay selects the first available port in `8766`–`8770`; if all are occupied, it logs a warning and retries. Each of the three hook targets is tried in order, and the hook stops at Cody's `ok` response.
 
 On Windows, the app relays traffic into the default WSL distribution. To relay into several distributions, list them in `%APPDATA%\cody\bridge.toml`:
 
@@ -37,7 +39,9 @@ uv run python hooks/install-claude-code     # in this repository
 python3 cody-install-claude-code-<version>  # release file, any environment with Python
 ```
 
+- For Docker Engine in WSL2, pass the relay listener port, e.g. `uv run python hooks/install-claude-code --port 8766`. Omit `--port` for the default `8765`.
 - Run it once on the host and once for your devcontainers. Devcontainers that share the Claude Code configuration (the `claude-config` volume) need it only once; a devcontainer with its own configuration needs its own run.
+- When updating Cody to a release with a changed hook command, rerun the installer in each environment that owns Claude Code settings; the installer replaces Cody's existing commands without duplicating them.
 - It writes to `$CLAUDE_CONFIG_DIR/settings.json` or `~/.claude/settings.json`, keeps all other settings and saves the previous file as `settings.json.bak`.
 - Restart Claude Code afterwards: it reads hooks when a session starts.
 - `--uninstall` removes Cody's hooks and nothing else.

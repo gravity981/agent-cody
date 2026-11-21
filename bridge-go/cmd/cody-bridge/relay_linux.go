@@ -41,6 +41,10 @@ func runRelay(args []string) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	logger := logging.New(os.Stderr, *logLevel)
+	if err := relay.WriteHandshake(os.Stdout); err != nil {
+		logger.Warningf("%v", err)
+		return 1
+	}
 	if err := relay.RunClient(ctx, relayStdio{}, logger); err != nil {
 		logger.Warningf("relay stopped: %v", err)
 		return 1
