@@ -12,6 +12,25 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential xz-utils libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
+# Go toolchain, checksum-verified; gotestsum supplies the JUnit output consumed by cody-report
+ARG GO_VERSION=1.27.4
+ARG GO_SHA256_AMD64=7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840
+ARG GO_SHA256_ARM64=3392582988a273a87ab5043ee1b2c9c17a2c3c00580bf9326c47a2e0aaaeac92
+RUN arch="$(dpkg --print-architecture)" \
+    && case "$arch" in \
+         amd64) sha="$GO_SHA256_AMD64" ;; \
+         arm64) sha="$GO_SHA256_ARM64" ;; \
+         *) echo "unsupported architecture $arch" >&2; exit 1 ;; \
+       esac \
+    && curl -fsSL -o /tmp/go.tar.gz "https://go.dev/dl/go${GO_VERSION}.linux-${arch}.tar.gz" \
+    && echo "${sha}  /tmp/go.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/go.tar.gz -C /usr/local \
+    && rm /tmp/go.tar.gz
+ENV PATH="/usr/local/go/bin:${PATH}" \
+    GOTOOLCHAIN=local
+RUN GOBIN=/usr/local/bin go install gotest.tools/gotestsum@v1.13.0 \
+    && rm -rf /root/go /root/.cache/go-build
+
 # shellcheck, checksum-verified
 ARG SHELLCHECK_VERSION=0.11.0
 ARG SHELLCHECK_SHA256_X86_64=8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198

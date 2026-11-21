@@ -13,6 +13,18 @@ run() {
 run uv run --frozen ruff check .
 run uv run --frozen ruff format --check .
 
+if [[ -f bridge-go/go.mod ]]; then
+  mapfile -t gofiles < <(find bridge-go -type f -name '*.go' -print)
+  if ((${#gofiles[@]})); then
+    unformatted=$(gofmt -l "${gofiles[@]}")
+    if [[ -n "$unformatted" ]]; then
+      printf 'Go files need gofmt:\n%s\n' "$unformatted"
+      failed=1
+    fi
+  fi
+  run bash -c 'cd bridge-go && go vet ./...'
+fi
+
 mapfile -t cpp < <(git ls-files --cached --others --exclude-standard \
   'firmware/*.cpp' 'firmware/*.h' 'firmware/*.hpp')
 if ((${#cpp[@]})); then
