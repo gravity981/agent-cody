@@ -17,11 +17,6 @@
     // Claude Code login and settings survive container rebuilds, shared across projects
     "source=claude-config,target=/home/vscode/.claude,type=volume"
   ],
-  "runArgs": [
-    "--device=/dev/ttyACM0",
-    "--device-cgroup-rule=c 166:* rwm",
-    "--group-add=dialout"
-  ],
   "forwardPorts": [8766],
   "portsAttributes": {
     "8766": {
