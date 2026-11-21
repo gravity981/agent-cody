@@ -9,6 +9,7 @@
 
 using cody::Device;
 using cody::LineReader;
+using cody::MotorDecay;
 using cody::Outputs;
 using cody::Rgb;
 using cody::State;
@@ -188,6 +189,132 @@ void test_req_FW_12_beep_plays_a_sound() {
   TEST_ASSERT_EQUAL_UINT16(0, d.update(1400).toneHz);
 }
 
+// --- TST: permanent, all-peripheral test mode ---
+
+void test_req_TST_01_test_mode_owns_controls_until_stopped() {
+  Device d("1.2.3", "abc");
+  send(d, "STATE:WORKING", 0);
+  TEST_ASSERT_TRUE(d.update(1).motorDuty > 0);
+
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:START", 10).c_str());
+  TEST_ASSERT_TRUE(d.testMode());
+  TEST_ASSERT_TRUE(d.state() == State::Idle);
+  TEST_ASSERT_EQUAL_UINT8(0, d.update(10).motorDuty);
+  TEST_ASSERT_EQUAL_STRING("ERR test mode active\n", send(d, "STATE:WORKING", 20).c_str());
+  TEST_ASSERT_TRUE(d.state() == State::Idle);
+
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:STOP", 30).c_str());
+  TEST_ASSERT_FALSE(d.testMode());
+  TEST_ASSERT_TRUE(d.state() == State::Idle);
+  TEST_ASSERT_EQUAL_STRING("ERR test mode inactive\n", send(d, "TEST:STATE:WORKING", 40).c_str());
+}
+
+void test_req_TST_02_state_presets_run_while_test_mode_stays_active() {
+  Device d("1.2.3", "abc");
+  send(d, "TEST:START", 0);
+  send(d, "TEST:STATE:WORKING", 1);
+  TEST_ASSERT_TRUE(d.testMode());
+  TEST_ASSERT_TRUE(d.update(2).motorDuty > 0);
+  send(d, "TEST:STATE:APPROVAL", 10);
+  TEST_ASSERT_TRUE(d.testMode());
+  TEST_ASSERT_EQUAL_UINT16(2700, d.update(20).toneHz);
+  TEST_ASSERT_TRUE(d.state() == State::Approval);
+}
+
+void test_req_TST_03_motor_tunings_apply_to_test_and_normal_working() {
+  Device d("1.2.3", "abc");
+  send(d, "TEST:START", 0);
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:SPEED:100", 1).c_str());
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:FREQ:30000", 2).c_str());
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:KICK:5", 3).c_str());
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:DECAY:SLOW", 4).c_str());
+  send(d, "TEST:MOTOR:START", 5);
+  Outputs out = d.update(5);
+  TEST_ASSERT_EQUAL_UINT8(255, out.motorDuty);
+  TEST_ASSERT_EQUAL_UINT32(30000, out.motorFrequencyHz);
+  TEST_ASSERT_TRUE(out.motorDecay == MotorDecay::Slow);
+  TEST_ASSERT_EQUAL_UINT8(100, d.update(10).motorDuty);
+
+  TEST_ASSERT_EQUAL_STRING("ERR bad value\n", send(d, "TEST:SPEED:256", 11).c_str());
+  TEST_ASSERT_EQUAL_STRING("ERR bad value\n", send(d, "TEST:FREQ:30001", 12).c_str());
+  TEST_ASSERT_EQUAL_STRING("ERR bad value\n", send(d, "TEST:FREQ:999", 13).c_str());
+  TEST_ASSERT_EQUAL_STRING("ERR bad value\n", send(d, "TEST:FREQ:999999999999999999", 14).c_str());
+  TEST_ASSERT_EQUAL_STRING("ERR bad value\n", send(d, "TEST:KICK:101", 15).c_str());
+  TEST_ASSERT_EQUAL_STRING("ERR bad decay mode\n", send(d, "TEST:DECAY:MIDDLE", 16).c_str());
+
+  send(d, "TEST:STOP", 20);
+  send(d, "STATE:WORKING", 21);
+  out = d.update(21);
+  TEST_ASSERT_EQUAL_UINT8(255, out.motorDuty);
+  TEST_ASSERT_EQUAL_UINT32(30000, out.motorFrequencyHz);
+  TEST_ASSERT_TRUE(out.motorDecay == MotorDecay::Slow);
+  TEST_ASSERT_EQUAL_UINT8(100, d.update(26).motorDuty);
+}
+
+void test_req_TST_03_motor_tuning_bounds_include_zero_kick_and_30_khz() {
+  Device d("1.2.3", "abc");
+  send(d, "TEST:START", 0);
+  send(d, "TEST:SPEED:70", 1);
+  send(d, "TEST:FREQ:1000", 2);
+  send(d, "TEST:KICK:0", 3);
+  send(d, "TEST:DECAY:FAST", 4);
+  send(d, "TEST:MOTOR:START", 5);
+  Outputs out = d.update(5);
+  TEST_ASSERT_EQUAL_UINT8(70, out.motorDuty);
+  TEST_ASSERT_EQUAL_UINT32(1000, out.motorFrequencyHz);
+  TEST_ASSERT_TRUE(out.motorDecay == MotorDecay::Fast);
+
+  send(d, "TEST:MOTOR:STOP", 10);
+  TEST_ASSERT_EQUAL_UINT8(0, d.update(10).motorDuty);
+  send(d, "TEST:SPEED:255", 11);
+  TEST_ASSERT_EQUAL_INT(255, d.speed());
+  send(d, "TEST:SPEED:70", 12);
+  send(d, "TEST:FREQ:30000", 13);
+  send(d, "TEST:KICK:100", 14);
+  send(d, "TEST:DECAY:SLOW", 15);
+  send(d, "TEST:MOTOR:START", 16);
+  out = d.update(16);
+  TEST_ASSERT_EQUAL_UINT8(255, out.motorDuty);
+  TEST_ASSERT_EQUAL_UINT32(30000, out.motorFrequencyHz);
+  TEST_ASSERT_TRUE(out.motorDecay == MotorDecay::Slow);
+  TEST_ASSERT_EQUAL_UINT8(255, d.update(115).motorDuty);
+  TEST_ASSERT_EQUAL_UINT8(70, d.update(116).motorDuty);
+}
+
+void test_req_TST_04_raw_led_test_is_capped_and_cleared_by_state_preset() {
+  Device d("1.2.3", "abc");
+  send(d, "TEST:START", 0);
+  send(d, "TEST:LED:255,0,0", 1);
+  assertLed({127, 0, 0}, d.update(2).led);
+  send(d, "TEST:STATE:THINKING", 3);
+  assertLed({64, 40, 0}, d.update(3).led);
+  TEST_ASSERT_TRUE(d.testMode());
+}
+
+void test_req_TST_05_test_volume_applies_to_normal_state_sounds() {
+  Device d("1.2.3", "abc");
+  send(d, "TEST:START", 0);
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:VOLUME:3", 1).c_str());
+  send(d, "TEST:BEEP:SUCCESS", 10);
+  TEST_ASSERT_EQUAL_UINT16(512, d.update(20).toneDuty);
+  send(d, "TEST:STOP", 500);
+  send(d, "STATE:APPROVAL", 501);
+  TEST_ASSERT_EQUAL_UINT16(512, d.update(510).toneDuty);
+  TEST_ASSERT_EQUAL_STRING("ERR bad value\n", send(d, "TEST:VOLUME:4", 511).c_str());
+}
+
+void test_req_TST_07_timeout_stops_test_motor_and_keeps_volatile_tunings() {
+  Device d("1.2.3", "abc");
+  send(d, "TEST:START", 0);
+  send(d, "TEST:SPEED:90", 1);
+  send(d, "TEST:MOTOR:START", 2);
+  TEST_ASSERT_TRUE(d.update(3).motorDuty > 0);
+  const Outputs disconnected = d.update(cody::kTimeoutMs + 2);
+  TEST_ASSERT_FALSE(d.testMode());
+  TEST_ASSERT_EQUAL_UINT8(0, disconnected.motorDuty);
+  TEST_ASSERT_EQUAL_INT(90, d.speed());
+}
+
 // --- Completed on the bench in step 2d; logic verified here ---
 
 void test_req_FW_01_state_led_and_arms_follow_the_table() {
@@ -276,6 +403,13 @@ int main() {
   RUN_TEST(test_req_FW_11_reports_version_and_commit);
   RUN_TEST(test_req_FW_12_led_shows_colour_until_next_state);
   RUN_TEST(test_req_FW_12_beep_plays_a_sound);
+  RUN_TEST(test_req_TST_01_test_mode_owns_controls_until_stopped);
+  RUN_TEST(test_req_TST_02_state_presets_run_while_test_mode_stays_active);
+  RUN_TEST(test_req_TST_03_motor_tunings_apply_to_test_and_normal_working);
+  RUN_TEST(test_req_TST_03_motor_tuning_bounds_include_zero_kick_and_30_khz);
+  RUN_TEST(test_req_TST_04_raw_led_test_is_capped_and_cleared_by_state_preset);
+  RUN_TEST(test_req_TST_05_test_volume_applies_to_normal_state_sounds);
+  RUN_TEST(test_req_TST_07_timeout_stops_test_motor_and_keeps_volatile_tunings);
   RUN_TEST(test_req_FW_01_state_led_and_arms_follow_the_table);
   RUN_TEST(test_req_FW_04_sound_plays_once_when_a_state_is_entered);
   RUN_TEST(test_req_FW_06_timeout_stops_motor_and_shows_disconnected);

@@ -9,18 +9,40 @@ namespace cody {
 
 enum class State : uint8_t { Idle, Working, Thinking, Approval, Completed, Error };
 enum class Sound : uint8_t { None, Approval, Success, Warning };
+enum class MotorDecay : uint8_t { Fast, Slow };
 
 const char* stateName(State state);
 bool parseState(const char* text, State& out);
 bool parseSound(const char* text, Sound& out);
 
 struct Command {
-  enum class Kind : uint8_t { State, Ping, Speed, Volume, VersionQuery, Led, Beep };
+  enum class Kind : uint8_t {
+    State,
+    Ping,
+    Speed,
+    Volume,
+    VersionQuery,
+    Led,
+    Beep,
+    TestStart,
+    TestStop,
+    TestState,
+    TestMotorStart,
+    TestMotorStop,
+    TestSpeed,
+    TestFrequency,
+    TestKick,
+    TestDecay,
+    TestVolume,
+    TestLed,
+    TestBeep
+  };
   Kind kind = Kind::Ping;
   State state = State::Idle;
   int value = 0;  // SPEED 0-255, VOLUME 0-3
   uint8_t r = 0, g = 0, b = 0;
   Sound sound = Sound::None;
+  MotorDecay decay = MotorDecay::Fast;
 };
 
 // Parses one line (without the line ending). Returns nullptr on success, or

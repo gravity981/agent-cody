@@ -43,7 +43,7 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device.
 | `cad/` | Code-CAD models, head mesh pipeline, model checks, print notes | Python, build123d, manifold3d (TD-05) |
 | `electronics/` | Wiring diagram: SVG block diagram of the modules with named pins and named nets, generated from a Python script | Python, schemdraw |
 | `docs/` | Build documentation: parts list and assembly instructions (DOC) | Markdown, pictures and renders |
-| `tools/` | Requirement report | Python |
+| `tools/` | Requirement report and developer-only hardware test panel | Python; local browser UI for the test panel (TD-07) |
 
 ## 4. Interfaces
 
@@ -89,7 +89,7 @@ The hooks contain no logic: they forward the agent's own hook payload. All mappi
 
 THINKING vs WORKING between tool calls is approximate for both agents.
 
-### 4.2 Bridge → firmware (USB serial)
+### 4.2 Host → firmware (USB serial)
 
 USB CDC of the ESP32-C3, 115200 baud, ASCII lines terminated by `\n` (a `\r` before it is ignored). Commands and names are uppercase. A line longer than 64 characters is answered with `ERR line too long` and dropped. Every command is answered with `OK` or `ERR <reason>` (FW-10); an error never changes the state.
 
@@ -104,6 +104,23 @@ USB CDC of the ESP32-C3, 115200 baud, ASCII lines terminated by `\n` (a `\r` bef
 | `BEEP:<APPROVAL\|SUCCESS\|WARNING>` | Test: play a sound | FW-12 |
 
 At boot the device sends `READY <version>`; the bridge then resends settings and state (BRG-06). Every valid command, including `PING`, counts as activity for the 30 s timeout (FW-06); the first one after power-up or a disconnect ends the "disconnected" pattern (FW-07). Sending the current state again doesn't replay its sound (FW-04: sounds play when a state is entered).
+
+**Developer test panel (TST):** the panel runs in the devcontainer, binds its local HTTP server to `127.0.0.1:8766`, and VS Code forwards that port to the browser. It opens the USB CDC serial port directly at 115200 baud using pyserial; the bridge must be stopped while the panel owns the port. A busy or inaccessible port is shown as an error. The panel sends a browser-session heartbeat; if the page disappears, it sends `TEST:STOP` when needed and releases serial. If the panel process or serial connection disappears unexpectedly, the existing 30 s firmware timeout stops the motor and enters the disconnected pattern.
+
+| Test command | Meaning | Req |
+|---|---|---|
+| `TEST:START` / `TEST:STOP` | Enter/exit test mode; exit clears raw test outputs and returns to IDLE | TST-01, TST-07 |
+| `TEST:STATE:<IDLE\|WORKING\|THINKING\|APPROVAL\|COMPLETED\|ERROR>` | Apply a normal state preset without exiting test mode | TST-02 |
+| `TEST:MOTOR:START` / `TEST:MOTOR:STOP` | Start/stop the motor independently of the state preset | TST-03 |
+| `TEST:SPEED:<0-255>` | Set the shared motor speed | TST-03 |
+| `TEST:FREQ:<1000-30000>` | Set the shared motor PWM frequency in Hz | TST-03 |
+| `TEST:KICK:<0-100>` | Set the shared startup kick in milliseconds | TST-03 |
+| `TEST:DECAY:<FAST\|SLOW>` | Select DRV8833 fast or slow decay | TST-03 |
+| `TEST:VOLUME:<0-3>` | Set shared sound volume; `0` is mute | TST-05 |
+| `TEST:LED:<r>,<g>,<b>` | Temporarily show a colour, with the 50% brightness cap | TST-04 |
+| `TEST:BEEP:<APPROVAL\|SUCCESS\|WARNING>` | Play a test sound once | TST-05 |
+
+`TEST:*` commands other than `TEST:START` are accepted only in test mode. While test mode is active, normal `STATE`, `SPEED`, `VOLUME`, `LED` and `BEEP` commands are rejected so they cannot override it; `PING` and `VERSION?` remain available. Exiting test mode sets IDLE and clears manual motor/LED/sound overrides, but motor speed, frequency, kick, decay mode and volume remain in RAM and apply to normal state behavior until a later setting command or reboot. A test LED colour and test beep do not alter normal state colours or sounds.
 
 Flashing during development: the devcontainer mounts `/dev` with a device cgroup rule for USB CDC (`ttyACM`), like the bridge container, so `pio run -t upload` and the serial monitor work from VS Code. Only one process can open the port: the bridge is stopped while flashing (`docker compose stop`) and started again afterwards. On a Windows host the device reaches the devcontainer with `usbipd attach --wsl`, which takes it away from Windows: the Windows app sees a disconnect and finds the device again after `usbipd detach` (BRG-06).
 
@@ -121,13 +138,13 @@ Flashing during development: the devcontainer mounts `/dev` with a device cgroup
 
 - LED brightness is capped at 50 % of full scale (ELE-04); the percentages above are relative to that cap.
 - Buzzer: PWM at the tone frequency; volume by duty cycle, `VOLUME` 0 / 1 / 2 / 3 ≈ 0 / 3 / 12 / 50 %; levels must sound different on the bench (FW-09). A coil buzzer is driven through the DRV8833's second channel instead of a GPIO.
-- Motor: PWM at about 10 kHz; 1 ms full-duty kick on start, then apply `SPEED`; default `SPEED` is 224; `SPEED:0` stops the motor.
+- Motor: PWM at 10 kHz; 1 ms full-duty kick on start, then apply `SPEED`; default `SPEED` is 224; `SPEED:0` stops the motor. The test panel can adjust frequency from 1–30 kHz, kick from 0–100 ms, and select fast/slow decay. The default is fast decay: PWM on AIN1 with AIN2 low. Slow decay uses AIN1 high and PWM on AIN2, per [TI's DRV8833 datasheet, section 7.3.2, Table 2](https://www.ti.com/document-viewer/DRV8833/datasheet/detailed_description#SLVSAR16465). Runtime motor settings are volatile and shared with normal WORKING behavior.
 
 Default pins of the ESP32-C3 SuperMini (avoiding the boot pins 2, 8, 9 and the USB pins 18, 19), confirmed with the wiring diagram in step 2d (ELE-07):
 
 | Signal | GPIO |
 |---|---|
-| DRV8833 AIN1 / AIN2 (motor) | 3 / 4 |
+| DRV8833 AIN1 / AIN2 (motor; PWM pin depends on decay mode) | 3 / 4 |
 | WS2812 data | 5 |
 | Buzzer PWM / DRV8833 BIN1 | 6 |
 | DRV8833 BIN2 (held low for the coil buzzer) | 7 |
@@ -183,6 +200,7 @@ WSL2 in NAT mode and devcontainers in Docker Engine in WSL2 cannot reach `127.0.
 | Python dependencies | uv workspace (members `bridge`, `cad`, `tools`) with one lockfile `uv.lock`; tests with pytest | uv 0.13.7, pytest 9.2.0 | this table |
 | Static checks | ruff (Python), clang-format (C++), shellcheck (shell), gofmt and go vet (Go, from step 2g) | ruff 0.17.3, clang-format 23.1.5, shellcheck 0.11.0, Go's own tools | this table |
 | Wiring diagram (ELE-07) | schemdraw (Python), SVG output | pinned in `uv.lock` when added in step 2d | this table |
+| Developer hardware test panel | Python standard library HTTP server, HTML/JavaScript, pyserial | Python 3.14; pyserial 3.5 | TD-07 |
 
 Every tool has a pinned version and is installed in the devcontainer (`.devcontainer/`), never only on someone's machine. How CI gets the same tools is decided in delivery.md 2.
 
@@ -262,6 +280,18 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 **Consequences:** Go toolchain, gotestsum and NSIS in the devcontainer; Go tests in `ci/check`, named `Test_req_BRG_02_…` so the requirement report reads them unchanged. Bridge logic, mapping and recorded payloads are tested on Linux in CI; Windows-only parts (tray, Run key, COM ports, `wsl.exe`, installer) are demonstrated on Windows (verification log). Two bridges exist until stage 6. The tray library must build for Windows without cgo (checked in step 2g; otherwise a pure-Go Windows tray library); macOS will need cgo for the tray (stage 6).
 
+#### TD-07 Developer hardware test panel: local browser UI in the devcontainer
+
+**Status:** decided (2026-11-21)
+
+**Context:** TST-01 – TST-07. The owner needs a usable bench panel with fields and buttons, while the USB device is attached to the devcontainer. The tool is developer-only and must not change or depend on the bridge.
+
+**Options evaluated:** Python's standard-library HTTP server with a small HTML/JavaScript UI and pyserial (no GUI framework and no new server dependency; sufficient for a local bench panel); Flask/FastAPI (convenient routing, but adds a dependency without a need for a larger API); Tkinter/Qt in the devcontainer (desktop widgets, but requires display forwarding and a GUI toolkit). A browser-only Web Serial UI is not chosen because the USB port is owned by Python in the devcontainer, not the host browser.
+
+**Decision:** A small Python standard-library HTTP server serves the browser UI on loopback port 8766; the UI and backend communicate over same-origin HTTP, and Python directly owns the USB serial port using pyserial. The `cody-test-panel` tool is not packaged into Cody releases.
+
+**Consequences:** pyserial is a direct dependency of `cody-tools`; VS Code forwards port 8766 and opens the panel. Only one process can open the USB port, so the bridge is stopped during testing. The UI shows serial connection errors rather than silently falling back. Host-side tests use a fake serial device; output tuning and decay-mode behavior still require bench verification.
+
 ## 6. Version information
 
 | Artifact | How it reveals version and commit (REL-02) |
@@ -277,6 +307,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 | Risk | Mitigation |
 |---|---|
 | Motor, LED and buzzer exceed 500 mA (ELE-04), especially at motor start | Small N20 motor, PWM soft start, LED brightness limited; measured in stage 4. |
+| Slow-decay PWM changes motor response and current compared with the existing fast-decay behavior | Keep fast decay as the default; compare both modes through the test panel on the bench before selecting any different normal setting. |
 | Serial plug & play inside the Docker container (TD-04, BRG-06) | No longer needed on Windows hosts (TD-06): BRG-06 is shown with the Windows app in step 2h. The Linux container's replug stays unproven until stage 6 replaces it. |
 | Tray library needs cgo on Windows (TD-06) | Checked with a `CGO_ENABLED=0` Windows build in step 2g; fallback: a pure-Go Windows tray library. |
 | Docker Desktop's `host.docker.internal` doesn't reach a listener on Windows `127.0.0.1`; the relay can't bind in WSL mirrored mode (AGT-12) | Shown in step 2i in each environment; if Docker Desktop fails, the app also listens on the address `host.docker.internal` reaches. |

@@ -74,8 +74,8 @@ Requirements: BRG-01 – BRG-05, BRG-07 – BRG-14.
 **2c – Claude Code integration — done.** User-level curl command hooks that find the bridge on the host and in containers, event mapping with recorded payloads, timeout behaviour; real sessions on WSL2 and in a devcontainer (the bridge without a device is enough).
 Requirements: AGT-01 – AGT-03, AGT-07, AGT-11.
 
-**2d – Bench.** Parts arrived: firmware flashed, modules wired and soldered; LED effects, sounds, volume levels and the disconnected pattern shown and tuned on the device; wiring diagram. (Plug & play in the bridge container dropped on 2026-11-21: BRG-06 is shown with the Windows app in 2h.)
-Requirements: FW-01, FW-04, FW-06, FW-07, FW-09, ELE-01 – ELE-03, ELE-07.
+**2d – Bench and hardware test panel.** Parts arrived: firmware flashed, modules wired and soldered; LED effects, sounds, volume levels and the disconnected pattern shown and tuned on the device; wiring diagram. Includes the permanent, all-peripheral firmware test mode and a dev-only browser panel in the devcontainer for state presets and independent motor/LED/buzzer testing. The panel owns USB serial directly; the bridge stays unchanged and is stopped during testing. Motor tuning and volume changes apply to normal states until changed or reboot; raw LED and sound tests are temporary. (Plug & play in the bridge container dropped on 2026-11-21: BRG-06 is shown with the Windows app in 2h.)
+Requirements: FW-01, FW-04, FW-06, FW-07, FW-09, ELE-01 – ELE-03, ELE-07, TST-01 – TST-07.
 
 **2e – Build documentation for the status light.** Done after 2i. Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, bridge app on Windows and Docker bridge on Linux, hooks, Git for Windows on a Windows host) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
 Requirements: DOC-01, DOC-02, DOC-05, DOC-06.

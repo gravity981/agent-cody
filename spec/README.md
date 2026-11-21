@@ -62,6 +62,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | ELE | Electronics | 6 | 7 | 2, 4, 5 | specified |
 | FIG | Figure and mechanism | 7 | 17 | 4, 5 | specified |
 | DOC | Build documentation | 8 | 7 | 2, 4, 5 | specified |
+| TST | Hardware test panel | 9 | 7 | 2 | in progress |
 
 ## Decisions
 
@@ -73,7 +74,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-05 | The bridge runs on Linux and WSL2 (USB attached with usbipd-win on WSL); containerizing it is evaluated in architecture. | architecture.md 2 |
 | 2026-11-05 | Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device. | architecture.md 1 |
 | 2026-11-05 | Topics FW, BRG, AGT, ELE, FIG (mechanism and printed figure merged into FIG). | requirements.md |
-| 2026-11-05 | FW: COMPLETED/ERROR stay until the next state; heartbeat with fallback to "disconnected" after 30 s; mute and volume; SPEED Must, LED/BEEP test commands Could; settings kept by the bridge, not the firmware. | requirements.md 3 |
+| 2026-11-05 | FW: COMPLETED/ERROR stay until the next state; heartbeat with fallback to "disconnected" after 30 s; mute and volume; SPEED Must, LED/BEEP test commands Could; bridge settings are sent to the firmware. Runtime test tuning added on 2026-11-21 is volatile and documented below. | requirements.md 3, architecture.md 4.2 |
 | 2026-11-05 | BRG: several sessions are merged, most urgent state wins; stale sessions (WORKING/THINKING/APPROVAL) dropped after a configurable timeout; listens on local interfaces only, no auth; autostart. | requirements.md 4 |
 | 2026-11-05 | AGT: Copilot drives IDLE/THINKING/WORKING/COMPLETED (Must); APPROVAL/ERROR are Could until VS Code provides events; Copilot sessions keyed by workspace folder. | requirements.md 5 |
 | 2026-11-05 | ELE: whole device powered from one USB port, ≤ 500 mA (USB 2.0 guarantee; the ESP32 is a USB 2.0 device); soldering of header pins and wires allowed; parts budget ≤ CHF 25. | requirements.md 6 |
@@ -94,6 +95,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-06 | Wiring diagram (ELE-07) as an SVG block diagram with named pins and nets, generated from Python with schemdraw (added in step 2d). | architecture.md 3, 5.1 |
 | 2026-11-06 | New BRG-15: `cody session clear` (`DELETE /sessions`) clears all sessions, to reset the bridge when a session is stale (e.g. Claude Code killed without `SessionEnd`). | requirements.md 4, architecture.md 4.1 |
 | 2026-11-21 | Bridge redesigned (TD-06): a Go tray app on Windows with "Start automatically" (no Windows service), installed with an NSIS installer without admin rights; WSL2 and its devcontainers reach it through a relay that the app starts with `wsl.exe`, so no WSL networking mode is forced. New BRG-16 – BRG-19, AGT-12; AGT-02 includes Windows. The Python Docker bridge stays for Linux, frozen; native Linux and macOS in the new stage 6, which retires it. Steps 2g – 2i added to stage 2 after 2d; Docker replug dropped from 2d. `cody` shell command and Python hook installer stay; consolidation decided at stage 3 start. | requirements.md 4–5, architecture.md 2–4, 5, TD-06, implementation-plan.md |
+| 2026-11-21 | Added TST: a dev-only browser panel in the devcontainer directly owns USB serial, without bridge changes. The permanent firmware test mode exercises all peripherals; motor tunings and volume apply across normal states until changed or reboot, while raw LED and sound tests are temporary. Settings are not saved across reboot. | requirements.md 9, architecture.md 4.2, 5.1–5.2, TD-07, implementation-plan.md |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points

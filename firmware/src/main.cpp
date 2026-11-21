@@ -8,7 +8,6 @@
 
 namespace {
 
-constexpr uint32_t kMotorPwmHz = 10000;
 constexpr uint8_t kMotorBits = 8;    // duty 0-255
 constexpr uint8_t kBuzzerBits = 10;  // duty 0-1023 (cody::kDutyMax)
 
@@ -29,8 +28,25 @@ void apply(const cody::Outputs& out) {
       ledcWrite(cody::pins::kBuzzer, 0);
     }
   }
-  if (first || out.motorDuty != applied.motorDuty) {
-    ledcWrite(cody::pins::kMotorIn1, out.motorDuty);
+  if (first || out.motorFrequencyHz != applied.motorFrequencyHz) {
+    ledcChangeFrequency(cody::pins::kMotorIn1, out.motorFrequencyHz, kMotorBits);
+    ledcChangeFrequency(cody::pins::kMotorIn2, out.motorFrequencyHz, kMotorBits);
+  }
+  if (first || out.motorDuty != applied.motorDuty || out.motorDecay != applied.motorDecay) {
+    if (!first && out.motorDecay != applied.motorDecay) {
+      ledcWrite(cody::pins::kMotorIn1, 0);
+      ledcWrite(cody::pins::kMotorIn2, 0);
+    }
+    if (out.motorDuty == 0) {
+      ledcWrite(cody::pins::kMotorIn1, 0);
+      ledcWrite(cody::pins::kMotorIn2, 0);
+    } else if (out.motorDecay == cody::MotorDecay::Fast) {
+      ledcWrite(cody::pins::kMotorIn1, out.motorDuty);
+      ledcWrite(cody::pins::kMotorIn2, 0);
+    } else {
+      ledcWrite(cody::pins::kMotorIn1, 255);
+      ledcWrite(cody::pins::kMotorIn2, out.motorDuty);
+    }
   }
   applied = out;
   first = false;
@@ -39,11 +55,10 @@ void apply(const cody::Outputs& out) {
 }  // namespace
 
 void setup() {
-  pinMode(cody::pins::kMotorIn2, OUTPUT);
-  digitalWrite(cody::pins::kMotorIn2, LOW);
   pinMode(cody::pins::kBuzzerLow, OUTPUT);
   digitalWrite(cody::pins::kBuzzerLow, LOW);
-  ledcAttach(cody::pins::kMotorIn1, kMotorPwmHz, kMotorBits);
+  ledcAttach(cody::pins::kMotorIn1, cody::kDefaultMotorFrequencyHz, kMotorBits);
+  ledcAttach(cody::pins::kMotorIn2, cody::kDefaultMotorFrequencyHz, kMotorBits);
   ledcAttach(cody::pins::kBuzzer, 2000, kBuzzerBits);
   apply(device.update(millis()));
 

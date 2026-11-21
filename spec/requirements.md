@@ -144,3 +144,17 @@ Written so that a maker with a 3D printer and a soldering iron can build a Cody 
 | DOC-05 | Each step of the instructions names the parts and tools it needs and has a picture or render. | Must |
 | DOC-06 | The parts list and the assembly instructions are release files, with the version in their names. | Must |
 | DOC-07 | Someone other than the owner builds a Cody from the parts list and the instructions. | Should |
+
+## 9. Hardware test panel (TST)
+
+A developer-only bench tool for exercising the firmware and its peripherals. It is not part of the bridge or a release artifact.
+
+| ID | Requirement | Prio |
+|---|---|---|
+| TST-01 | The firmware provides an explicit test mode that gives test commands exclusive control of the motor, LED and buzzer, separate from normal agent state commands. | Must |
+| TST-02 | The test panel can apply each of the six normal states as a preset without leaving test mode. | Must |
+| TST-03 | The panel can start and stop the motor and set speed (0–255), PWM frequency (1–30 kHz), startup kick (0–100 ms) and DRV8833 fast or slow decay. Motor settings apply to normal WORKING behavior until changed or reboot. | Must |
+| TST-04 | The panel can show a raw RGB test colour (0–255 per channel), subject to the existing 50% brightness cap; raw LED tests do not change normal state colours. | Must |
+| TST-05 | The panel can play the APPROVAL, SUCCESS and WARNING sounds and set volume (0–3); volume applies to normal state sounds until changed or reboot, while test sounds are one-shot. | Must |
+| TST-06 | The browser panel runs as a developer tool in the devcontainer, connects directly to USB serial, and displays connection status and device replies/errors; it does not depend on or modify the bridge. | Must |
+| TST-07 | Test settings are volatile and reset on reboot. Exiting test mode or losing the panel session clears raw test outputs and stops the motor; the firmware timeout also stops the motor and enters disconnected behavior. Motor settings and volume remain active across normal state changes and test-mode exit until changed or reboot. | Must |
