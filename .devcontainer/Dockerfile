@@ -1,6 +1,11 @@
 # Development environment and CI environment (spec/delivery.md 2).
 # Every tool has a pinned version (spec/architecture.md 5.1).
+ARG UV_VERSION=0.13.7
+FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
+
 FROM mcr.microsoft.com/devcontainers/base:bookworm@sha256:99f5250dd2d5f8b11046d5662dd94c1e3c1dae56b560c7caad5ceb7edf349046
+
+ARG UV_VERSION
 
 # Mount point for the shared claude-config volume, owned by vscode so the empty
 # volume inherits that ownership on first mount
@@ -49,7 +54,7 @@ RUN arch="$(uname -m)" \
     && rm -rf /tmp/shellcheck*
 
 # uv (pinned image tag) manages Python, the workspace environment and Python tools
-COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /uvx /usr/local/bin/
+COPY --from=uv /uv /uvx /usr/local/bin/
 
 # Shared locations. devcontainers/ci changes the vscode user's UID to the
 # runner's, so everything that is written at runtime (uv cache, workspace
@@ -92,6 +97,7 @@ RUN cd /tmp/cody/firmware \
     && mkdir -p src \
     && printf '#include <Arduino.h>\nvoid setup() {}\nvoid loop() {}\n' > src/main.cpp \
     && pio run --environment esp32c3 \
+    && uv pip install --python=/opt/platformio/penv/bin/python "uv==${UV_VERSION}" \
     && rm -rf /opt/platformio/dist /opt/platformio/.cache \
     && find /opt/platformio/packages/framework-arduinoespressif32-libs -mindepth 1 -maxdepth 1 \
          -type d ! -name esp32c3 ! -name hosted -exec rm -rf {} + \
