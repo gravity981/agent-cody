@@ -13,15 +13,29 @@ func Test_req_BRG_07_MissingConfigUsesDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got.Speed != 224 || got.Volume != 2 || got.SessionTimeoutMin != 10 ||
-		got.LogLevel != "info" || got.SerialPort != nil {
+		got.LogLevel != "info" || got.SerialPort != nil || got.WSLDistros != nil {
 		t.Fatalf("unexpected defaults: %+v", got)
+	}
+}
+
+func Test_req_AGT_12_EmptyWslDistroListDisablesDefault(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "bridge.toml")
+	if err := os.WriteFile(path, []byte("wsl_distros = []\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.WSLDistros == nil || len(got.WSLDistros) != 0 {
+		t.Fatalf("wsl_distros = %#v, want an explicit empty list", got.WSLDistros)
 	}
 }
 
 func Test_req_BRG_07_ParsesAndValidatesConfig(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "bridge.toml")
 	content := "serial_port = \"/dev/ttyACM3\"\nspeed = 90\nvolume = 0\n" +
-		"session_timeout_min = 2.5\nlog_level = \"debug\"\n"
+		"session_timeout_min = 2.5\nlog_level = \"debug\"\nwsl_distros = [\"Ubuntu\", \"Debian\"]\n"
 	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -31,7 +45,8 @@ func Test_req_BRG_07_ParsesAndValidatesConfig(t *testing.T) {
 	}
 	if got.SerialPort == nil || *got.SerialPort != "/dev/ttyACM3" ||
 		got.Speed != 90 || got.Volume != 0 || got.SessionTimeoutMin != 2.5 ||
-		got.LogLevel != "debug" {
+		got.LogLevel != "debug" || len(got.WSLDistros) != 2 ||
+		got.WSLDistros[0] != "Ubuntu" || got.WSLDistros[1] != "Debian" {
 		t.Fatalf("unexpected config: %+v", got)
 	}
 }
@@ -47,6 +62,8 @@ func Test_req_BRG_07_RejectsInvalidConfig(t *testing.T) {
 		"log_level = \"verbose\"\n",
 		"colour = \"red\"\n",
 		"speed = \n",
+		"wsl_distros = [\"\"]\n",
+		"wsl_distros = [\"Ubuntu\", \"Ubuntu\"]\n",
 	} {
 		path := filepath.Join(t.TempDir(), "invalid.toml")
 		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {

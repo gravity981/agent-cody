@@ -28,12 +28,16 @@ tmp_dir=$(mktemp -d)
   GOOS=windows CGO_ENABLED=0 go build \
     -ldflags "-H=windowsgui -X github.com/gravity981/agent-cody/bridge-go/internal/buildinfo.Version=$VERSION -X github.com/gravity981/agent-cody/bridge-go/internal/buildinfo.Commit=$COMMIT" \
     -o "$tmp_dir/cody.exe" ./cmd/cody-bridge
+  GOOS=linux CGO_ENABLED=0 go build \
+    -ldflags "-X github.com/gravity981/agent-cody/bridge-go/internal/buildinfo.Version=$VERSION -X github.com/gravity981/agent-cody/bridge-go/internal/buildinfo.Commit=$COMMIT" \
+    -o "$tmp_dir/cody-linux" ./cmd/cody-bridge
 )
 
 installer="$RELEASE_DIR/cody-$VERSION-windows-setup.exe"
 makensis -V2 \
   -DVERSION="$VERSION" \
   -DAPP_EXE="$tmp_dir/cody.exe" \
+  -DRELAY_EXE="$tmp_dir/cody-linux" \
   -DOUTFILE="$installer" \
   bridge-go/installer/cody.nsi
 test -s "$installer"

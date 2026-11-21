@@ -30,6 +30,10 @@ func main() {
 }
 
 func run(args []string) int {
+	if len(args) > 0 && args[0] == "relay" {
+		return runRelay(args[1:])
+	}
+
 	flags := flag.NewFlagSet("cody-bridge", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	showVersion := flags.Bool("version", false, "print version and commit, then exit")
@@ -95,6 +99,20 @@ func runBridge(
 		}
 	}()
 
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	relayDone, err := startWSLRelays(runCtx, cfg, logger)
+	if err != nil {
+		logger.Warningf("start WSL relay: %v", err)
+		relayDone = nil
+	}
+	if relayDone != nil {
+		defer func() {
+			cancel()
+			<-relayDone
+		}()
+	}
+
 	version, commit := buildinfo.Current()
 	logger.Infof("cody-bridge %s %s, config %s", version, commit, configPath)
 
@@ -137,7 +155,7 @@ func runBridge(
 			logger.Warningf("HTTP server stopped: %v", err)
 			link.Close(time.Now())
 			return fmt.Errorf("HTTP server stopped: %w", err)
-		case <-ctx.Done():
+		case <-runCtx.Done():
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			err := server.Shutdown(shutdownCtx)
 			cancel()

@@ -91,6 +91,7 @@ Requirements: BRG-01 – BRG-05, BRG-07, BRG-10, BRG-13 – BRG-15.
 Requirements: BRG-06, BRG-09, BRG-16 – BRG-18.
 
 **2i – WSL relay and reachability.** `cody-linux relay` started by the app through `wsl.exe`, tunnel over stdin/stdout; real Claude Code sessions drive the device from the Windows host (Git Bash), WSL2 in NAT and mirrored mode, a devcontainer in Docker Engine in WSL2 and a devcontainer on Docker Desktop; `cody` command from WSL; setup guide updated.
+*Status after implementation (2026-11-21): CI, Windows/Linux builds and installer compilation pass; manual Claude Code sessions across Windows, WSL2 and both devcontainer environments remain.*
 Requirements: AGT-02, AGT-12, BRG-08.
 
 ### Stage 3 – Copilot integration

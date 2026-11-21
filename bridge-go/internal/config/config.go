@@ -13,11 +13,12 @@ import (
 )
 
 type Config struct {
-	SerialPort        *string `toml:"serial_port"`
-	Speed             int     `toml:"speed"`
-	Volume            int     `toml:"volume"`
-	SessionTimeoutMin float64 `toml:"session_timeout_min"`
-	LogLevel          string  `toml:"log_level"`
+	SerialPort        *string  `toml:"serial_port"`
+	Speed             int      `toml:"speed"`
+	Volume            int      `toml:"volume"`
+	SessionTimeoutMin float64  `toml:"session_timeout_min"`
+	LogLevel          string   `toml:"log_level"`
+	WSLDistros        []string `toml:"wsl_distros"`
 }
 
 func Defaults() Config {
@@ -82,6 +83,16 @@ func (c Config) Validate() error {
 	}
 	if c.LogLevel != "info" && c.LogLevel != "debug" {
 		return errors.New(`log_level must be "info" or "debug"`)
+	}
+	seenDistros := make(map[string]struct{}, len(c.WSLDistros))
+	for _, distro := range c.WSLDistros {
+		if distro == "" {
+			return errors.New("wsl_distros entries must not be empty")
+		}
+		if _, exists := seenDistros[distro]; exists {
+			return fmt.Errorf("wsl_distros contains duplicate distribution %q", distro)
+		}
+		seenDistros[distro] = struct{}{}
 	}
 	return nil
 }

@@ -7,6 +7,9 @@ Unicode True
 !ifndef APP_EXE
   !error "APP_EXE is required"
 !endif
+!ifndef RELAY_EXE
+  !error "RELAY_EXE is required"
+!endif
 !ifndef OUTFILE
   !error "OUTFILE is required"
 !endif
@@ -30,6 +33,7 @@ Section "Cody" CodyInstall
   ExecWait '"$SYSDIR\taskkill.exe" /IM cody.exe /T /F' $0
   SetOutPath "$INSTDIR"
   File /oname=cody.exe "${APP_EXE}"
+  File /oname=cody-linux "${RELAY_EXE}"
   WriteUninstaller "$INSTDIR\uninstall.exe"
   CreateDirectory "$SMPROGRAMS\Cody"
   CreateShortCut "$SMPROGRAMS\Cody\Cody.lnk" "$INSTDIR\cody.exe"
@@ -60,6 +64,7 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\Cody\Cody.lnk"
   RMDir "$SMPROGRAMS\Cody"
   Delete "$INSTDIR\cody.exe"
+  Delete "$INSTDIR\cody-linux"
   Delete "$INSTDIR\uninstall.exe"
   RMDir "$INSTDIR"
 SectionEnd
