@@ -43,13 +43,13 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 
 **Steps:**
 
-**1a – Devcontainer and toolchain.** Base image and project tools with pinned versions in `.devcontainer/`: PlatformIO with the pioarduino platform, uv with Python, build123d, manifold3d, pytest, ruff, clang-format, shellcheck, and the docker-outside-of-docker feature; Python dependencies locked with uv. Top-level folders as in architecture.md 3; formatting and static checks (ruff, clang-format, shellcheck); `.gitignore`, `.gitattributes`, `.editorconfig` for the toolchain.
+**1a – Devcontainer and toolchain — done.** Base image and project tools with pinned versions in `.devcontainer/`: PlatformIO with the pioarduino platform, uv with Python, build123d, manifold3d, pytest, ruff, clang-format, shellcheck, and the docker-outside-of-docker feature; Python dependencies locked with uv. Top-level folders as in architecture.md 3; formatting and static checks (ruff, clang-format, shellcheck); `.gitignore`, `.gitattributes`, `.editorconfig` for the toolchain.
 Requirements: none (foundation).
 
-**1b – Requirement report and CI.** The requirement report in Python (`tools/`) with its own pytest tests (JUnit XML); `ci/check` runs the static checks, all tests and then the report; CI green on a pull request.
+**1b – Requirement report and CI — done.** The requirement report in Python (`tools/`) with its own pytest tests (JUnit XML); `ci/check` runs the static checks, all tests and then the report; CI green on a pull request.
 Requirements: TRC-01 – TRC-07, REL-01.
 
-**1c – Release.** Version determination (`<last release>+build.<N>` in CI, `+local.<commit>` locally) and how artifacts reveal it; skeleton firmware (`.bin` that sends `READY <version>` at boot) and skeleton bridge image (answers `--version`) with its compose file, as the first release files; `ci/build-release`, `ci/publish` (bridge image to GHCR with the candidate tag) and `ci/promote` (retag without rebuilding); workflow permissions `packages: write` and action SHA pins; first candidate and promotion done by the project owner and recorded in the verification log; delivery as in delivery.md 4.
+**1c – Release — done.** Version determination (`<last release>+build.<N>` in CI, `+local.<commit>` locally) and how artifacts reveal it; skeleton firmware (`.bin` that sends `READY <version>` at boot) and skeleton bridge image (answers `--version`) with its compose file, as the first release files; `ci/build-release`, `ci/publish` (bridge image to GHCR with the candidate tag) and `ci/promote` (retag without rebuilding); workflow permissions `packages: write` and action SHA pins; first candidate and promotion done by the project owner and recorded in the verification log; delivery as in delivery.md 4.
 Requirements: REL-02 – REL-06.
 
 ### Stage 2 – Status light on the bench
@@ -65,13 +65,13 @@ Requirements: REL-02 – REL-06.
 
 Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived. Order after 2d (decided 2026-11-21, TD-06): 2g, 2h, 2i, then 2e.
 
-**2a – Firmware logic.** Serial protocol, state machine, LED effects, sounds with volume and motor control as logic with host unit tests (defaults in architecture.md 4.3); firmware builds for the ESP32-C3.
+**2a – Firmware logic — done.** Serial protocol, state machine, LED effects, sounds with volume and motor control as logic with host unit tests (defaults in architecture.md 4.3); firmware builds for the ESP32-C3.
 Requirements: FW-02, FW-03, FW-05, FW-08, FW-10 – FW-12.
 
-**2b – Bridge.** HTTP endpoints, session merging, timeouts, heartbeat, serial connection tested with a fake serial device, config file, autostart, log with rotation; host command `cody` (status, manual state).
+**2b – Bridge — done.** HTTP endpoints, session merging, timeouts, heartbeat, serial connection tested with a fake serial device, config file, autostart, log with rotation; host command `cody` (status, manual state).
 Requirements: BRG-01 – BRG-05, BRG-07 – BRG-14.
 
-**2c – Claude Code integration.** User-level curl command hooks that find the bridge on the host and in containers, event mapping with recorded payloads, timeout behaviour; real sessions on WSL2 and in a devcontainer (the bridge without a device is enough).
+**2c – Claude Code integration — done.** User-level curl command hooks that find the bridge on the host and in containers, event mapping with recorded payloads, timeout behaviour; real sessions on WSL2 and in a devcontainer (the bridge without a device is enough).
 Requirements: AGT-01 – AGT-03, AGT-07, AGT-11.
 
 **2d – Bench.** Parts arrived: firmware flashed, modules wired and soldered; LED effects, sounds, volume levels and the disconnected pattern shown and tuned on the device; wiring diagram. (Plug & play in the bridge container dropped on 2026-11-21: BRG-06 is shown with the Windows app in 2h.)
@@ -80,7 +80,7 @@ Requirements: FW-01, FW-04, FW-06, FW-07, FW-09, ELE-01 – ELE-03, ELE-07.
 **2e – Build documentation for the status light.** Done after 2i. Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, bridge app on Windows and Docker bridge on Linux, hooks, Git for Windows on a Windows host) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
 Requirements: DOC-01, DOC-02, DOC-05, DOC-06.
 
-**2f – Clearing sessions.** Added during the stage (2026-11-06), done before 2d: `cody session clear` and `DELETE /sessions` remove all sessions (architecture.md 4.1).
+**2f – Clearing sessions — done.** Added during the stage (2026-11-06), done before 2d: `cody session clear` and `DELETE /sessions` remove all sessions (architecture.md 4.1).
 Requirements: BRG-15.
 
 **2g – Go bridge core.** Added 2026-11-21 (TD-06). Go toolchain and gotestsum in the devcontainer; gofmt and go vet in `tools/static-checks`; Go tests in `ci/check`. In `bridge-go/`: the bridge logic ported from Python (HTTP endpoints, session merging, Claude Code mapping tested with the shared recorded payloads, timeouts, heartbeat, serial connection with a fake device, config, log with rotation, version); builds for Windows and Linux without cgo, including the tray library. The Python bridge stays as is (frozen).
