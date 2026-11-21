@@ -3,8 +3,23 @@ package main
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"testing"
 )
+
+func Test_req_BRG_16_OpenConfigCreatesParentDirectory(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "cody", "bridge.toml")
+	if err := ensureFileParentDirectory(path); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(filepath.Dir(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.IsDir() {
+		t.Fatalf("parent path %q is not a directory", filepath.Dir(path))
+	}
+}
 
 func Test_req_BRG_10_VersionFlagReportsBuildInfo(t *testing.T) {
 	t.Setenv("CODY_VERSION", "2.0.0")

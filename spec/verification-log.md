@@ -21,3 +21,4 @@ Manual verification: inspections, demonstrations, checks on real hardware or in 
 | FW-04 | 2026-11-21 | Assembled bench, ESP32-C3 firmware over USB serial | pass | APPROVAL played its double beep on entry; sending `STATE:APPROVAL` again did not repeat the sound |
 | FW-06 | 2026-11-21 | Assembled bench, ESP32-C3 firmware over USB serial | pass | After the 30 s command timeout, the white disconnected pulse appeared as specified |
 | FW-09 | 2026-11-21 | Assembled bench, ESP32-C3 firmware over USB serial | pass | Volume levels and mute worked; after wiring the coil buzzer through DRV8833 channel B, LED changes produced no audible buzzer noise |
+| BRG-16 | 2026-11-21 | Windows, installed Cody app | pass | Selecting "Open config" opened the config and created an empty TOML file |

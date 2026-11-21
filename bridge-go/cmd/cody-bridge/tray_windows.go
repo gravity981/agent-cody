@@ -282,6 +282,10 @@ func windowsTrayLoop(
 }
 
 func openInNotepad(path string) {
+	if err := ensureFileParentDirectory(path); err != nil {
+		showWindowsError(fmt.Errorf("prepare directory for %s: %w", path, err))
+		return
+	}
 	command := exec.Command("notepad.exe", path)
 	if err := command.Start(); err != nil {
 		showWindowsError(fmt.Errorf("open %s: %w", path, err))

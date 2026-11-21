@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"time"
 
 	"github.com/gravity981/agent-cody/bridge-go/internal/bridge"
@@ -65,6 +66,10 @@ func run(args []string) int {
 		return 1
 	}
 	return 0
+}
+
+func ensureFileParentDirectory(path string) error {
+	return os.MkdirAll(filepath.Dir(path), 0o700)
 }
 
 func runBridge(
