@@ -67,7 +67,7 @@ class FakeSystem:
         self.opened.append(device)
         return self.ports[device]
 
-    def link(self, speed: int = 128, volume: int = 2, serial_port: str | None = None) -> DeviceLink:
+    def link(self, speed: int = 224, volume: int = 2, serial_port: str | None = None) -> DeviceLink:
         return DeviceLink(self.lister, self.opener, speed, volume, serial_port)
 
 

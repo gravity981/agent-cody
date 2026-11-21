@@ -8,9 +8,9 @@
 
 namespace {
 
-constexpr uint32_t kMotorPwmHz = 20000;  // inaudible
-constexpr uint8_t kMotorBits = 8;        // duty 0-255
-constexpr uint8_t kBuzzerBits = 10;      // duty 0-1023 (cody::kDutyMax)
+constexpr uint32_t kMotorPwmHz = 10000;
+constexpr uint8_t kMotorBits = 8;    // duty 0-255
+constexpr uint8_t kBuzzerBits = 10;  // duty 0-1023 (cody::kDutyMax)
 
 cody::Device device(cody::version(), cody::commit());
 cody::LineReader reader;

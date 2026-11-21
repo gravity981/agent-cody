@@ -102,10 +102,11 @@ void test_req_FW_05_completed_and_error_stay_until_next_state() {
 
 void test_req_FW_08_speed_sets_motor_duty_in_working() {
   Device d("1.2.3", "abc");
-  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "SPEED:90", 0).c_str());
   send(d, "STATE:WORKING", 0);
-  TEST_ASSERT_EQUAL_UINT8(255, d.update(50).motorDuty);  // kick start
-  TEST_ASSERT_EQUAL_UINT8(90, d.update(200).motorDuty);
+  TEST_ASSERT_EQUAL_UINT8(255, d.update(0).motorDuty);  // brief kick
+  TEST_ASSERT_EQUAL_UINT8(224, d.update(1).motorDuty);  // default
+  send(d, "SPEED:90", 100);
+  TEST_ASSERT_EQUAL_UINT8(90, d.update(100).motorDuty);
   send(d, "SPEED:200", 300);
   TEST_ASSERT_EQUAL_UINT8(200, d.update(300).motorDuty);
   send(d, "SPEED:0", 400);
@@ -199,7 +200,7 @@ void test_req_FW_01_state_led_and_arms_follow_the_table() {
   send(d, "STATE:THINKING", 0);
   assertLed({64, 40, 0}, d.update(10).led);
   send(d, "STATE:APPROVAL", 0);
-  assertLed({127, 40, 0}, d.update(100).led);  // blink on
+  assertLed({127, 30, 0}, d.update(100).led);  // blink on
   assertLed({0, 0, 0}, d.update(600).led);     // blink off
   send(d, "STATE:COMPLETED", 0);
   assertLed({0, 64, 0}, d.update(10).led);

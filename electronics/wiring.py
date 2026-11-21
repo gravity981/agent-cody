@@ -21,20 +21,28 @@ from schemdraw.elements import IcPin
 SVG = Path(__file__).with_name("wiring.svg")
 
 # GPIOs of the ESP32-C3 SuperMini, as in firmware/src/pins.h
-GPIO = {"MOTOR_IN1": 3, "MOTOR_IN2": 4, "LED_DIN": 5, "BUZZER": 6}
+GPIO = {
+    "MOTOR_IN1": 3,
+    "MOTOR_IN2": 4,
+    "LED_DIN": 5,
+    "BUZZER_IN1": 6,
+    "BUZZER_IN2": 7,
+}
 
 # Every connection: net -> pins as (module, pin). The drawing below follows it,
 # and the tests check it against the firmware and the parts.
 NETS: dict[str, list[tuple[str, str]]] = {
-    "5V": [("ESP32", "5V"), ("DRV8833", "VM"), ("WS2812", "5V")],
-    "3V3": [("ESP32", "3V3"), ("DRV8833", "nSLEEP")],
-    "GND": [("ESP32", "GND"), ("DRV8833", "GND"), ("WS2812", "GND"), ("KY-006", "-")],
+    "5V": [("ESP32", "5V"), ("DRV8833", "VM"), ("DRV8833", "STBY"), ("WS2812", "5V")],
+    "GND": [("ESP32", "GND"), ("DRV8833", "GND"), ("WS2812", "GND")],
     "MOTOR_IN1": [("ESP32", "GPIO3"), ("DRV8833", "AIN1")],
     "MOTOR_IN2": [("ESP32", "GPIO4"), ("DRV8833", "AIN2")],
     "MOTOR_A": [("DRV8833", "AOUT1"), ("MOTOR", "M1")],
     "MOTOR_B": [("DRV8833", "AOUT2"), ("MOTOR", "M2")],
     "LED_DIN": [("ESP32", "GPIO5"), ("WS2812", "DIN")],
-    "BUZZER": [("ESP32", "GPIO6"), ("KY-006", "S")],
+    "BUZZER_IN1": [("ESP32", "GPIO6"), ("DRV8833", "BIN1")],
+    "BUZZER_IN2": [("ESP32", "GPIO7"), ("DRV8833", "BIN2")],
+    "BUZZER_A": [("DRV8833", "BOUT1"), ("KY-006", "S")],
+    "BUZZER_B": [("DRV8833", "BOUT2"), ("KY-006", "-")],
 }
 
 POWER = ("5V", "3V3", "GND")
@@ -76,8 +84,8 @@ def draw() -> schemdraw.Drawing:
     d = schemdraw.Drawing(show=False)
     d.config(fontsize=12, unit=2, lw=1.2, font="sans-serif", bgcolor="white", margin=0.3)
 
-    esp_left = ["5V", "GND", "3V3"]
-    esp_right = ["GPIO3", "GPIO4", "GPIO5", "GPIO6"]
+    esp_left = ["5V", "GND"]
+    esp_right = ["GPIO3", "GPIO4", "GPIO5", "GPIO6", "GPIO7"]
     esp = d.add(
         elm.Ic(pins=_pins(esp_left, esp_right), size=(3, 6), pinspacing=1.2, edgepadding=0.9)
         .at((0, 0))
@@ -85,16 +93,20 @@ def draw() -> schemdraw.Drawing:
         .label("ESP32-C3\nSuperMini", loc="top", fontsize=13)
     )
 
-    drv_left = ["AIN1", "AIN2", "nSLEEP", "VM", "GND"]
+    drv_left = ["AIN1", "AIN2", "BIN1", "BIN2", "STBY", "VM", "GND"]
     drv = d.add(
-        elm.Ic(pins=_pins(drv_left, ["AOUT1", "AOUT2"]), size=(2.6, 5), pinspacing=0.9)
+        elm.Ic(
+            pins=_pins(drv_left, ["BOUT2", "BOUT1", "AOUT2", "AOUT1"]),
+            size=(3.4, 6.8),
+            pinspacing=0.9,
+        )
         .at((9, 6.5))
         .anchor("center")
         .label("DRV8833", loc="top", fontsize=13)
     )
     motor = d.add(
         elm.Ic(pins=_pins(["M1", "M2"]), size=(2.2, 2.2), pinspacing=0.9)
-        .at((14.5, 6.5))
+        .at((14.5, 7.5))
         .anchor("center")
         .label("N20\nmotor", loc="top", fontsize=13)
     )
@@ -106,9 +118,9 @@ def draw() -> schemdraw.Drawing:
     )
     buz = d.add(
         elm.Ic(pins=_pins(["S", "(n.c.)", "-"]), size=(2.6, 2.6), pinspacing=0.8)
-        .at((9, -5))
+        .at((14.5, -5))
         .anchor("center")
-        .label("KY-006\n(piezo)", loc="top", fontsize=13)
+        .label("KY-006\n(coil)", loc="top", fontsize=13)
     )
 
     # Signal wires: right from the ESP32, then up or down to the module pin
@@ -116,7 +128,8 @@ def draw() -> schemdraw.Drawing:
         ("GPIO3", drv.AIN1, 4.4),
         ("GPIO4", drv.AIN2, 5.0),
         ("GPIO5", led.DIN, 5.6),
-        ("GPIO6", buz.S, 4.4),
+        ("GPIO6", drv.BIN1, 6.2),
+        ("GPIO7", drv.BIN2, 6.8),
     ]
     for pin, target, x in signals:
         start = getattr(esp, pin)
@@ -130,9 +143,14 @@ def draw() -> schemdraw.Drawing:
         d.add(elm.Line().at((x, start[1])).to((x, target[1])))
         d.add(elm.Line().at((x, target[1])).to(target))
 
-    # Motor outputs
-    for out, m in (("AOUT1", "M1"), ("AOUT2", "M2")):
-        a, b = getattr(drv, out), getattr(motor, m)
+    # Driver outputs
+    for out, module, pin in (
+        ("AOUT1", motor, "M1"),
+        ("AOUT2", motor, "M2"),
+        ("BOUT1", buz, "S"),
+        ("BOUT2", buz, "-"),
+    ):
+        a, b = getattr(drv, out), getattr(module, pin)
         d.add(
             elm.Line()
             .at(a)
@@ -147,17 +165,14 @@ def draw() -> schemdraw.Drawing:
         _power_stub(d, "DRV8833", drv, pin, "left")
     for pin in ("5V", "GND"):
         _power_stub(d, "WS2812", led, pin, "left")
-    _power_stub(d, "KY-006", buz, "-", "left")
-
     d.add(
         elm.Label()
         .at((-2.5, -7.4))
         .label(
             "Pins with the same net name are connected. 5V comes from USB through the "
-            "SuperMini's 5V pin.\nDRV8833 board labels vary: IN1/IN2 = AIN1/AIN2, "
-            "OUT1/OUT2 = AOUT1/AOUT2, VCC = VM, EEP or SLP = nSLEEP.\n"
-            "Coil buzzer instead of a piezo: S and - to BOUT1/BOUT2, GPIO6 to BIN1, "
-            "GPIO7 to BIN2 (architecture.md 4.3).",
+            "SuperMini's 5V pin.\nDRV8833 board labels vary: AO1/AO2 = AOUT1/AOUT2, "
+            "BO1/BO2 = BOUT1/BOUT2, STBY/SLP = nSLEEP, VCC = VM.\n"
+            "KY-006 coil buzzer: GPIO6/7 to BIN1/BIN2; S and - to BOUT1/BOUT2.",
             halign="left",
             valign="top",
             fontsize=10,

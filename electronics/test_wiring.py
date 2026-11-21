@@ -16,7 +16,8 @@ FIRMWARE_PINS = {
     "kMotorIn1": "MOTOR_IN1",
     "kMotorIn2": "MOTOR_IN2",
     "kLed": "LED_DIN",
-    "kBuzzer": "BUZZER",
+    "kBuzzer": "BUZZER_IN1",
+    "kBuzzerLow": "BUZZER_IN2",
 }
 
 

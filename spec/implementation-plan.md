@@ -231,6 +231,6 @@ After each completed stage, Claude appends a report with this structure to secti
 **Risks and notes:**
 - Plug & play of the serial device inside the bridge container (TD-04) is unproven; step 2b must show it, otherwise a native service.
 - CI runs that rebuild the toolchain layers (first run, toolchain changes in a pull request) take long; the ownership step in the post-create adds a few minutes to every run.
-- The KY-006 may be a coil buzzer: measure before wiring; then it is driven through the DRV8833's second channel.
+- The KY-006 measured 15 Ω across its signal and ground pins on the bench and is driven through the DRV8833's second channel (2026-11-21).
 - Product photos in the parts list are the shops' images; replace them with own photos before a release.
 - GitHub Copilot's agent hooks are still in Preview (stage 3).

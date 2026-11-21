@@ -114,14 +114,14 @@ Flashing during development: the devcontainer mounts `/dev` with a device cgroup
 | IDLE | blue (0,0,255) steady at 15 % | – | stopped |
 | WORKING | blue (0,0,255) pulsing 20–100 %, period 2 s | – | motor at `SPEED` |
 | THINKING | yellow (255,160,0) steady at 50 % | – | stopped |
-| APPROVAL | orange (255,80,0) blinking 1 Hz | double beep: 2 × 100 ms at 2.7 kHz, 100 ms apart | stopped |
+| APPROVAL | orange (255,60,0) blinking 1 Hz | double beep: 2 × 100 ms at 2.7 kHz, 100 ms apart | stopped |
 | COMPLETED | green (0,255,0) steady at 50 % | success: rising 2.0 / 2.5 / 3.0 kHz, 100 ms each | stopped |
 | ERROR | red (255,0,0) blinking 2 Hz | warning: falling 3.0 / 2.0 kHz, 200 ms each, twice | stopped |
 | disconnected (FW-06, FW-07) | white slow pulse 0–10 %, period 4 s (unobtrusive at night) | – | stopped |
 
 - LED brightness is capped at 50 % of full scale (ELE-04); the percentages above are relative to that cap.
 - Buzzer: PWM at the tone frequency; volume by duty cycle, `VOLUME` 0 / 1 / 2 / 3 ≈ 0 / 3 / 12 / 50 %; levels must sound different on the bench (FW-09). A coil buzzer is driven through the DRV8833's second channel instead of a GPIO.
-- Motor: PWM at about 20 kHz (inaudible); a kick start of 100 ms at full duty before dropping to `SPEED`; `SPEED:0` stops the motor.
+- Motor: PWM at about 10 kHz; 1 ms full-duty kick on start, then apply `SPEED`; default `SPEED` is 224; `SPEED:0` stops the motor.
 
 Default pins of the ESP32-C3 SuperMini (avoiding the boot pins 2, 8, 9 and the USB pins 18, 19), confirmed with the wiring diagram in step 2d (ELE-07):
 
@@ -129,12 +129,14 @@ Default pins of the ESP32-C3 SuperMini (avoiding the boot pins 2, 8, 9 and the U
 |---|---|
 | DRV8833 AIN1 / AIN2 (motor) | 3 / 4 |
 | WS2812 data | 5 |
-| Buzzer (piezo directly, or DRV8833 BIN1 for a coil buzzer) | 6 |
-| DRV8833 BIN2 (held low; only used with a coil buzzer) | 7 |
+| Buzzer PWM / DRV8833 BIN1 | 6 |
+| DRV8833 BIN2 (held low for the coil buzzer) | 7 |
+
+The bench KY-006 measured 15 Ω across its signal and ground pins and is wired as a coil buzzer through the DRV8833's second channel. On the breakout used, `STBY` is the sleep/enable pin and is tied to 5 V as the manufacturer specifies; `AO1`/`AO2`, `BO1`/`BO2` label the `AOUT1`/`AOUT2`, `BOUT1`/`BOUT2` outputs. A confirmed piezo buzzer may be driven directly from GPIO6.
 
 ### 4.4 Bridge configuration (BRG-07)
 
-**Docker bridge (Linux, until stage 6):** `~/.config/cody/bridge.toml` on the host, mounted read-only into the container by the compose file; a missing file or key means the default. Keys: `serial_port` (optional override), `speed` (default 128), `volume` (default 2), `session_timeout_min` (default 10), `listen` (default `["127.0.0.1", "172.17.0.1"]`), `log_level` (`"info"` or `"debug"`, default `"info"`).
+**Docker bridge (Linux, until stage 6):** `~/.config/cody/bridge.toml` on the host, mounted read-only into the container by the compose file; a missing file or key means the default. Keys: `serial_port` (optional override), `speed` (default 224), `volume` (default 2), `session_timeout_min` (default 10), `listen` (default `["127.0.0.1", "172.17.0.1"]`), `log_level` (`"info"` or `"debug"`, default `"info"`).
 
 The bridge is a Python program with the standard library's threaded HTTP server and pyserial for the port and device discovery. It finds the device among the serial ports by Espressif's USB vendor ID (`303A`) and accepts it only after `VERSION?` is answered (FW-11). It sends `PING` every 5 s (BRG-05).
 

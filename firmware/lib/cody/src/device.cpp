@@ -129,7 +129,7 @@ Rgb Device::stateLed(uint32_t nowMs) const {
     case State::Thinking:
       return scaled(255, 160, 0, 50);
     case State::Approval:
-      return blinkOn(t, 1000) ? scaled(255, 80, 0, 100) : Rgb{};
+      return blinkOn(t, 1000) ? scaled(255, 60, 0, 100) : Rgb{};
     case State::Completed:
       return scaled(0, 255, 0, 50);
     case State::Error:

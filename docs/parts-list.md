@@ -12,7 +12,7 @@ Prices are what was paid on 2026-11-06, including the price of a whole pack wher
 | ![DRV8833 board](images/parts/drv8833.jpg) | DRV8833 dual H-bridge motor driver board (ELE-03) | 1 | "DRV8833" | Realpoy Electronic Components Wholesale Store: "TB6612 DRV8833 Dual Motor Driver 1A TB6612FNG for Arduino …" | 0.85 each (2 bought: 1 spare) | 0.85 |
 | ![N20 geared motor](images/parts/n20-300rpm.jpg) | N20 geared DC motor, 6 V (GA12-N20) | 1 | "300RPM, Single motor, 6V" or "500RPM, Single motor, 6V" (decided in stage 4) | Bobo01 Store: "GA12-N20 DC 3V 6V 12V Micro Metal Gear Motor Gear Wheel Gear Mot…" | 2.62 (300 rpm), 2.66 (500 rpm) | 2.62 |
 | ![WS2812 module](images/parts/ws2812.jpg) | WS2812 single RGB LED module, 5 V (status LED) | 1 | "5pcs" | HHKFYD Module Store: "1-10pcs Electronic building block one RBG 1Bit low power long life WS28…" | 1.42 per pack of 5 | 1.42 |
-| ![KY-006 passive buzzer](images/parts/ky006.jpg) | KY-006 passive buzzer module | 1 | "Passive Buzzer, 5PCS" | ZC Technology Store: "Passive Speaker Buzzer Module for Arduino Boards KY-006" | 1.21 per pack of 5 | 1.21 |
+| ![KY-006 passive buzzer](images/parts/ky006.jpg) | KY-006 passive coil buzzer module | 1 | "Passive Buzzer, 5PCS" | ZC Technology Store: "Passive Speaker Buzzer Module for Arduino Boards KY-006" | 1.21 per pack of 5 | 1.21 |
 
 **Subtotal for one Cody:** CHF 8.16 (whole packs counted; CHF 6.05 counting only the pieces used). Spares are not counted.
 

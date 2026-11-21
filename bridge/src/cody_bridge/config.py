@@ -22,7 +22,7 @@ class ConfigError(ValueError):
 @dataclass(frozen=True)
 class Config:
     serial_port: str | None = None
-    speed: int = 128
+    speed: int = 224
     volume: int = 2
     session_timeout_min: float = 10
     listen: list[str] = field(default_factory=lambda: list(DEFAULT_LISTEN))
@@ -69,7 +69,7 @@ def parse(data: dict) -> Config:
     return Config(
         log_level=log_level,
         serial_port=port,
-        speed=_int(data, "speed", 128, 0, 255),
+        speed=_int(data, "speed", 224, 0, 255),
         volume=_int(data, "volume", 2, 0, 3),
         session_timeout_min=timeout,
         listen=_listen(data),

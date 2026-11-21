@@ -24,7 +24,7 @@ struct Outputs {
 
 constexpr uint16_t kDutyMax = 1023;                    // buzzer duty resolution (10 bit)
 constexpr uint32_t kTimeoutMs = 30000;                 // FW-06
-constexpr uint32_t kKickStartMs = 100;                 // motor kick start
+constexpr uint32_t kKickStartMs = 1;                   // brief motor kick
 constexpr uint8_t kLedCap = 127;                       // 50 % of full scale (ELE-04)
 constexpr uint16_t kVolumeDuty[] = {0, 30, 120, 512};  // VOLUME 0-3
 
@@ -59,7 +59,7 @@ class Device {
   bool everConnected_ = false;
   uint32_t lastCommandMs_ = 0;
   bool wasConnected_ = false;
-  int speed_ = 128;
+  int speed_ = 224;
   int volume_ = 2;
   bool ledOverride_ = false;
   Rgb ledOverrideColour_;

@@ -11,7 +11,7 @@ from cody_bridge.config import Config, ConfigError, load, parse
 def test_req_BRG_07_missing_file_means_defaults(tmp_path: Path) -> None:
     assert load(tmp_path / "bridge.toml") == Config()
     assert Config().listen == ["127.0.0.1", "172.17.0.1"]
-    assert (Config().speed, Config().volume, Config().session_timeout_min) == (128, 2, 10)
+    assert (Config().speed, Config().volume, Config().session_timeout_min) == (224, 2, 10)
 
 
 def test_req_BRG_07_settings_are_read_from_the_file(tmp_path: Path) -> None:
