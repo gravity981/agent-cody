@@ -21,6 +21,7 @@ if [[ -z ${RELEASE_DIR:-} ]]; then
   RELEASE_DIR=$temporary_release_dir
 fi
 mkdir -p "$RELEASE_DIR"
+RELEASE_DIR=$(cd "$RELEASE_DIR" && pwd -P)
 
 tmp_dir=$(mktemp -d)
 mkdir -p "$tmp_dir/hooks"

@@ -12,6 +12,7 @@ COMMIT=$(cody_commit)
 export VERSION COMMIT
 echo "Release files for $VERSION ($COMMIT) into $RELEASE_DIR"
 mkdir -p "$RELEASE_DIR"
+RELEASE_DIR=$(cd "$RELEASE_DIR" && pwd -P)
 
 # Firmware: one combined image (bootloader, partitions, app), flashed at 0x0
 (cd firmware && pio run --environment esp32c3)
