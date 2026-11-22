@@ -24,6 +24,11 @@ type Bridge interface {
 	ClearManual(time.Time)
 	ClearSessions(time.Time)
 	Status(time.Time) bridge.Status
+	StartTest(time.Time) error
+	TestHeartbeat(time.Time) error
+	SendTestCommand(string, time.Time) error
+	StopTest(time.Time) error
+	TestStatus() bridge.TestStatus
 }
 
 func NewHandler(b Bridge, clock func() time.Time, website WebsiteOptions) http.Handler {

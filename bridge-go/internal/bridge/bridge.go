@@ -1,6 +1,7 @@
 package bridge
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -14,20 +15,34 @@ import (
 const ManualAgent = "manual"
 const ManualSession = "manual"
 
+const TestHeartbeatTimeout = 10 * time.Second
+
+var (
+	ErrTestModeActive   = errors.New("hardware test mode is already active")
+	ErrTestModeInactive = errors.New("hardware test mode is not active")
+)
+
 type DeviceLink interface {
 	Status() device.Status
 	SetState(sessions.State, time.Time)
+	StartTest(time.Time) error
+	SendTestCommand(string, time.Time) error
+	StopTest(sessions.State, time.Time) error
+	Replies() []string
 	Step(time.Time)
+	Close(time.Time)
 }
 
 type Bridge struct {
-	mu        sync.Mutex
-	sessions  *sessions.Sessions
-	link      DeviceLink
-	logger    *logging.Logger
-	version   string
-	commit    string
-	lastState sessions.State
+	mu                 sync.Mutex
+	sessions           *sessions.Sessions
+	link               DeviceLink
+	logger             *logging.Logger
+	version            string
+	commit             string
+	lastState          sessions.State
+	testMode           bool
+	lastPanelHeartbeat time.Time
 }
 
 func New(
@@ -93,6 +108,12 @@ func (b *Bridge) ClearSessions(now time.Time) {
 func (b *Bridge) Tick(now time.Time) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	b.sessions.Expire(now)
+	if b.testMode && now.Sub(b.lastPanelHeartbeat) >= TestHeartbeatTimeout {
+		if err := b.stopTest(now, "panel heartbeat expired"); err != nil {
+			b.logger.Warningf("stop hardware test after panel heartbeat expired: %v", err)
+		}
+	}
 	b.apply(now, "session timeout")
 	b.link.Step(now)
 }
@@ -103,13 +124,92 @@ func (b *Bridge) apply(now time.Time, cause string) {
 	deviceStatus := b.link.Status()
 	if state != b.lastState {
 		delivery := "device not connected"
-		if deviceStatus.Connected {
+		if b.testMode {
+			delivery = "test mode; device writes suspended"
+		} else if deviceStatus.Connected {
 			delivery = "sent"
 		}
 		b.logger.Infof("state %s (%s) <- %s", state, delivery, cause)
 		b.lastState = state
 	}
+	if b.testMode {
+		return
+	}
 	b.link.SetState(state, now)
+}
+
+func (b *Bridge) StartTest(now time.Time) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.testMode {
+		return ErrTestModeActive
+	}
+	if err := b.link.StartTest(now); err != nil {
+		return err
+	}
+	b.testMode = true
+	b.lastPanelHeartbeat = now
+	b.logger.Infof("hardware test mode started")
+	return nil
+}
+
+func (b *Bridge) TestHeartbeat(now time.Time) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if !b.testMode {
+		return ErrTestModeInactive
+	}
+	b.lastPanelHeartbeat = now
+	return nil
+}
+
+func (b *Bridge) SendTestCommand(command string, now time.Time) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if !b.testMode {
+		return ErrTestModeInactive
+	}
+	return b.link.SendTestCommand(command, now)
+}
+
+func (b *Bridge) StopTest(now time.Time) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.stopTest(now, "panel stopped")
+}
+
+func (b *Bridge) stopTest(now time.Time, cause string) error {
+	if !b.testMode {
+		return nil
+	}
+	b.testMode = false
+	b.sessions.Expire(now)
+	state := b.sessions.Merged()
+	b.lastState = state
+	b.logger.Infof("hardware test mode stopped (%s); restoring state %s", cause, state)
+	return b.link.StopTest(state, now)
+}
+
+type TestStatus struct {
+	Active  bool     `json:"active"`
+	Replies []string `json:"replies"`
+}
+
+func (b *Bridge) TestStatus() TestStatus {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return TestStatus{Active: b.testMode, Replies: b.link.Replies()}
+}
+
+func (b *Bridge) Close(now time.Time) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.testMode {
+		if err := b.stopTest(now, "bridge shutting down"); err != nil {
+			b.logger.Warningf("stop hardware test during shutdown: %v", err)
+		}
+	}
+	b.link.Close(now)
 }
 
 func (b *Bridge) Status(now time.Time) Status {

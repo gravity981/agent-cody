@@ -98,13 +98,16 @@ USB CDC of the ESP32-C3, 115200 baud, ASCII lines terminated by `\n` (a `\r` bef
 |---|---|---|
 | `STATE:<IDLE\|WORKING\|THINKING\|APPROVAL\|COMPLETED\|ERROR>` | Switch state | FW-03 |
 | `PING` | Heartbeat | FW-06, BRG-05 |
-| `SPEED:<0-255>` | Motor PWM in WORKING | FW-08 |
-| `VOLUME:<0-3>` | Sound volume, `0` = mute | FW-09 |
+| `VOLUME:<0-100>` | Set the user volume preference; 0 is mute | FW-09 |
+| `BRIGHTNESS:<0-100>` | Set the LED brightness multiplier of the existing cap | FW-14 |
 | `VERSION?` | Answered with `VERSION <version> <commit>` before `OK` | FW-11 |
+| `TUNING?` | Answered with `TUNING:<speed>,<frequency_hz>,<kick_ms>,<FAST\|SLOW>,<UTC timestamp\|UNSAVED>` before `OK` | FW-13, TST-09 |
 | `LED:<r>,<g>,<b>` | Test: show a colour (0–255 each) until the next `STATE` or a disconnect | FW-12 |
 | `BEEP:<APPROVAL\|SUCCESS\|WARNING>` | Test: play a sound | FW-12 |
 
-At boot the device sends `READY <version>`; the bridge then resends settings and state (BRG-06). Every valid command, including `PING`, counts as activity for the 30 s timeout (FW-06); the first one after power-up or a disconnect ends the "disconnected" pattern (FW-07). Sending the current state again doesn't replay its sound (FW-04: sounds play when a state is entered).
+At boot the device sends `READY <version>`; the Go bridge then resends volume and brightness preferences and state (BRG-06). It queries `TUNING?` to display the device's motor tuning. Every valid command, including `PING`, counts as activity for the 30 s timeout (FW-06); the first one after power-up or a disconnect ends the "disconnected" pattern (FW-07). Sending the current state again doesn't replay its sound (FW-04: sounds play when a state is entered).
+
+**Per-device motor tuning (FW-13, FW-15):** the ESP32 stores speed, PWM frequency, startup kick and decay mode in its built-in NVS (`Preferences`). Firmware defaults are speed 224, 10 kHz, 1 ms kick and fast decay. They are loaded at boot, or used until the first save. Only explicit save and factory reset write NVS. The Go bridge supplies a UTC RFC 3339 timestamp with each write; the device stores it with the parameters and reports it through `TUNING?`. The query returns `UNSAVED` before the first write. A write failure returns `ERR` and is not reported as successful.
 
 **Developer test panel (TST):** the panel is a section of the Windows bridge website, opened in the Windows browser. It uses the bridge's existing device connection; it does not open serial or require a devcontainer server. The bridge remains the sole serial owner. The panel sends a heartbeat every 2 s; closing the page stops the test immediately when possible, and a 10 s heartbeat expiry otherwise ends it. Normal agent events continue to update the merged state while device writes are suspended. On stop or expiry, the bridge sends `TEST:STOP` and applies the latest merged state.
 
@@ -117,11 +120,15 @@ At boot the device sends `READY <version>`; the bridge then resends settings and
 | `TEST:FREQ:<1000-30000>` | Set the shared motor PWM frequency in Hz | TST-03 |
 | `TEST:KICK:<0-100>` | Set the shared startup kick in milliseconds | TST-03 |
 | `TEST:DECAY:<FAST\|SLOW>` | Select DRV8833 fast or slow decay | TST-03 |
-| `TEST:VOLUME:<0-3>` | Set shared sound volume; `0` is mute | TST-05 |
+| `TEST:VOLUME:<0-100>` | Set temporary test volume using the same volume curve; `0` is mute | TST-05 |
 | `TEST:LED:<r>,<g>,<b>` | Temporarily show a colour, with the 50% brightness cap | TST-04 |
 | `TEST:BEEP:<APPROVAL\|SUCCESS\|WARNING>` | Play a test sound once | TST-05 |
+| `TEST:TUNING:SAVE:<UTC timestamp>` | Persist the current motor tuning and supplied timestamp to NVS | FW-13, TST-09 |
+| `TEST:TUNING:RESET:<UTC timestamp>` | Restore firmware motor-tuning defaults and persist them with the supplied timestamp | FW-15, TST-09 |
 
-`TEST:*` commands other than `TEST:START` are accepted only in test mode. While test mode is active, normal `STATE`, `SPEED`, `VOLUME`, `LED` and `BEEP` commands are rejected so they cannot override it; `PING` and `VERSION?` remain available. Exiting test mode sets IDLE and clears manual motor/LED/sound overrides; the bridge then resends its current settings and latest merged state. Motor speed, frequency, kick, decay mode and volume remain in RAM and apply to normal state behavior until a later setting command or reboot. A test LED colour and test beep do not alter normal state colours or sounds.
+`TEST:*` commands other than `TEST:START` are accepted only in test mode. While test mode is active, normal `STATE`, `VOLUME`, `BRIGHTNESS`, `LED` and `BEEP` commands are rejected so they cannot override it; `PING`, `VERSION?` and `TUNING?` remain available. Exiting test mode sets IDLE and clears temporary motor/LED/sound overrides; the bridge then resends its current preferences and latest merged state. Motor tuning edits take effect in RAM and apply to normal WORKING behavior after test mode; they survive reboot only after explicit save. Test volume is temporary. A test LED colour and test beep do not alter normal state colours or sounds.
+
+The bridge website issues `TEST:TUNING:SAVE` and `TEST:TUNING:RESET` only while test mode is active. When the page opens, the bridge queries `TUNING?`; after a save or reset it queries again and updates the displayed values. The page renders a returned UTC timestamp in local date and time, and shows “Firmware defaults (never saved)” for `UNSAVED`.
 
 Flashing during firmware development: the devcontainer mounts `/dev` with a device cgroup rule for USB CDC (`ttyACM`), so `pio run -t upload` and the serial monitor work from VS Code. On a Windows host the device reaches the devcontainer with `usbipd attach --wsl`, which takes it away from Windows; the Windows app sees a disconnect and finds the device again after `usbipd detach` (BRG-06). For normal firmware updates, use the bridge updater in 4.7.
 
@@ -130,16 +137,16 @@ Flashing during firmware development: the devcontainer mounts `/dev` with a devi
 | State | LED (r,g,b and effect) | Sound | Arms |
 |---|---|---|---|
 | IDLE | blue (0,0,255) steady at 15 % | – | stopped |
-| WORKING | blue (0,0,255) pulsing 20–100 %, period 2 s | – | motor at `SPEED` |
+| WORKING | blue (0,0,255) pulsing 20–100 %, period 2 s | – | motor at saved/current device speed |
 | THINKING | yellow (255,160,0) steady at 50 % | – | stopped |
 | APPROVAL | orange (255,60,0) blinking 1 Hz | double beep: 2 × 100 ms at 2.7 kHz, 100 ms apart | stopped |
 | COMPLETED | green (0,255,0) steady at 50 % | success: rising 2.0 / 2.5 / 3.0 kHz, 100 ms each | stopped |
 | ERROR | red (255,0,0) blinking 2 Hz | warning: falling 3.0 / 2.0 kHz, 200 ms each, twice | stopped |
 | disconnected (FW-06, FW-07) | white slow pulse 0–10 %, period 4 s (unobtrusive at night) | – | stopped |
 
-- LED brightness is capped at 50 % of full scale (ELE-04); the percentages above are relative to that cap.
-- Buzzer: PWM at the tone frequency; volume by duty cycle, `VOLUME` 0 / 1 / 2 / 3 ≈ 0 / 3 / 12 / 50 %; levels must sound different on the bench (FW-09). A coil buzzer is driven through the DRV8833's second channel instead of a GPIO.
-- Motor: PWM at 10 kHz; 1 ms full-duty kick on start, then apply `SPEED`; default `SPEED` is 224; `SPEED:0` stops the motor. The test panel can adjust frequency from 1–30 kHz, kick from 0–100 ms, and select fast/slow decay. The default is fast decay: PWM on AIN1 with AIN2 low. Slow decay uses AIN1 high and PWM on AIN2, per [TI's DRV8833 datasheet, section 7.3.2, Table 2](https://www.ti.com/document-viewer/DRV8833/datasheet/detailed_description#SLVSAR16465). Runtime motor settings are volatile and shared with normal WORKING behavior.
+- LED brightness is capped at 50 % of full scale (ELE-04); the percentages above are relative to that cap. For bridge brightness slider value `x`, use `b=(x/100)^2.2`, then apply `b` to the capped RGB channels: `Rout=round(Rin_capped × b)`, likewise for green and blue. The default is 100%; raw test colours use the same multiplier.
+- Buzzer: PWM at the tone frequency; for slider value `x` from 0 to 100, duty is `round(512 × (x/100)^2.5)`. Thus 0 is mute and 100 is the existing LOUD output. The bridge default and test-panel slider position are 50%; slider steps are 1%. A coil buzzer is driven through the DRV8833's second channel instead of a GPIO.
+- Motor: PWM at 10 kHz; 1 ms full-duty kick on start, then apply the current device tuning; firmware defaults are speed 224 and fast decay. Speed 0 stops the motor. The test panel can adjust frequency from 1–30 kHz, kick from 0–100 ms, and select fast/slow decay. The default is fast decay: PWM on AIN1 with AIN2 low. Slow decay uses AIN1 high and PWM on AIN2, per [TI's DRV8833 datasheet, section 7.3.2, Table 2](https://www.ti.com/document-viewer/DRV8833/datasheet/detailed_description#SLVSAR16465). Unsaved motor tuning is volatile; saved tuning and its timestamp persist in NVS.
 
 Default pins of the ESP32-C3 SuperMini (avoiding the boot pins 2, 8, 9 and the USB pins 18, 19), confirmed with the wiring diagram in step 2d (ELE-07):
 
@@ -154,15 +161,15 @@ The bench KY-006 measured 15 Ω across its signal and ground pins and is wired a
 
 ### 4.4 Bridge configuration (BRG-07)
 
-**Docker bridge (Linux, until stage 6):** `~/.config/cody/bridge.toml` on the host, mounted read-only into the container by the compose file; a missing file or key means the default. Keys: `serial_port` (optional override), `speed` (default 224), `volume` (default 2), `session_timeout_min` (default 10), `listen` (default `["127.0.0.1", "172.17.0.1"]`), `log_level` (`"info"` or `"debug"`, default `"info"`).
+**Docker bridge (Linux, until stage 6):** `~/.config/cody/bridge.toml` on the host, mounted read-only into the container by the compose file; a missing file or key means the default. It remains frozen with its legacy keys: `serial_port` (optional override), `speed` (default 224), `volume` (default 2), `session_timeout_min` (default 10), `listen` (default `["127.0.0.1", "172.17.0.1"]`), `log_level` (`"info"` or `"debug"`, default `"info"`). It is not compatible with the new firmware settings: its `SPEED` command is no longer supported and its old 0–3 volume values are interpreted on the new 0–100 scale. Use the Windows Go app with firmware implementing TD-10; the Python bridge is retired in Stage 6.
 
 The bridge is a Python program with the standard library's threaded HTTP server and pyserial for the port and device discovery. It finds the device among the serial ports by Espressif's USB vendor ID (`303A`) and accepts it only after `VERSION?` is answered (FW-11). It sends `PING` every 5 s (BRG-05).
 
 Log (BRG-13, BRG-14): the bridge writes lines `YYYY-MM-DD HH:MM:SS LEVEL message` to stdout, for example `2026-11-06 14:02:11 INFO  state WORKING (sent) <- claude-code 3f2a1c PreToolUse`. Docker keeps them in its json-file log, limited by the compose file to 2 files of 10 MB (`max-size`, `max-file`); read with `docker compose logs`. Info: state changes with cause and delivery, device connects and losses, config. Debug: every event, and every command (`->`) and reply (`<-`) on the serial line. The container uses the host network and sees replugged devices through `/dev` mounted with a device cgroup rule for `ttyACM` devices.
 
-**Windows app (TD-06):** same behaviour, protocol use, log format and levels as above; the differences:
+**Windows app (TD-06):** same session, HTTP and log behavior as above; it uses the current firmware protocol and settings described below, unlike the frozen Python bridge. Differences:
 
-- Config `%APPDATA%\cody\bridge.toml`, same keys except `listen` (the app always listens on `127.0.0.1` only), plus `wsl_distros` (default: WSL's default distribution if WSL is installed; `[]` turns the relay off, 4.6). Read at start; the website saves edits and marks that a restart is required.
+- Config `%APPDATA%\cody\bridge.toml`: `volume` (0–100, default 50), `brightness` (0–100, default 100), `session_timeout_min` (default 10), optional `serial_port`, `log_level`, and `wsl_distros` (default: WSL's default distribution if WSL is installed; `[]` turns the relay off, 4.6). Motor tuning is not a bridge setting. Config is read at start; the website saves edits and marks that a restart is required.
 - The installer enables autostart by default; the tray menu's "Start automatically" checkbox can turn it off or back on without admin rights.
 - Device: found among the COM ports by USB vendor ID `303A` (go.bug.st/serial enumerator), accepted after `VERSION?` is answered (FW-11).
 - Log `%LOCALAPPDATA%\cody\bridge.log`, rotated by the app (lumberjack) at 10 MB with one old file kept, so at most 2 files of 10 MB (BRG-14); the relay's output goes into the same log, marked `relay <distro>`.
@@ -170,7 +177,7 @@ Log (BRG-13, BRG-14): the bridge writes lines `YYYY-MM-DD HH:MM:SS LEVEL message
 - Autostart (BRG-09, BRG-16): the tick box writes or removes the value `Cody` (path of `cody.exe`) under `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`; no admin rights. Only one instance runs (a named mutex); a second start ends at once.
 - Installer (BRG-18): `cody-<version>-windows-setup.exe`, built with NSIS (`makensis` in the devcontainer) from `bridge-go/installer/`. Per user, without admin rights (`RequestExecutionLevel user`): installs `cody.exe`, `cody-linux` (the relay), the pinned `espflash.exe` helper and its license notices into `%LOCALAPPDATA%\Programs\Cody`, adds a Start menu entry and an uninstaller listed under "Installed apps" with the version (HKCU), ends a running app before replacing files, and offers "Start Cody now" on its last page. The installer enables autostart by default. The uninstaller removes the files, the Start menu entry and the autostart value, and keeps config and log. Unsigned: SmartScreen asks once ("Run anyway").
 
-**Local website (BRG-20 – BRG-22, TD-08):** the existing Go `net/http` server serves embedded HTML, CSS and JavaScript at `http://127.0.0.1:8765/`; no separate frontend runtime or build toolchain. The page shows bridge version and commit, firmware version and connection status, merged state and sessions, each configured WSL distro's actual relay port, and route guidance: WSL-host hooks use `127.0.0.1:8765`; Docker Engine devcontainer hooks in WSL2 use `172.17.0.1:<relay-port>`. The latter is not the Windows bridge's internal port. The page edits `wsl_distros`, `speed`, `volume` (0 means mute), `session_timeout_min`, optional `serial_port`, and `log_level`. It validates and saves the existing TOML config file; edits are not live-applied. The page clearly says a restart is required and provides "Restart now". There is no login; the site is served only on loopback and browser mutation endpoints validate the same origin. This protects browser actions from cross-site requests but is not authentication against other local processes.
+**Local website (BRG-20 – BRG-22, TST-09, TD-08):** the existing Go `net/http` server serves embedded HTML, CSS and JavaScript at `http://127.0.0.1:8765/`; no separate frontend runtime or build toolchain. The page shows bridge version and commit, firmware version and connection status, merged state and sessions, each configured WSL distro's actual relay port, and route guidance: WSL-host hooks use `127.0.0.1:8765`; Docker Engine devcontainer hooks in WSL2 use `172.17.0.1:<relay-port>`. The latter is not the Windows bridge's internal port. Volume and brightness are 0–100% sliders with a 1% step; volume uses `round(512 × (x/100)^2.5)` and defaults to 50%, brightness defaults to 100%. The page also queries and displays device motor tuning and its local last-write date, allows edits through the test panel, and provides explicit Save and Factory reset controls. It shows “Firmware defaults (never saved)” if the device has no saved timestamp. The settings page edits `wsl_distros`, volume, brightness, `session_timeout_min`, optional `serial_port`, and `log_level`; it validates and saves the existing TOML config file; edits are not live-applied. The page clearly says a restart is required and provides "Restart now". There is no login; the site is served only on loopback and browser mutation endpoints validate the same origin. This protects browser actions from cross-site requests but is not authentication against other local processes.
 
 #### Windows firmware updater (BRG-23, BRG-24, TD-09)
 
@@ -301,7 +308,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 **Decision:** A small Python standard-library HTTP server serves the browser UI on loopback port 8766; the UI and backend communicate over same-origin HTTP, and Python directly owns the USB serial port using pyserial. The `cody-test-panel` tool is not packaged into Cody releases.
 
-**Consequences:** pyserial is a direct dependency of `cody-tools`; VS Code forwards port 8766 and opens the panel. Only one process can open the USB port, so the bridge is stopped during testing. The UI shows serial connection errors rather than silently falling back. Host-side tests use a fake serial device; output tuning and decay-mode behavior still require bench verification.
+**Consequences:** Superseded in step 2k: the Windows Go bridge serves the panel and remains the sole serial owner; the Python panel, its pyserial dependency in `cody-tools`, forwarded port and direct-serial tests are removed. Device behavior still requires bench verification.
 
 #### TD-08 Windows control interface: embedded local website
 
@@ -326,6 +333,16 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 **Decision:** bundle the pinned Windows x86-64 `espflash` v4.7.0 helper with the installer, including its license notices. Verify the firmware release asset digest before invoking it; use `write-bin` at `0x0`.
 
 **Consequences:** the Windows installer grows by the helper binary; the build pins its upstream version and SHA-256. The updater is Windows-only in stage 2; native Linux/macOS updater support is not included in BRG-19 or stage 6 unless separately specified.
+
+#### TD-10 Motor tuning and user output preferences
+
+**Status:** decided (2026-11-22)
+
+**Context:** Motor tuning varies by device and needs to survive restarts; volume and brightness are user preferences. The test panel is bridge-backed (TST-06, TST-08), and the bridge website already owns settings (BRG-22).
+
+**Decision:** Store motor speed, PWM frequency, startup kick, decay mode and the last-write timestamp in ESP32 NVS. Tuning changes take effect in RAM; only explicit Save and Factory reset write NVS. The Windows Go bridge supplies UTC timestamps; the website displays local date/time and identifies firmware defaults that have never been saved. Store volume and brightness in the Windows Go bridge config. Both website sliders use 0–100% and 1% steps; volume defaults to 50% and maps to the buzzer's maximum duty with `V=(x/100)^2.5`; brightness defaults to 100% and uses the gamma-corrected multiplier `b=(x/100)^2.2` on the RGB channels after the existing 50% cap. Keep the Python Docker bridge frozen, knowingly incompatible with firmware implementing this decision until its Stage 6 retirement.
+
+**Consequences:** The Go bridge queries tuning from the device and sends volume/brightness on connection. The serial protocol has explicit tuning query/save/reset operations. The Python bridge retains its old configuration and must not be used with the new firmware.
 
 ## 6. Version information
 

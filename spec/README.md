@@ -56,13 +56,13 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 |---|---|---|---|---|---|
 | TRC | Requirement traceability | 1 | 7 | 1 | implemented |
 | REL | CI, versions and releases | 2 | 6 | 1 | implemented |
-| FW | Firmware | 3 | 12 | 2 | in progress |
+| FW | Firmware | 3 | 15 | 2 | in progress |
 | BRG | Host bridge | 4 | 24 | 2, 6 | in progress |
 | AGT | Agent integrations | 5 | 12 | 2, 3 | in progress |
 | ELE | Electronics | 6 | 7 | 2, 4, 5 | specified |
 | FIG | Figure and mechanism | 7 | 17 | 4, 5 | specified |
 | DOC | Build documentation | 8 | 7 | 2, 4, 5 | specified |
-| TST | Hardware test panel | 9 | 8 | 2 | in progress |
+| TST | Hardware test panel | 9 | 9 | 2 | in progress |
 
 ## Decisions
 
@@ -74,7 +74,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-05 | The bridge runs on Linux and WSL2 (USB attached with usbipd-win on WSL); containerizing it is evaluated in architecture. | architecture.md 2 |
 | 2026-11-05 | Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device. | architecture.md 1 |
 | 2026-11-05 | Topics FW, BRG, AGT, ELE, FIG (mechanism and printed figure merged into FIG). | requirements.md |
-| 2026-11-05 | FW: COMPLETED/ERROR stay until the next state; heartbeat with fallback to "disconnected" after 30 s; mute and volume; SPEED Must, LED/BEEP test commands Could; bridge settings are sent to the firmware. Runtime test tuning added on 2026-11-21 is volatile and documented below. | requirements.md 3, architecture.md 4.2 |
+| 2026-11-05 | Initial FW decisions: COMPLETED/ERROR stay until the next state; heartbeat with fallback to "disconnected" after 30 s; volume; SPEED Must and LED/BEEP test commands Could. Runtime test tuning was initially volatile; per-device NVS tuning and bridge-owned volume/brightness are decided on 2026-11-22 (TD-10). | requirements.md 3, architecture.md 4.2, TD-10 |
 | 2026-11-05 | BRG: several sessions are merged, most urgent state wins; stale sessions (WORKING/THINKING/APPROVAL) dropped after a configurable timeout; listens on local interfaces only, no auth; autostart. | requirements.md 4 |
 | 2026-11-05 | AGT: Copilot drives IDLE/THINKING/WORKING/COMPLETED (Must); APPROVAL/ERROR are Could until VS Code provides events; Copilot sessions keyed by workspace folder. | requirements.md 5 |
 | 2026-11-05 | ELE: whole device powered from one USB port, ≤ 500 mA (USB 2.0 guarantee; the ESP32 is a USB 2.0 device); soldering of header pins and wires allowed; parts budget ≤ CHF 25. | requirements.md 6 |
@@ -84,7 +84,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-05 | Bridge in Python. | architecture.md TD-03 |
 | 2026-11-05 | Bridge runs as a Docker container; image published on GHCR (ci/publish, ci/promote). | architecture.md TD-04 |
 | 2026-11-05 | CAD in build123d; head generated with Meshy.ai and processed with manifold3d. | architecture.md TD-05 |
-| 2026-11-05 | Interfaces: hooks forward the agent's own payload to the bridge (port 8765), all mapping in the bridge; serial text protocol with OK/ERR replies, VOLUME 0–3 (0 = mute), READY line at boot. | architecture.md 4 |
+| 2026-11-05 | Initial interfaces: hooks forward the agent's own payload to the bridge (port 8765), all mapping in the bridge; serial text protocol with OK/ERR replies, VOLUME 0–3 (0 = mute; superseded by TD-10), READY line at boot. | architecture.md 4 |
 | 2026-11-05 | Delivery: download from the GitHub release, plus the bridge image on GHCR. | delivery.md 4 |
 | 2026-11-06 | Plug & play for the device connection, incl. replug: BRG-06 reworded (no port setting, no manual step after a one-time host setup); serial port in BRG-07 is an optional override; on WSL2 a one-time usbipd setup with auto-attach is accepted; Docker stays, plug & play in the container must be shown in step 2b. | requirements.md 4, architecture.md 2 and 7 |
 | 2026-11-06 | Tag ruleset for `v*` restricts updates and deletions and blocks force pushes, but not creation: GitHub can't add the built-in GitHub Actions actor to a bypass list. Rejected: own GitHub App with token in the workflows (setup, secrets, workflow changes). REL-05 reworded. | requirements.md 2, delivery.md 3 |
@@ -95,10 +95,11 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-06 | Wiring diagram (ELE-07) as an SVG block diagram with named pins and nets, generated from Python with schemdraw (added in step 2d). | architecture.md 3, 5.1 |
 | 2026-11-06 | New BRG-15: `cody session clear` (`DELETE /sessions`) clears all sessions, to reset the bridge when a session is stale (e.g. Claude Code killed without `SessionEnd`). | requirements.md 4, architecture.md 4.1 |
 | 2026-11-21 | Bridge redesigned (TD-06): a Go tray app on Windows with "Start automatically" (no Windows service), installed with an NSIS installer without admin rights; WSL2 and its devcontainers reach it through a relay that the app starts with `wsl.exe`, so no WSL networking mode is forced. New BRG-16 – BRG-19, AGT-12; AGT-02 includes Windows. The Python Docker bridge stays for Linux, frozen; native Linux and macOS in the new stage 6, which retires it. Steps 2g – 2i added to stage 2 after 2d; Docker replug dropped from 2d. `cody` shell command and Python hook installer stay; consolidation decided at stage 3 start. | requirements.md 4–5, architecture.md 2–4, 5, TD-06, implementation-plan.md |
-| 2026-11-21 | Initial TST design: a dev-only browser panel in the devcontainer directly owns USB serial. Superseded by the local bridge website decision below; the firmware test mode and volatile tuning behavior remain. | requirements.md 9, architecture.md TD-07, implementation-plan.md |
+| 2026-11-21 | Initial TST design: a dev-only browser panel in the devcontainer directly owns USB serial. Superseded by the local bridge website decision below; the firmware test mode remains, while tuning persistence is decided separately in TD-10. | requirements.md 9, architecture.md TD-07, implementation-plan.md |
 | 2026-11-21 | In WSL mirrored networking, Windows owns bridge port 8765, so the Docker-gateway relay uses the first available port in 8766–8770. The hook installer can set the gateway target port explicitly (`--port`, default 8765); hooks require the expected bridge response and no longer probe a port range. | architecture.md 4.1, 4.6 |
 | 2026-11-21 | The Windows tray app starts its WSL child processes without showing console windows. | requirements.md 4, architecture.md 4.3, 4.6 |
 | 2026-11-21 | The Windows tray remains a launcher/status indicator; Cody serves one embedded local website for status, configuration, the bridge-backed test panel and firmware updates. The site is loopback-only with same-origin checks for browser mutations; settings require restart. The updater is Windows-first and uses a pinned espflash helper. | requirements.md 4, 9; architecture.md 4, 5, TD-08, TD-09; delivery.md 2; implementation-plan.md |
+| 2026-11-22 | Motor tuning is per-device NVS data, saved explicitly with a bridge-supplied UTC timestamp; the website shows it and can save or restore firmware defaults. Volume and brightness are Windows Go bridge preferences with 1%-step sliders; volume uses `V=(x/100)^2.5`, defaults to 50%, and brightness uses `b=(x/100)^2.2` on channels after the existing 50% cap, defaulting to 100%. The frozen Python bridge is knowingly incompatible with the new firmware until Stage 6. | requirements.md 3–4, 9; architecture.md 4.2–4.4, TD-10; verification.md; implementation-plan.md |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points

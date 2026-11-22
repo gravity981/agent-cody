@@ -17,13 +17,6 @@
     // Claude Code login and settings survive container rebuilds, shared across projects
     "source=claude-config,target=/home/vscode/.claude,type=volume"
   ],
-  "forwardPorts": [8766],
-  "portsAttributes": {
-    "8766": {
-      "label": "Cody hardware test panel",
-      "onAutoForward": "openBrowser"
-    }
-  },
   "containerEnv": {
     "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
   },

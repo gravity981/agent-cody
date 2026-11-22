@@ -31,7 +31,7 @@ Details in [delivery.md](delivery.md). The GitHub workflows come with the bluepr
 
 ## 3. Firmware (FW)
 
-The ESP32 firmware turns simple commands from the bridge into physical behaviour. It knows nothing about agents or IDEs. Protocol details in [architecture.md](architecture.md). Settings (speed, volume, mute) are kept by the bridge and sent after every (re)connect; the firmware stores none.
+The ESP32 firmware turns simple commands from the bridge into physical behaviour. It knows nothing about agents or IDEs. Protocol details in [architecture.md](architecture.md). Motor tuning is device-specific and stored by the firmware; sound volume and LED brightness are user preferences stored by the Windows Go bridge and sent after every (re)connect.
 
 | ID | Requirement | Prio |
 |---|---|---|
@@ -42,11 +42,14 @@ The ESP32 firmware turns simple commands from the bridge into physical behaviour
 | FW-05 | COMPLETED and ERROR stay until the next state command. | Must |
 | FW-06 | After 30 s without any command or heartbeat, it stops the motor and shows a distinct "disconnected" LED pattern. | Must |
 | FW-07 | After power-up it shows "disconnected" until the first command arrives. | Must |
-| FW-08 | `SPEED:<n>` sets the motor speed (PWM) used in WORKING. | Must |
-| FW-09 | Sound can be muted, and its volume set in at least 3 levels, by serial command. | Should |
+| FW-08 | WORKING uses the motor speed from the device's current motor tuning; a bridge setting cannot override it. | Must |
+| FW-09 | Sound volume is set by serial command from 0% (mute) to 100% (maximum), with 1% increments; the firmware maps slider value `x` with `V=(x/100)^2.5`. | Must |
 | FW-10 | Every command is answered with `OK` or an error line; unknown or malformed commands don't change the state. | Must |
 | FW-11 | On request, it reports its firmware version and commit (REL-02). | Must |
 | FW-12 | Test commands `LED:r,g,b` (show a colour) and `BEEP:<sound>` (play a sound). | Could |
+| FW-13 | The firmware stores motor speed, PWM frequency, startup kick and decay mode with a UTC write timestamp in NVS on explicit save, and loads saved values after reboot; before the first save, firmware defaults are active. A failed save is reported. | Must |
+| FW-14 | LED brightness can be set from 0% to 100% in 1% increments; for slider value `x`, the firmware uses `b=(x/100)^2.2` to scale each channel after the existing 50% brightness cap. 100% is the default. | Must |
+| FW-15 | The firmware can restore motor tuning to firmware defaults and persist those defaults with the supplied UTC timestamp; a failed write is reported. | Must |
 
 ## 4. Host bridge (BRG)
 
@@ -60,7 +63,7 @@ A background process on the host that receives agent events from the hooks over 
 | BRG-04 | It drops a session in WORKING, THINKING or APPROVAL after no event for a configurable time (default 10 min); a session in COMPLETED or ERROR stays until its next event or its end. | Must |
 | BRG-05 | It sends a heartbeat to the device at least every 10 s. | Must |
 | BRG-06 | Plug & play: it runs without the device; when the device is plugged in (first time or replug) or reset, it finds and uses it within 10 s without a port setting or any manual step on the host (after a one-time host setup), and then resends the settings and the current state. | Must |
-| BRG-07 | Settings (motor speed, volume, mute, session timeout, and optionally a serial port that overrides auto-detection) are read from a config file; the device settings are sent to the device on every connect. | Must |
+| BRG-07 | The frozen Python Docker bridge reads its legacy settings (including motor speed, volume, session timeout and optional serial-port override) from its config file. It is not required to work with firmware implementing revised FW-08, FW-09 and FW-13–FW-15 and is retired in Stage 6; Windows Go bridge settings are specified in BRG-22. | Must |
 | BRG-08 | It listens only on the loopback interface and the local Docker/WSL interfaces, never on the LAN. | Must |
 | BRG-09 | It starts automatically and runs in the background. | Should |
 | BRG-10 | It reports its version and commit (REL-02). | Must |
@@ -75,7 +78,7 @@ A background process on the host that receives agent events from the hooks over 
 | BRG-19 | The bridge runs natively on Linux and macOS. | Should |
 | BRG-20 | The Windows tray menu opens Cody's local web interface in the default browser; the bridge does not open a native Cody window. | Must |
 | BRG-21 | The web interface shows bridge version and commit, firmware version, device connection, merged state, sessions, each configured WSL distro's relay port, and routing guidance distinguishing WSL-host hooks from Docker Engine devcontainer hooks. | Must |
-| BRG-22 | The web interface edits and saves the WSL distro list, motor speed, sound volume/mute, session timeout, optional serial-port override and log level; it clearly indicates that changes require a restart and offers Restart now. | Must |
+| BRG-22 | The Windows Go bridge web interface edits and saves the WSL distro list, sound volume and LED brightness as 0–100% sliders with 1% steps, session timeout, optional serial-port override and log level; it has no motor-tuning setting. It clearly indicates that changes require a restart and offers Restart now. | Must |
 | BRG-23 | On user request, the updater checks the latest stable Cody GitHub release and shows installed and available firmware versions; release/network errors are reported, not treated as "no update". Flashing requires confirmation before download. It offers an update only when the release is newer, except that an unknown installed version may be updated after explicit confirmation. | Must |
 | BRG-24 | The updater verifies the firmware asset's SHA-256 digest before flashing, shows progress and errors, and restores bridge device operation afterward; if automatic bootloader entry fails, it provides manual recovery instructions and retry. | Must |
 
@@ -158,9 +161,10 @@ A developer-only bench tool for exercising the firmware and its peripherals. Its
 |---|---|---|
 | TST-01 | The firmware provides an explicit test mode that gives test commands exclusive control of the motor, LED and buzzer, separate from normal agent state commands. | Must |
 | TST-02 | The test panel can apply each of the six normal states as a preset without leaving test mode. | Must |
-| TST-03 | The panel can start and stop the motor and set speed (0–255), PWM frequency (1–30 kHz), startup kick (0–100 ms) and DRV8833 fast or slow decay. Motor settings apply to normal WORKING behavior until changed or reboot. | Must |
-| TST-04 | The panel can show a raw RGB test colour (0–255 per channel), subject to the existing 50% brightness cap; raw LED tests do not change normal state colours. | Must |
-| TST-05 | The panel can play the APPROVAL, SUCCESS and WARNING sounds and set volume (0–3); volume applies to normal state sounds until changed or reboot, while test sounds are one-shot. | Must |
+| TST-03 | The panel can start and stop the motor and set speed (0–255), PWM frequency (1–30 kHz), startup kick (0–100 ms) and DRV8833 fast or slow decay. Changes take effect in RAM for testing and normal WORKING behavior; they are not persisted until explicit Save (TST-09). | Must |
+| TST-04 | The panel can show a raw RGB test colour (0–255 per channel), subject to the existing 50% brightness cap and bridge brightness preference; raw LED tests do not change normal state colours. | Must |
+| TST-05 | The panel can play the APPROVAL, SUCCESS and WARNING sounds and set volume with a 0–100% slider in 1% steps; 0% is mute and test sounds are one-shot. | Must |
 | TST-06 | The developer test panel is part of the Windows bridge's local web interface, uses the bridge's device connection, and displays connection status, replies and errors without opening USB serial itself. | Must |
-| TST-07 | Test settings are volatile and reset on reboot. Exiting test mode clears raw test outputs and stops the motor; loss of the device connection is covered by the firmware timeout, which stops the motor and enters disconnected behavior. Motor settings and volume remain active across normal state changes and test-mode exit until changed or reboot. | Must |
+| TST-07 | Unsaved motor tuning is volatile; saved motor tuning persists across reboot. Exiting test mode clears temporary outputs and stops the test motor while retaining the current motor tuning. Volume and brightness preferences are stored by the bridge and reapplied after reconnect; test-panel volume changes are temporary. Loss of the device connection stops the motor and enters disconnected behavior. | Must |
 | TST-08 | During test mode the bridge remains the sole serial owner and suspends normal device writes while continuing to merge agent events; on panel stop or 10 s without a panel heartbeat, it exits test mode and applies the latest merged state. | Must |
+| TST-09 | The bridge website shows the current motor tuning and last-write date, allows tuning changes followed by explicit Save, and provides a factory-reset control that restores firmware defaults. Before the first NVS write it identifies the firmware defaults as never saved; timestamps are shown in local date and time. | Must |

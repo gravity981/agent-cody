@@ -254,6 +254,77 @@ func Test_req_BRG_06_ReconnectsAfterDeviceRestart(t *testing.T) {
 	}
 }
 
+func Test_req_TST_06_DeviceLinkOwnsTestCommandsAndReportsReplies(t *testing.T) {
+	system := newFakeSystem()
+	port := newFakePort()
+	system.plug("/dev/ttyACM0", port, "303A")
+	link := makeLink(system, "")
+	now := connect(link, time.Unix(0, 0))
+	port.commands = nil
+
+	if err := link.StartTest(now); err != nil {
+		t.Fatal(err)
+	}
+	link.Step(now.Add(time.Millisecond))
+	if err := link.SendTestCommand("TEST:STATE:WORKING", now.Add(2*time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	link.Step(now.Add(3 * time.Millisecond))
+	if err := link.StopTest(sessions.IDLE, now.Add(4*time.Millisecond)); err != nil {
+		t.Fatal(err)
+	}
+	link.Step(now.Add(5 * time.Millisecond))
+
+	if got, want := port.commands, []string{
+		"TEST:START", "TEST:STATE:WORKING", "TEST:STOP", "STATE:IDLE",
+	}; !equal(got, want) {
+		t.Fatalf("test commands = %v, want %v", got, want)
+	}
+	if got := link.Replies(); len(got) < 4 || got[len(got)-1] != "OK" {
+		t.Fatalf("device replies = %v, want successful command replies", got)
+	}
+}
+
+func Test_req_TST_08_ReconnectDuringTestReentersTestMode(t *testing.T) {
+	system := newFakeSystem()
+	first := newFakePort()
+	system.plug("/dev/ttyACM0", first, "303A")
+	link := makeLink(system, "")
+	now := connect(link, time.Unix(0, 0))
+	if err := link.StartTest(now); err != nil {
+		t.Fatal(err)
+	}
+	link.Step(now.Add(time.Millisecond))
+
+	first.readError = errors.New("device disconnected")
+	link.Step(now.Add(time.Second))
+	second := newFakePort()
+	system.plug("/dev/ttyACM0", second, "303A")
+	reconnectedAt := now.Add(2 * time.Second)
+	link.Step(reconnectedAt)
+	link.Step(reconnectedAt.Add(100 * time.Millisecond))
+
+	if got, want := second.commands,
+		[]string{"VERSION?", "TEST:START", "TEST:SPEED:224", "TEST:VOLUME:2"}; !equal(got, want) {
+		t.Fatalf("reconnect commands during test = %v, want %v", got, want)
+	}
+}
+
+func Test_req_TST_06_DeviceLinkReportsSerialErrors(t *testing.T) {
+	system := newFakeSystem()
+	port := newFakePort()
+	system.plug("/dev/ttyACM0", port, "303A")
+	link := makeLink(system, "")
+	now := connect(link, time.Unix(0, 0))
+	port.readError = errors.New("device disconnected")
+	link.Step(now.Add(time.Second))
+
+	replies := link.Replies()
+	if got := replies[len(replies)-1]; got != "ERROR: device disconnected" {
+		t.Fatalf("last device reply = %q, want serial error", got)
+	}
+}
+
 func equal[T comparable](got, want []T) bool {
 	if len(got) != len(want) {
 		return false

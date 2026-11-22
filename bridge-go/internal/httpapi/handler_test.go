@@ -3,6 +3,7 @@ package httpapi
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -19,8 +20,12 @@ import (
 )
 
 type fakeLink struct {
-	status device.Status
-	states []sessions.State
+	status       device.Status
+	states       []sessions.State
+	testActive   bool
+	testCommands []string
+	stopped      []sessions.State
+	replies      []string
 }
 
 func (l *fakeLink) Status() device.Status {
@@ -31,7 +36,38 @@ func (l *fakeLink) SetState(state sessions.State, _ time.Time) {
 	l.states = append(l.states, state)
 }
 
+func (l *fakeLink) StartTest(time.Time) error {
+	if !l.status.Connected {
+		return device.ErrNotConnected
+	}
+	l.testActive = true
+	return nil
+}
+
+func (l *fakeLink) SendTestCommand(command string, _ time.Time) error {
+	if !l.testActive {
+		return errors.New("hardware test mode is not active")
+	}
+	l.testCommands = append(l.testCommands, command)
+	return nil
+}
+
+func (l *fakeLink) StopTest(state sessions.State, _ time.Time) error {
+	if l.testActive {
+		l.testActive = false
+		l.stopped = append(l.stopped, state)
+		l.states = append(l.states, state)
+	}
+	return nil
+}
+
+func (l *fakeLink) Replies() []string {
+	return append([]string{}, l.replies...)
+}
+
 func (*fakeLink) Step(time.Time) {}
+
+func (*fakeLink) Close(time.Time) {}
 
 func newTestServer(t *testing.T, websiteOptions ...WebsiteOptions) (*httptest.Server, *fakeLink, string) {
 	t.Helper()
@@ -335,6 +371,127 @@ func Test_req_BRG_22_WebsiteRestartRequiresSameOriginAndRestartsService(t *testi
 	}
 }
 
+func Test_req_TST_06_WebsiteUsesTheBridgeForPanelControls(t *testing.T) {
+	server, link, _ := newTestServer(t)
+	client := server.Client()
+	response, page := request(t, client, http.MethodGet, server.URL+"/", nil)
+	if response.StatusCode != http.StatusOK ||
+		!bytes.Contains(page, []byte("Hardware test panel")) ||
+		!bytes.Contains(page, []byte("Device replies")) ||
+		bytes.Contains(page, []byte("Serial device")) ||
+		bytes.Contains(page, []byte("/api/connect")) {
+		t.Fatalf("test panel page status=%d body=%s", response.StatusCode, page)
+	}
+
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+	headers.Set("Origin", "https://attacker.example")
+	response, _ = requestWithHeaders(
+		t, client, http.MethodPost, server.URL+"/api/test/start", []byte(`{}`), headers,
+	)
+	if response.StatusCode != http.StatusForbidden || link.testActive {
+		t.Fatalf("cross-origin start status=%d active=%t", response.StatusCode, link.testActive)
+	}
+
+	headers.Set("Origin", SiteOrigin)
+	response, _ = requestWithHeaders(
+		t, client, http.MethodPost, server.URL+"/api/test/start", []byte(`{}`), headers,
+	)
+	if response.StatusCode != http.StatusOK || !link.testActive {
+		t.Fatalf("test start status=%d active=%t", response.StatusCode, link.testActive)
+	}
+	response, _ = requestWithHeaders(
+		t, client, http.MethodPost, server.URL+"/api/test/command",
+		[]byte(`{"action":"state","value":"WORKING"}`), headers,
+	)
+	if response.StatusCode != http.StatusAccepted ||
+		!equalStrings(link.testCommands, []string{"TEST:STATE:WORKING"}) {
+		t.Fatalf("test command status=%d commands=%v", response.StatusCode, link.testCommands)
+	}
+
+	link.replies = []string{"OK", "ERR test mode inactive"}
+	response, data := request(t, client, http.MethodGet, server.URL+"/api/test/status", nil)
+	if response.StatusCode != http.StatusOK ||
+		!bytes.Contains(data, []byte(`"active":true`)) ||
+		!bytes.Contains(data, []byte("ERR test mode inactive")) {
+		t.Fatalf("test status=%d body=%s", response.StatusCode, data)
+	}
+	response, _ = requestWithHeaders(
+		t, client, http.MethodPost, server.URL+"/api/test/stop", []byte(`{}`), headers,
+	)
+	if response.StatusCode != http.StatusOK || link.testActive ||
+		len(link.stopped) != 1 || link.stopped[0] != sessions.IDLE {
+		t.Fatalf("test stop status=%d active=%t restored=%v", response.StatusCode, link.testActive, link.stopped)
+	}
+}
+
+func Test_req_TST_03_WebsiteValidatesPanelCommandRanges(t *testing.T) {
+	server, link, _ := newTestServer(t)
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+	headers.Set("Origin", SiteOrigin)
+	response, _ := requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/start", []byte(`{}`), headers,
+	)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("test start status = %d", response.StatusCode)
+	}
+
+	response, data := requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/command",
+		[]byte(`{"action":"frequency","value":"30001"}`), headers,
+	)
+	if response.StatusCode != http.StatusBadRequest || !bytes.Contains(data, []byte("frequency")) ||
+		len(link.testCommands) != 0 {
+		t.Fatalf("out-of-range frequency status=%d commands=%v body=%s", response.StatusCode, link.testCommands, data)
+	}
+	response, _ = requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/command",
+		[]byte(`{"action":"led","red":256,"green":0,"blue":0}`), headers,
+	)
+	if response.StatusCode != http.StatusBadRequest || len(link.testCommands) != 0 {
+		t.Fatalf("out-of-range LED status=%d commands=%v", response.StatusCode, link.testCommands)
+	}
+	response, _ = requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/command",
+		[]byte(`{"action":"frequency","value":"30000"}`), headers,
+	)
+	if response.StatusCode != http.StatusAccepted ||
+		!equalStrings(link.testCommands, []string{"TEST:FREQ:30000"}) {
+		t.Fatalf("valid frequency status=%d commands=%v", response.StatusCode, link.testCommands)
+	}
+}
+
+func Test_req_TST_06_TestCommandRequestMapsPanelControlsToFirmwareProtocol(t *testing.T) {
+	red, green, blue := 1, 2, 3
+	tests := []struct {
+		name     string
+		request  testCommandRequest
+		expected string
+	}{
+		{"state preset", testCommandRequest{Action: "state", Value: "APPROVAL"}, "TEST:STATE:APPROVAL"},
+		{"motor start", testCommandRequest{Action: "motor", Value: "START"}, "TEST:MOTOR:START"},
+		{"speed", testCommandRequest{Action: "speed", Value: "255"}, "TEST:SPEED:255"},
+		{"frequency", testCommandRequest{Action: "frequency", Value: "1000"}, "TEST:FREQ:1000"},
+		{"kick", testCommandRequest{Action: "kick", Value: "100"}, "TEST:KICK:100"},
+		{"decay", testCommandRequest{Action: "decay", Value: "SLOW"}, "TEST:DECAY:SLOW"},
+		{"volume", testCommandRequest{Action: "volume", Value: "0"}, "TEST:VOLUME:0"},
+		{"beep", testCommandRequest{Action: "beep", Value: "SUCCESS"}, "TEST:BEEP:SUCCESS"},
+		{
+			"LED", testCommandRequest{Action: "led", Red: &red, Green: &green, Blue: &blue},
+			"TEST:LED:1,2,3",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := test.request.command()
+			if err != nil || got != test.expected {
+				t.Fatalf("command() = %q, %v; want %q", got, err, test.expected)
+			}
+		})
+	}
+}
+
 func Test_req_BRG_21_WebsiteRejectsUnexpectedHost(t *testing.T) {
 	server, _, _ := newTestServer(t)
 	req, err := http.NewRequest(http.MethodGet, server.URL+"/api/config", nil)
@@ -350,4 +507,16 @@ func Test_req_BRG_21_WebsiteRejectsUnexpectedHost(t *testing.T) {
 	if response.StatusCode != http.StatusForbidden {
 		t.Fatalf("unexpected Host status = %d, want 403", response.StatusCode)
 	}
+}
+
+func equalStrings(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }

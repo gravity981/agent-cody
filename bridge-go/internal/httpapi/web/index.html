@@ -33,6 +33,84 @@
         <div id="session-list"></div>
       </section>
 
+      <section aria-labelledby="test-heading">
+        <h2 id="test-heading">Hardware test panel</h2>
+        <p>Test controls use Cody's connected device. Settings are temporary and reset on reboot.</p>
+        <p id="test-status" role="status">Loading test-panel status...</p>
+        <p id="test-error" role="alert"></p>
+        <div class="actions">
+          <button id="test-start" type="button">Enter test mode</button>
+          <button id="test-stop" type="button">Exit test mode</button>
+        </div>
+
+        <fieldset>
+          <legend>State presets</legend>
+          <p>Apply a normal state effect without leaving test mode.</p>
+          <div id="test-states" class="actions"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Motor</legend>
+          <div class="test-controls">
+            <label for="test-speed">Speed <span class="hint">(0-255)</span></label>
+            <input id="test-speed" type="number" min="0" max="255" step="1" value="224">
+            <label for="test-frequency">PWM frequency <span class="hint">(1-30 kHz)</span></label>
+            <input id="test-frequency" type="number" min="1000" max="30000" step="100" value="10000">
+            <label for="test-kick">Startup kick <span class="hint">(0-100 ms)</span></label>
+            <input id="test-kick" type="number" min="0" max="100" step="1" value="1">
+            <label for="test-decay">Decay mode</label>
+            <select id="test-decay">
+              <option value="FAST">Fast</option>
+              <option value="SLOW">Slow</option>
+            </select>
+          </div>
+          <div class="actions">
+            <button id="test-apply-motor" type="button">Apply tuning</button>
+            <button id="test-motor-start" type="button">Start motor</button>
+            <button id="test-motor-stop" type="button">Stop motor</button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>LED</legend>
+          <div class="test-controls">
+            <label for="test-red">Red <span class="hint">(0-255)</span></label>
+            <input id="test-red" type="number" min="0" max="255" step="1" value="255">
+            <label for="test-green">Green <span class="hint">(0-255)</span></label>
+            <input id="test-green" type="number" min="0" max="255" step="1" value="0">
+            <label for="test-blue">Blue <span class="hint">(0-255)</span></label>
+            <input id="test-blue" type="number" min="0" max="255" step="1" value="0">
+          </div>
+          <button id="test-show-led" type="button">Show colour</button>
+        </fieldset>
+
+        <fieldset>
+          <legend>Buzzer</legend>
+          <div class="test-controls">
+            <label for="test-volume">Volume <span class="hint">(0 = mute)</span></label>
+            <select id="test-volume">
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2" selected>2</option>
+              <option value="3">3</option>
+            </select>
+            <label for="test-sound">Sound</label>
+            <select id="test-sound">
+              <option value="APPROVAL">Approval</option>
+              <option value="SUCCESS">Success</option>
+              <option value="WARNING">Warning</option>
+            </select>
+          </div>
+          <div class="actions">
+            <button id="test-apply-volume" type="button">Apply volume</button>
+            <button id="test-play-sound" type="button">Play sound</button>
+          </div>
+        </fieldset>
+
+        <h3>Device replies</h3>
+        <pre id="test-replies" aria-live="polite"></pre>
+      </section>
+
       <section aria-labelledby="settings-heading">
         <h2 id="settings-heading">Configuration</h2>
         <p>Changes are saved to the Cody configuration file and take effect after a restart.</p>

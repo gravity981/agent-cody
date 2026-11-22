@@ -20,7 +20,10 @@ const (
 	HandshakeTimeout   = 2 * time.Second
 	RetryInterval      = time.Second
 	maximumReplyBuffer = 4096
+	maximumReplies     = 30
 )
+
+var ErrNotConnected = errors.New("device is not connected")
 
 type Port interface {
 	io.Reader
@@ -53,6 +56,8 @@ type Link struct {
 	nextTry     time.Time
 	lastSent    time.Time
 	rejected    map[string]struct{}
+	testMode    bool
+	replies     []string
 }
 
 func NewLink(system System, logger *logging.Logger, speed, volume int, configured string) *Link {
@@ -95,11 +100,68 @@ func (l *Link) SetState(state sessions.State, now time.Time) {
 		return
 	}
 	l.state = state
+	if l.testMode {
+		return
+	}
 	if l.Status().Connected {
 		if err := l.send("STATE:"+string(state), now); err != nil {
 			l.lost(now, err)
 		}
 	}
+}
+
+func (l *Link) StartTest(now time.Time) error {
+	if !l.Status().Connected {
+		return ErrNotConnected
+	}
+	if l.testMode {
+		return errors.New("hardware test mode is already active")
+	}
+	if err := l.send("TEST:START", now); err != nil {
+		l.lost(now, err)
+		return fmt.Errorf("start hardware test mode: %w", err)
+	}
+	l.testMode = true
+	return nil
+}
+
+func (l *Link) SendTestCommand(command string, now time.Time) error {
+	if !l.testMode {
+		return errors.New("hardware test mode is not active")
+	}
+	if !l.Status().Connected {
+		return ErrNotConnected
+	}
+	if err := l.send(command, now); err != nil {
+		l.lost(now, err)
+		return fmt.Errorf("send hardware test command: %w", err)
+	}
+	return nil
+}
+
+func (l *Link) StopTest(state sessions.State, now time.Time) error {
+	wasActive := l.testMode
+	l.testMode = false
+	l.state = state
+	if !wasActive {
+		return nil
+	}
+	if !l.Status().Connected {
+		return ErrNotConnected
+	}
+	if err := l.send("TEST:STOP", now); err != nil {
+		l.lost(now, err)
+		return fmt.Errorf("stop hardware test mode: %w", err)
+	}
+	if err := l.send("STATE:"+string(state), now); err != nil {
+		l.lost(now, err)
+		return fmt.Errorf("restore merged state: %w", err)
+	}
+	return nil
+}
+
+func (l *Link) Replies() []string {
+	return append([]string{}, l.replies...)
 }
 
 func (l *Link) Step(now time.Time) {
@@ -136,6 +198,7 @@ func (l *Link) Step(now time.Time) {
 }
 
 func (l *Link) Close(now time.Time) {
+	l.testMode = false
 	l.close(now)
 }
 
@@ -210,6 +273,7 @@ func (l *Link) read(now time.Time) error {
 		}
 		line := strings.TrimSpace(string(l.buffer[:index]))
 		l.buffer = l.buffer[index+1:]
+		l.appendReply(line)
 		l.logger.Debugf("<- %s", line)
 		switch {
 		case strings.HasPrefix(line, "VERSION ") && l.firmware == "":
@@ -226,11 +290,21 @@ func (l *Link) read(now time.Time) error {
 
 func (l *Link) connected(now time.Time) {
 	l.logger.Infof("connected to %s (firmware %s)", l.device, l.firmware)
-	for _, command := range []string{
-		fmt.Sprintf("SPEED:%d", l.speed),
-		fmt.Sprintf("VOLUME:%d", l.volume),
-		"STATE:" + string(l.state),
-	} {
+	commands := make([]string, 0, 4)
+	if l.testMode {
+		commands = append(commands,
+			"TEST:START",
+			fmt.Sprintf("TEST:SPEED:%d", l.speed),
+			fmt.Sprintf("TEST:VOLUME:%d", l.volume),
+		)
+	} else {
+		commands = append(commands,
+			fmt.Sprintf("SPEED:%d", l.speed),
+			fmt.Sprintf("VOLUME:%d", l.volume),
+			"STATE:"+string(l.state),
+		)
+	}
+	for _, command := range commands {
 		if err := l.send(command, now); err != nil {
 			l.lost(now, err)
 			return
@@ -255,7 +329,15 @@ func (l *Link) send(command string, now time.Time) error {
 	return nil
 }
 
+func (l *Link) appendReply(reply string) {
+	l.replies = append(l.replies, reply)
+	if len(l.replies) > maximumReplies {
+		l.replies = append([]string{}, l.replies[len(l.replies)-maximumReplies:]...)
+	}
+}
+
 func (l *Link) lost(now time.Time, err error) {
+	l.appendReply(fmt.Sprintf("ERROR: %s", err))
 	l.logger.Infof("lost %s: %v", l.device, err)
 	l.close(now)
 }

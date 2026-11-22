@@ -9,11 +9,13 @@ import (
 	"io/fs"
 	"mime"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gravity981/agent-cody/bridge-go/internal/bridge"
 	"github.com/gravity981/agent-cody/bridge-go/internal/config"
+	"github.com/gravity981/agent-cody/bridge-go/internal/device"
 )
 
 const websiteBodyLimit = 64 * 1024
@@ -123,6 +125,164 @@ func registerWebsiteRoutes(
 		}
 		options.Restart()
 	})
+	mux.HandleFunc("/api/test/status", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			methodNotAllowed(w, http.MethodGet)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		writeJSON(w, http.StatusOK, b.TestStatus())
+	})
+	mux.HandleFunc("/api/test/start", func(w http.ResponseWriter, r *http.Request) {
+		if !testMutationAllowed(w, r) {
+			return
+		}
+		if err := b.StartTest(clock()); err != nil {
+			writeAPIError(w, testErrorStatus(err), err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"active": true})
+	})
+	mux.HandleFunc("/api/test/heartbeat", func(w http.ResponseWriter, r *http.Request) {
+		if !testMutationAllowed(w, r) {
+			return
+		}
+		if err := b.TestHeartbeat(clock()); err != nil {
+			writeAPIError(w, testErrorStatus(err), err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"active": true})
+	})
+	mux.HandleFunc("/api/test/stop", func(w http.ResponseWriter, r *http.Request) {
+		if !testMutationAllowed(w, r) {
+			return
+		}
+		if err := b.StopTest(clock()); err != nil {
+			writeAPIError(w, testErrorStatus(err), err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"active": false})
+	})
+	mux.HandleFunc("/api/test/command", func(w http.ResponseWriter, r *http.Request) {
+		if !testMutationAllowed(w, r) {
+			return
+		}
+		var requested testCommandRequest
+		if err := decodeTestCommand(w, r, &requested); err != nil {
+			writeAPIError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		command, err := requested.command()
+		if err != nil {
+			writeAPIError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if err := b.SendTestCommand(command, clock()); err != nil {
+			writeAPIError(w, testErrorStatus(err), err.Error())
+			return
+		}
+		writeJSON(w, http.StatusAccepted, map[string]bool{"sent": true})
+	})
+}
+
+type testCommandRequest struct {
+	Action string `json:"action"`
+	Value  string `json:"value"`
+	Red    *int   `json:"red,omitempty"`
+	Green  *int   `json:"green,omitempty"`
+	Blue   *int   `json:"blue,omitempty"`
+}
+
+func (c testCommandRequest) command() (string, error) {
+	switch c.Action {
+	case "state":
+		if oneOf(c.Value, "IDLE", "WORKING", "THINKING", "APPROVAL", "COMPLETED", "ERROR") {
+			return "TEST:STATE:" + c.Value, nil
+		}
+		return "", errors.New("state must be one of IDLE, WORKING, THINKING, APPROVAL, COMPLETED, ERROR")
+	case "motor":
+		if oneOf(c.Value, "START", "STOP") {
+			return "TEST:MOTOR:" + c.Value, nil
+		}
+		return "", errors.New("motor action must be START or STOP")
+	case "speed", "frequency", "kick", "volume":
+		value, err := strconv.Atoi(c.Value)
+		if err != nil {
+			return "", fmt.Errorf("%s must be an integer", c.Action)
+		}
+		minimum, maximum := 0, 255
+		command := "TEST:SPEED"
+		switch c.Action {
+		case "frequency":
+			minimum, maximum, command = 1000, 30000, "TEST:FREQ"
+		case "kick":
+			maximum, command = 100, "TEST:KICK"
+		case "volume":
+			maximum, command = 3, "TEST:VOLUME"
+		}
+		if value < minimum || value > maximum {
+			return "", fmt.Errorf("%s must be between %d and %d", c.Action, minimum, maximum)
+		}
+		return fmt.Sprintf("%s:%d", command, value), nil
+	case "decay":
+		if oneOf(c.Value, "FAST", "SLOW") {
+			return "TEST:DECAY:" + c.Value, nil
+		}
+		return "", errors.New("decay must be FAST or SLOW")
+	case "beep":
+		if oneOf(c.Value, "APPROVAL", "SUCCESS", "WARNING") {
+			return "TEST:BEEP:" + c.Value, nil
+		}
+		return "", errors.New("sound must be APPROVAL, SUCCESS or WARNING")
+	case "led":
+		if c.Red == nil || c.Green == nil || c.Blue == nil {
+			return "", errors.New("red, green and blue values are required")
+		}
+		if *c.Red < 0 || *c.Red > 255 {
+			return "", errors.New("red must be between 0 and 255")
+		}
+		if *c.Green < 0 || *c.Green > 255 {
+			return "", errors.New("green must be between 0 and 255")
+		}
+		if *c.Blue < 0 || *c.Blue > 255 {
+			return "", errors.New("blue must be between 0 and 255")
+		}
+		return fmt.Sprintf("TEST:LED:%d,%d,%d", *c.Red, *c.Green, *c.Blue), nil
+	default:
+		return "", errors.New("unknown test command")
+	}
+}
+
+func oneOf(value string, choices ...string) bool {
+	for _, choice := range choices {
+		if value == choice {
+			return true
+		}
+	}
+	return false
+}
+
+func testMutationAllowed(w http.ResponseWriter, r *http.Request) bool {
+	if r.Method != http.MethodPost {
+		methodNotAllowed(w, http.MethodPost)
+		return false
+	}
+	if !sameOrigin(r) {
+		writeAPIError(w, http.StatusForbidden, "request origin is not allowed")
+		return false
+	}
+	return true
+}
+
+func testErrorStatus(err error) int {
+	switch {
+	case errors.Is(err, bridge.ErrTestModeActive), errors.Is(err, bridge.ErrTestModeInactive):
+		return http.StatusConflict
+	case errors.Is(err, device.ErrNotConnected):
+		return http.StatusServiceUnavailable
+	default:
+		return http.StatusServiceUnavailable
+	}
 }
 
 func newWebsiteHandler() http.Handler {
@@ -181,6 +341,14 @@ func (c websiteConfig) toConfig() config.Config {
 }
 
 func decodeWebsiteConfig(w http.ResponseWriter, r *http.Request, destination *websiteConfig) error {
+	return decodeWebsiteJSON(w, r, destination, "configuration")
+}
+
+func decodeTestCommand(w http.ResponseWriter, r *http.Request, destination *testCommandRequest) error {
+	return decodeWebsiteJSON(w, r, destination, "test command")
+}
+
+func decodeWebsiteJSON(w http.ResponseWriter, r *http.Request, destination any, name string) error {
 	contentType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || contentType != "application/json" {
 		return errors.New("content type must be application/json")
@@ -188,11 +356,11 @@ func decodeWebsiteConfig(w http.ResponseWriter, r *http.Request, destination *we
 	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, websiteBodyLimit))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(destination); err != nil {
-		return fmt.Errorf("invalid configuration: %w", err)
+		return fmt.Errorf("invalid %s: %w", name, err)
 	}
 	var extra any
 	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
-		return errors.New("configuration must contain one JSON object")
+		return fmt.Errorf("%s must contain one JSON object", name)
 	}
 	return nil
 }

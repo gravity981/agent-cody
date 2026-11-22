@@ -16,7 +16,7 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 
 | Milestone | After stage | What users get |
 |---|---|---|
-| M1 | 2 | Desk status light: LED and sound (and a bare motor) show what Claude Code is doing; documented so others can build it. |
+| M1 | 2 | Desk status light: LED and sound (and a bare motor) show what Claude Code is doing; volume and brightness are configurable, motor tuning is saved per device, and the build is documented. |
 | M2 | 3 | Both Claude Code and GitHub Copilot drive the status light. |
 | M3 | 5 | Complete Cody: printed figure whose arms type while the agent works; parts list and assembly instructions for a full rebuild. |
 
@@ -63,10 +63,10 @@ Requirements: REL-02 – REL-06.
 
 **Steps:**
 
-Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived. Order after 2d (decided 2026-11-21, TD-06, TD-08, TD-09): 2g, 2h, 2i, 2j, 2k, then 2e. Step 2l was moved to Stage 6 on 2026-11-22; the stage-2 documentation will cover the test panel but not the updater.
+Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived. Order after 2d (decided 2026-11-21, TD-06, TD-08, TD-09): 2g, 2h, 2i, 2j, 2k, 2m, 2n, then 2e. Step 2l was moved to Stage 6 on 2026-11-22; the stage-2 documentation will cover the test panel but not the updater.
 
 **2a – Firmware logic — done.** Serial protocol, state machine, LED effects, sounds with volume and motor control as logic with host unit tests (defaults in architecture.md 4.3); firmware builds for the ESP32-C3.
-Requirements: FW-02, FW-03, FW-05, FW-08, FW-10 – FW-12.
+Requirements: FW-02, FW-03, FW-05, FW-10 – FW-12.
 
 **2b – Bridge — done.** HTTP endpoints, session merging, timeouts, heartbeat, serial connection tested with a fake serial device, config file, autostart, log with rotation; host command `cody` (status, manual state).
 Requirements: BRG-01 – BRG-05, BRG-07 – BRG-14.
@@ -74,14 +74,14 @@ Requirements: BRG-01 – BRG-05, BRG-07 – BRG-14.
 **2c – Claude Code integration — done.** User-level curl command hooks that find the bridge on the host and in containers, event mapping with recorded payloads, timeout behaviour; real sessions on WSL2 and in a devcontainer (the bridge without a device is enough).
 Requirements: AGT-01 – AGT-03, AGT-07, AGT-11.
 
-**2d – Bench and initial hardware test panel.** Parts arrived: firmware flashed, modules wired and soldered; LED effects, sounds, volume levels and the disconnected pattern shown and tuned on the device; wiring diagram. Includes the permanent, all-peripheral firmware test mode and the initial devcontainer browser panel for state presets and independent motor/LED/buzzer testing. The initial panel owns USB serial directly; step 2k replaces it with the bridge-backed website panel. Motor tuning and volume changes apply to normal states until changed or reboot; raw LED and sound tests are temporary. (Plug & play in the bridge container dropped on 2026-11-21: BRG-06 is shown with the Windows app in 2h.)
-Requirements: FW-01, FW-04, FW-06, FW-07, FW-09, ELE-01 – ELE-03, ELE-07, TST-01 – TST-05, TST-07.
+**2d – Bench and initial hardware test panel.** Parts arrived: firmware flashed, modules wired and soldered; LED effects, sounds and the disconnected pattern shown and tuned on the device; wiring diagram. Includes the permanent, all-peripheral firmware test mode and the initial devcontainer browser panel for state presets and independent motor/LED/buzzer testing. The initial panel owns USB serial directly; step 2k replaces it with the bridge-backed website panel. Motor tuning can be changed in RAM; raw LED and sound tests are temporary. (Plug & play in the bridge container dropped on 2026-11-21: BRG-06 is shown with the Windows app in 2h.)
+Requirements: FW-01, FW-04, FW-06, FW-07, ELE-01 – ELE-03, ELE-07, TST-01 – TST-04.
 
 **2f – Clearing sessions — done.** Added during the stage (2026-11-06), done before 2d: `cody session clear` and `DELETE /sessions` remove all sessions (architecture.md 4.1).
 Requirements: BRG-15.
 
 **2g – Go bridge core — done.** Added 2026-11-21 (TD-06). Go toolchain and gotestsum in the devcontainer; gofmt and go vet in `tools/static-checks`; Go tests in `ci/check`. In `bridge-go/`: the bridge logic ported from Python (HTTP endpoints, session merging, Claude Code mapping tested with the shared recorded payloads, timeouts, heartbeat, serial connection with a fake device, config, log with rotation, version); builds for Windows and Linux without cgo, including the tray library. The Python bridge stays as is (frozen).
-Requirements: BRG-01 – BRG-05, BRG-07, BRG-10, BRG-13 – BRG-15.
+Requirements: BRG-01 – BRG-05, BRG-10, BRG-13 – BRG-15.
 
 **2h – Windows app and installer — implementation done; manual verification pending.** Tray icon in the state colour with menu, "Start automatically" (Run key), single instance, COM port discovery and plug & play (first plug-in, replug, reset, `usbipd attach`/`detach`), config and log under `%APPDATA%`/`%LOCALAPPDATA%`; NSIS installer `cody-<version>-windows-setup.exe` as a release file; shown on Windows with the device. Autostart is enabled by the installer by default. The 2h installer contains `cody.exe`; step 2i adds `cody-linux` when the WSL relay is implemented, and step 6c adds the pinned firmware-flashing helper and its license notices.
 *Implementation status (2026-11-21): Linux CI, Windows cross-build and installer compilation pass; demonstration of the tray app and install/uninstall on Windows with the device remains.*
@@ -93,12 +93,19 @@ Requirements: AGT-02, AGT-12, BRG-08.
 
 **2j – Local web interface — implementation done; manual verification pending.** Serve the status/configuration website from the Windows Go bridge, embedded in the binary; add the tray action that opens it in the default browser. Show device, session and relay information and the correct hook-routing hints; edit and save the selected settings, clearly state that restart is required, and offer Restart now. Keep the site loopback-only and protect browser mutations with same-origin checks.
 *Implementation status (2026-11-21): automated `ci/check` passes; the user confirmed the tray launch, hook/relay guidance and session timeout input. Manual Windows verification of saving settings and applying them through Restart now remains.*
-Requirements: BRG-20 – BRG-22.
+Requirements: BRG-20 – BRG-21.
 
-**2k – Bridge-backed hardware test panel.** Replace the devcontainer's direct-serial panel with the test section of the Windows bridge website. The bridge remains the sole serial owner, suppresses normal device writes during testing, continues merging agent events, and restores the latest merged state on stop or after the 10 s panel-heartbeat timeout. Remove the old panel's serial ownership and direct-serial tests.
+**2k – Bridge-backed hardware test panel — implementation done; manual verification pending.** Replace the devcontainer's direct-serial panel with the test section of the Windows bridge website. The bridge remains the sole serial owner, suppresses normal device writes during testing, continues merging agent events, and restores the latest merged state on stop or after the 10 s panel-heartbeat timeout. Remove the old panel's serial ownership and direct-serial tests.
+*Implementation status (2026-11-22): bridge-owned test commands, reply display, heartbeat timeout and state restoration are covered by Go tests; the Python panel, direct-serial tests and forwarded devcontainer port are removed. Manual Windows/bench verification of connection status, panel controls and replies/errors; agent-event merging during testing; and state restoration on panel close or heartbeat expiry remains.*
 Requirements: TST-06, TST-08.
 
-**2e – Build documentation for the status light.** Done after 2k. Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, bridge app and website on Windows, Docker bridge on Linux, hooks and test panel, Git for Windows on a Windows host) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
+**2m – Device tuning and output settings.** Add per-device motor tuning in ESP32 NVS, including explicit save, bridge-supplied UTC timestamps, firmware defaults and factory reset. Add percent-based volume and brightness commands; volume maps slider value `x` with `V=(x/100)^2.5`, and brightness uses `b=(x/100)^2.2` on channels after the existing LED cap. The frozen Python bridge is not made compatible with this firmware change.
+Requirements: FW-08 – FW-09, FW-13 – FW-15.
+
+**2n – Tuning panel and user settings.** Extend the Windows Go bridge config and website with 1%-step volume and brightness sliders, and the bridge-backed panel with tuning readout, last-write time, explicit Save and Factory reset. Display local time and identify unsaved firmware defaults. Volume defaults to 50%; brightness defaults to 100%. Clearly identify the frozen Python Docker bridge as incompatible with the new firmware.
+Requirements: BRG-22, TST-05, TST-07, TST-09.
+
+**2e – Build documentation for the status light.** Done after 2n. Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, Windows bridge app and website, legacy Docker bridge on Linux with its firmware compatibility limitation, hooks and test panel, motor tuning persistence, user volume/brightness settings and sliders, Git for Windows on a Windows host) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
 Requirements: DOC-01, DOC-02, DOC-05, DOC-06.
 
 ### Stage 3 – Copilot integration

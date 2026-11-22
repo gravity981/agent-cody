@@ -157,13 +157,13 @@ func runBridge(
 			}
 		case err := <-serverErrors:
 			logger.Warningf("HTTP server stopped: %v", err)
-			link.Close(time.Now())
+			app.Close(time.Now())
 			return fmt.Errorf("HTTP server stopped: %w", err)
 		case <-runCtx.Done():
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			err := server.Shutdown(shutdownCtx)
 			cancel()
-			link.Close(time.Now())
+			app.Close(time.Now())
 			if err != nil {
 				logger.Warningf("HTTP server shutdown: %v", err)
 				if closeErr := server.Close(); closeErr != nil {

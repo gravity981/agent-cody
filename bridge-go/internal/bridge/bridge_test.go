@@ -14,9 +14,14 @@ import (
 )
 
 type fakeLink struct {
-	status device.Status
-	states []sessions.State
-	steps  int
+	status       device.Status
+	states       []sessions.State
+	testActive   bool
+	testCommands []string
+	stopped      []sessions.State
+	replies      []string
+	steps        int
+	closed       bool
 }
 
 func (l *fakeLink) Status() device.Status {
@@ -29,8 +34,33 @@ func (l *fakeLink) SetState(state sessions.State, _ time.Time) {
 	}
 }
 
+func (l *fakeLink) StartTest(time.Time) error {
+	l.testActive = true
+	return nil
+}
+
+func (l *fakeLink) SendTestCommand(command string, _ time.Time) error {
+	l.testCommands = append(l.testCommands, command)
+	return nil
+}
+
+func (l *fakeLink) StopTest(state sessions.State, _ time.Time) error {
+	l.testActive = false
+	l.stopped = append(l.stopped, state)
+	l.SetState(state, time.Time{})
+	return nil
+}
+
+func (l *fakeLink) Replies() []string {
+	return append([]string{}, l.replies...)
+}
+
 func (l *fakeLink) Step(time.Time) {
 	l.steps++
+}
+
+func (l *fakeLink) Close(time.Time) {
+	l.closed = true
 }
 
 func Test_req_BRG_02_BridgeMergesSessionsAndIgnoresUnmappedEvents(t *testing.T) {
@@ -136,6 +166,72 @@ func Test_req_BRG_15_ClearRemovesAllSessionsAndSetsIdle(t *testing.T) {
 
 	if status := app.Status(now.Add(time.Second)); status.State != sessions.IDLE || len(status.Sessions) != 0 {
 		t.Fatalf("status after clearing sessions = %+v", status)
+	}
+}
+
+func Test_req_TST_08_TestModeSuppressesAgentWritesAndRestoresLatestState(t *testing.T) {
+	now := time.Unix(100, 0)
+	link := &fakeLink{status: device.Status{Connected: true}}
+	app := New(sessions.New(time.Minute), link, logging.New(io.Discard, "info"), "v", "c")
+	if err := app.StartTest(now); err != nil {
+		t.Fatal(err)
+	}
+	app.Event(mapping.Event{
+		Agent: "claude-code", Session: "one", Name: "PreToolUse", State: sessions.WORKING,
+	}, now.Add(time.Second))
+
+	if got := len(link.states); got != 0 {
+		t.Fatalf("normal state writes during test mode = %v", link.states)
+	}
+	if got := app.Status(now.Add(time.Second)).State; got != sessions.WORKING {
+		t.Fatalf("merged state during test mode = %s, want WORKING", got)
+	}
+	if err := app.StopTest(now.Add(2 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := link.stopped, []sessions.State{sessions.WORKING}; !equalStates(got, want) {
+		t.Fatalf("restored states = %v, want %v", got, want)
+	}
+	if app.TestStatus().Active || link.testActive {
+		t.Fatal("test mode remained active after stop")
+	}
+}
+
+func Test_req_TST_08_TestHeartbeatExpiryRestoresLatestMergedState(t *testing.T) {
+	start := time.Unix(100, 0)
+	link := &fakeLink{status: device.Status{Connected: true}}
+	app := New(sessions.New(time.Minute), link, logging.New(io.Discard, "info"), "v", "c")
+	if err := app.StartTest(start); err != nil {
+		t.Fatal(err)
+	}
+	app.Event(mapping.Event{
+		Agent: "claude-code", Session: "one", Name: "PreToolUse", State: sessions.THINKING,
+	}, start.Add(time.Second))
+	if err := app.TestHeartbeat(start.Add(8 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+
+	app.Tick(start.Add(18 * time.Second))
+	if got, want := link.stopped, []sessions.State{sessions.THINKING}; !equalStates(got, want) {
+		t.Fatalf("restored states after timeout = %v, want %v", got, want)
+	}
+	if app.TestStatus().Active {
+		t.Fatal("test mode remained active after heartbeat expiry")
+	}
+}
+
+func Test_req_TST_08_ShutdownStopsTestModeAndRestoresMergedState(t *testing.T) {
+	now := time.Unix(100, 0)
+	link := &fakeLink{status: device.Status{Connected: true}}
+	app := New(sessions.New(time.Minute), link, logging.New(io.Discard, "info"), "v", "c")
+	if err := app.StartTest(now); err != nil {
+		t.Fatal(err)
+	}
+	app.SetManual(sessions.APPROVAL, now.Add(time.Second))
+
+	app.Close(now.Add(2 * time.Second))
+	if !link.closed || link.testActive || !equalStates(link.stopped, []sessions.State{sessions.APPROVAL}) {
+		t.Fatalf("bridge shutdown: closed=%t active=%t restored=%v", link.closed, link.testActive, link.stopped)
 	}
 }
 
