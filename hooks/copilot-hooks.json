@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "bash": "sh \"${COPILOT_HOME:-$HOME/.copilot}/hooks/cody-forward.sh\"",
+        "powershell": "$root = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $HOME '.copilot' }; & (Join-Path $root 'hooks/cody-forward.ps1')",
+        "timeoutSec": 1
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "bash": "sh \"${COPILOT_HOME:-$HOME/.copilot}/hooks/cody-forward.sh\"",
+        "powershell": "$root = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $HOME '.copilot' }; & (Join-Path $root 'hooks/cody-forward.ps1')",
+        "timeoutSec": 1
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "bash": "sh \"${COPILOT_HOME:-$HOME/.copilot}/hooks/cody-forward.sh\"",
+        "powershell": "$root = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $HOME '.copilot' }; & (Join-Path $root 'hooks/cody-forward.ps1')",
+        "timeoutSec": 1
+      }
+    ],
+    "PostToolUse": [
+      {
+        "type": "command",
+        "bash": "sh \"${COPILOT_HOME:-$HOME/.copilot}/hooks/cody-forward.sh\"",
+        "powershell": "$root = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $HOME '.copilot' }; & (Join-Path $root 'hooks/cody-forward.ps1')",
+        "timeoutSec": 1
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "bash": "sh \"${COPILOT_HOME:-$HOME/.copilot}/hooks/cody-forward.sh\"",
+        "powershell": "$root = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $HOME '.copilot' }; & (Join-Path $root 'hooks/cody-forward.ps1')",
+        "timeoutSec": 1
+      }
+    ],
+    "SessionEnd": [
+      {
+        "type": "command",
+        "bash": "sh \"${COPILOT_HOME:-$HOME/.copilot}/hooks/cody-forward.sh\"",
+        "powershell": "$root = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $HOME '.copilot' }; & (Join-Path $root 'hooks/cody-forward.ps1')",
+        "timeoutSec": 1
+      }
+    ],
+    "ErrorOccurred": [
+      {
+        "type": "command",
+        "bash": "sh \"${COPILOT_HOME:-$HOME/.copilot}/hooks/cody-forward.sh\"",
+        "powershell": "$root = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $HOME '.copilot' }; & (Join-Path $root 'hooks/cody-forward.ps1')",
+        "timeoutSec": 1
+      }
+    ]
+  }
+}

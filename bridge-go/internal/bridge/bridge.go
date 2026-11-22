@@ -16,6 +16,7 @@ const ManualAgent = "manual"
 const ManualSession = "manual"
 
 const TestHeartbeatTimeout = 10 * time.Second
+const eventDeduplicationWindow = 10 * time.Second
 
 var (
 	ErrTestModeActive   = errors.New("hardware test mode is already active")
@@ -51,6 +52,7 @@ type Bridge struct {
 	testMode           bool
 	flashInProgress    bool
 	lastPanelHeartbeat time.Time
+	recentEvents       map[string]time.Time
 }
 
 func New(
@@ -60,12 +62,13 @@ func New(
 	version, commit string,
 ) *Bridge {
 	return &Bridge{
-		sessions:  activeSessions,
-		link:      link,
-		logger:    logger,
-		version:   version,
-		commit:    commit,
-		lastState: sessions.IDLE,
+		sessions:     activeSessions,
+		link:         link,
+		logger:       logger,
+		version:      version,
+		commit:       commit,
+		lastState:    sessions.IDLE,
+		recentEvents: make(map[string]time.Time),
 	}
 }
 
@@ -81,6 +84,10 @@ func (b *Bridge) Event(event mapping.Event, now time.Time) {
 		stateName = string(event.State)
 	}
 	b.logger.Debugf("event %s -> %s", cause, stateName)
+	if b.duplicateEvent(event.DedupKey, now) {
+		b.logger.Debugf("duplicate event %s ignored", cause)
+		return
+	}
 	if event.Ignored {
 		return
 	}
@@ -90,6 +97,23 @@ func (b *Bridge) Event(event mapping.Event, now time.Time) {
 		b.sessions.Update(event.Agent, event.Session, event.State, now)
 	}
 	b.apply(now, cause)
+}
+
+func (b *Bridge) duplicateEvent(key string, now time.Time) bool {
+	if key == "" {
+		return false
+	}
+	for knownKey, received := range b.recentEvents {
+		if now.Sub(received) > eventDeduplicationWindow {
+			delete(b.recentEvents, knownKey)
+		}
+	}
+	if received, exists := b.recentEvents[key]; exists &&
+		now.Sub(received) <= eventDeduplicationWindow {
+		return true
+	}
+	b.recentEvents[key] = now
+	return false
 }
 
 func (b *Bridge) SetManual(state sessions.State, now time.Time) {

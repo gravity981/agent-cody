@@ -263,6 +263,27 @@ func Test_req_BRG_01_ReceivesClaudeEventsAndRejectsBadRequests(t *testing.T) {
 	}
 }
 
+func Test_req_AGT_04_CopilotHookUsesWorkspaceSession(t *testing.T) {
+	server, _, _ := newTestServer(t)
+	response, _ := request(t, server.Client(), http.MethodPost, server.URL+"/hooks/copilot",
+		[]byte(`{"session_id":"s1","timestamp":"2026-11-22T16:00:00Z","cwd":"/workspace/project","hook_event_name":"PreToolUse"}`))
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("Copilot hook status = %d", response.StatusCode)
+	}
+	response, data := request(t, server.Client(), http.MethodGet, server.URL+"/status", nil)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("status endpoint = %d", response.StatusCode)
+	}
+	var status bridge.Status
+	if err := json.Unmarshal(data, &status); err != nil {
+		t.Fatal(err)
+	}
+	if status.State != sessions.WORKING || len(status.Sessions) != 1 ||
+		status.Sessions[0].Agent != "copilot" || status.Sessions[0].Session != "/workspace/project" {
+		t.Fatalf("unexpected Copilot status: %+v", status)
+	}
+}
+
 func Test_req_BRG_10_StatusReportsBridgeVersionAndCommit(t *testing.T) {
 	server, link, _ := newTestServer(t)
 	response, data := request(t, server.Client(), http.MethodGet, server.URL+"/status", nil)

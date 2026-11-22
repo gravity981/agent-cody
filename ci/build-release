@@ -34,6 +34,12 @@ uv run --frozen python -m cody_tools.build_docs --version "$VERSION" --release-d
 cp hooks/install-claude-code "$RELEASE_DIR/cody-install-claude-code-$VERSION"
 chmod +x "$RELEASE_DIR/cody-install-claude-code-$VERSION"
 
+# Copilot user-level hook configuration and platform forwarders (AGT-04, AGT-09)
+cp hooks/copilot-hooks.json "$RELEASE_DIR/cody-copilot-hooks-$VERSION.json"
+cp hooks/cody-forward.sh "$RELEASE_DIR/cody-copilot-forward-$VERSION.sh"
+chmod +x "$RELEASE_DIR/cody-copilot-forward-$VERSION.sh"
+cp hooks/cody-forward.ps1 "$RELEASE_DIR/cody-copilot-forward-$VERSION.ps1"
+
 cp LICENSE "$RELEASE_DIR/LICENSE"
 
 ls -l "$RELEASE_DIR"

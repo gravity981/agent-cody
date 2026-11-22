@@ -55,6 +55,7 @@ makensis -V2 \
   -DVERSION="$VERSION" \
   -DAPP_EXE="$tmp_dir/cody.exe" \
   -DRELAY_EXE="$tmp_dir/cody-linux" \
+  -DAPP_LICENSE="$PWD/LICENSE" \
   -DESPFLASH_EXE="$tmp_dir/espflash.exe" \
   -DESPFLASH_MIT_LICENSE="$tmp_dir/LICENSE-espflash-MIT.txt" \
   -DESPFLASH_APACHE_LICENSE="$tmp_dir/LICENSE-espflash-APACHE.txt" \

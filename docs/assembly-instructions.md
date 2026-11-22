@@ -65,15 +65,15 @@ Native Linux hosts have no bridge between Stage 3 and Stage 6 step 6a (TD-15).
 
 ![Bridge and device setup](images/steps/bridge-setup.svg)
 
-## Step 6: Install Claude Code hooks
+## Step 6: Install Claude Code and Copilot hooks
 
-**Parts:** The running bridge host and each environment where Claude Code runs.
+**Parts:** The running bridge host and each environment where Claude Code or Copilot runs.
 
-**Tools:** Python 3.10 or newer for the installer, plus `curl` and a POSIX shell where Claude Code runs. On a Windows host, install Git for Windows to provide Git Bash, `sh` and `curl`.
+**Tools:** Python 3.10 or newer for the Claude Code installer; VS Code with Copilot; and `curl` (`curl.exe` on Windows) wherever an agent hook runs.
 
-From the repository, run `uv run python hooks/install-claude-code`. With the release file, run `python3 cody-install-claude-code-<version>`. Run the installer on the host and in each separate Claude Code configuration environment; a shared devcontainer configuration only needs one install. For a Docker Engine devcontainer in WSL2, pass the relay port shown by Cody, for example `--port 8766`. Restart Claude Code after installing hooks.
+From the repository, run `uv run python hooks/install-claude-code`. With the release file, run `python3 cody-install-claude-code-<version>`. Run the installer on the host and in each separate Claude Code configuration environment; a shared devcontainer configuration only needs one install. For a Docker Engine devcontainer in WSL2, pass the relay port shown by Cody, for example `--port 8766`.
 
-Stage 2 covers Claude Code. GitHub Copilot hooks are added in Stage 3.
+For Copilot, follow the copy instructions in [`hooks/README.md`](../hooks/README.md#github-copilot-in-vs-code) to place the user hook configuration and forwarders in `~/.copilot/hooks/` (or `$COPILOT_HOME/hooks/`). Repeat in the environment where VS Code's Copilot session runs. If the Docker Engine WSL2 relay uses a non-default port, update the Docker-gateway target in both Copilot forwarders. Start a new Claude Code and Copilot session after installation.
 
 ![Claude Code hook routing](images/steps/hook-routing.svg)
 

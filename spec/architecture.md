@@ -50,14 +50,14 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device.
 
 The hooks contain no logic: they forward the agent's own hook payload. All mapping lives in the bridge, so it is tested in CI with recorded payloads.
 
-- Port `8765`. The Windows bridge app listens only on `127.0.0.1`; its WSL relay accepts loopback and Docker's private address range `172.16.0.0/12` (BRG-08). Hooks are command hooks using curl that try `localhost`, then `host.docker.internal`, then `172.17.0.1` through the relay, within 1 s in total (AGT-07). This configuration works on the Windows host and in devcontainers (AGT-11), including Docker Engine in WSL2, where `host.docker.internal` is not defined. The relay uses the first available port from `8766`–`8770` for the Docker gateway; the hook installer’s optional `--port` sets that target port (default `8765`). The other targets stay on `8765` (AGT-12). Devcontainers that share the Claude Code configuration (e.g. the `claude-config` volume) are set up once; they need curl.
+- Port `8765`. The Windows bridge app listens only on `127.0.0.1`; its WSL relay accepts loopback and Docker's private address range `172.16.0.0/12` (BRG-08). Hooks are command hooks using curl that try `localhost`, then `host.docker.internal`, then `172.17.0.1` through the relay, within 1 s in total (AGT-07). This configuration works on the Windows host and in devcontainers (AGT-11), including Docker Engine in WSL2, where `host.docker.internal` is not defined. The relay uses the first available port from `8766`–`8770` for the Docker gateway; the hook installer’s optional `--port` sets that target port (default `8765`). The other targets stay on `8765` (AGT-12). Claude Code hooks need curl and a POSIX shell; Copilot hooks use curl with Bash or PowerShell, depending on the host. Devcontainers that share the Claude Code configuration (e.g. the `claude-config` volume) are set up once.
 - `cody setup` (AGT-10) is provided by the Go program. On Windows and through its WSL/devcontainer relay, it starts the bridge with autostart, writes both agents' hooks at user level, checks the device connection and reports what is missing (e.g. usbipd on WSL2). Native Linux setup is unsupported until step 6a (TD-15).
 - `POST /hooks/claude-code`: Claude Code's hook JSON as is, sent by the curl command hook configured in `~/.claude/settings.json`. Session key: `session_id`; event: `hook_event_name`.
 - Claude Code hook: one inline shell command per event, with no file paths, so the same text works on the host and in containers. It tries `127.0.0.1:8765`, `host.docker.internal:8765`, then `172.17.0.1:<port>` (default port `8765`, optionally set by the installer); it accepts only the bridge's `200 ok` response. Each curl attempt is capped at 0.1 s; the full hook stays under 1 s:
   `p=$(cat); for u in http://127.0.0.1:8765/hooks/claude-code http://host.docker.internal:8765/hooks/claude-code http://172.17.0.1:8765/hooks/claude-code; do r=$(printf '%s' "$p" | curl -fsS --connect-timeout 0.1 -m 0.1 -H 'Expect:' --data-binary @- "$u" 2>/dev/null) && [ "$r" = ok ] && break; done; exit 0`
   It never prints anything (stdout of some hooks goes into Claude's context) and always exits 0; the hook's own `timeout` is 2 s. The payload is piped, not passed as an argument, because tool outputs can be several MB; the bridge accepts up to 32 MB. `Expect:` stops curl from waiting for a `100 Continue` the bridge never sends.
 - `hooks/install-claude-code` (Python, standard library only) merges these hooks into `$CLAUDE_CONFIG_DIR/settings.json` or `~/.claude/settings.json`, keeps all other settings, replaces earlier Cody hooks and can remove them (`--uninstall`). It is run once on the host and once for the devcontainers' shared `claude-config` volume (AGT-03); `cody setup` reuses it (AGT-10). `--port PORT` sets the `172.17.0.1` target port (default `8765`); for Docker Engine in WSL2, pass the relay listener port shown in its log. `--record FILE` additionally appends every payload to a file, for recording real payloads as test fixtures (sanitised before they are committed). It needs any Python 3 (3.10 or newer) and no packages: in the repository run it with `uv run python hooks/install-claude-code`, elsewhere with the Python at hand (`python3 cody-install-claude-code-<version>`, the release file). It is shipped as a release file (delivery.md 2). The setup guide lists what installing and running the hooks needs on each machine: Python 3.10 or newer for the installer; curl and a POSIX shell wherever Claude Code runs (host and every devcontainer; Git for Windows on a Windows host); the bridge running on the host.
-- `POST /hooks/copilot`: Copilot's hook JSON, sent by a command hook configured in `~/.copilot/hooks/` or `$COPILOT_HOME/hooks/`. The Copilot harness also reads repository `.claude/settings.json` and `.claude/settings.local.json`; hooks from applicable sources are combined, so the bridge deduplicates events across them (AGT-08). Session key: workspace folder (`cwd`) (AGT-06).
+- `POST /hooks/copilot`: Copilot's hook JSON, sent by a command hook configured in `~/.copilot/hooks/` or `$COPILOT_HOME/hooks/`. Cody configures PascalCase-compatible event aliases so the payload includes `hook_event_name`, `session_id`, `timestamp` and `cwd`. The Copilot harness also reads repository `.claude/settings.json` and `.claude/settings.local.json`; a Copilot-compatible payload arriving through `/hooks/claude-code` is mapped to the same Copilot workspace session. The bridge deduplicates across those sources by session ID, workspace, canonical event name and timestamp, retaining recent event keys for 10 s (AGT-08). Session key: workspace folder (`cwd`) (AGT-06).
 - `GET /status`: device connection, firmware version, sessions with their states, merged state (BRG-11).
 - `GET /`: Windows bridge website (status, configuration, test panel and updater); opened by the tray menu on the Windows host. It is served from the same loopback listener; no separate WSL/container UI access path is provided.
 - `POST /state`: sets a state manually (`{"state": "WORKING"}`), as its own session `manual` (BRG-12); `DELETE /state` removes it, otherwise it ends by the session timeout.
@@ -65,29 +65,18 @@ The hooks contain no logic: they forward the agent's own hook payload. All mappi
 - Host command `cody` (Go program in `bridge-go/`): `cody status`, `cody state <STATE>`, `cody state clear`, `cody session clear` (BRG-15), `cody --version` and `cody setup` (AGT-10). The Go command replaces the shell script in `cli/` and the Python hook installer. It reaches the Windows app from WSL through the relay; native Linux setup is deferred until step 6a (TD-15).
 - Hooks return within 1 s and never fail the agent (AGT-07).
 
-**Claude Code mapping (AGT-01):**
+**Agent hooks mapped to Cody states (AGT-01, AGT-04, AGT-05):**
 
-| Hook event | State |
-|---|---|
-| `SessionStart` | IDLE |
-| `UserPromptSubmit`, `PostToolUse`, `PostToolUseFailure` | THINKING |
-| `PreToolUse` | WORKING |
-| `PermissionRequest`, `Notification` (`permission_prompt`, `elicitation_dialog`) | APPROVAL |
-| `Stop` | COMPLETED |
-| `StopFailure` | ERROR |
-| `SessionEnd` | session ends |
+| Cody state | Claude Code hook event(s) | GitHub Copilot hook event(s) |
+|---|---|---|
+| IDLE | `SessionStart` | `SessionStart` (`sessionStart`) |
+| THINKING | `UserPromptSubmit`, `PostToolUse`, `PostToolUseFailure` | `UserPromptSubmit` (`userPromptSubmitted`), `PostToolUse` (`postToolUse`) |
+| WORKING | `PreToolUse` | `PreToolUse` (`preToolUse`) |
+| APPROVAL | `PermissionRequest`, `Notification` (`permission_prompt`, `elicitation_dialog`) | Not available in VS Code 1.147.0 |
+| COMPLETED | `Stop` | `Stop` (`agentStop`) |
+| ERROR | `StopFailure` | `ErrorOccurred` (`errorOccurred`) |
 
-**Copilot mapping (AGT-04):**
-
-| Hook event | State |
-|---|---|
-| `sessionStart` | IDLE |
-| `userPromptSubmitted`, `postToolUse` | THINKING |
-| `preToolUse` | WORKING |
-| `agentStop` | COMPLETED |
-| `sessionEnd` | session ends |
-
-THINKING vs WORKING between tool calls is approximate for both agents.
+`SessionEnd` ends the session for either agent and does not map to a Cody state. The VS Code 1.147.0 Copilot hook picker includes `ErrorOccurred` but no approval/permission-request event; AGT-05 therefore remains conditional, with ERROR mapped and APPROVAL unavailable. THINKING vs WORKING between tool calls is approximate for both agents.
 
 ### 4.2 Host → firmware (USB serial)
 

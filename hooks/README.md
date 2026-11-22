@@ -48,3 +48,38 @@ python3 cody-install-claude-code-<version>  # release file, any environment with
 ### Check
 
 With Cody running, start a Claude Code session and send a prompt. Run `cody status` on the host or in WSL: the session is listed with its state.
+
+## GitHub Copilot in VS Code
+
+The Copilot harness reads user hook files from `~/.copilot/hooks/`, or `$COPILOT_HOME/hooks/` when `COPILOT_HOME` is set. The configuration uses PascalCase-compatible event names so Copilot sends a common payload containing `hook_event_name`, `session_id`, `timestamp` and `cwd`. The bridge keys each Copilot session by `cwd`.
+
+### Install
+
+From the repository, copy the configuration and both platform forwarders:
+
+```bash
+hook_dir="${COPILOT_HOME:-$HOME/.copilot}/hooks"
+mkdir -p "$hook_dir"
+cp hooks/copilot-hooks.json "$hook_dir/cody.json"
+cp hooks/cody-forward.sh "$hook_dir/cody-forward.sh"
+cp hooks/cody-forward.ps1 "$hook_dir/cody-forward.ps1"
+```
+
+In PowerShell, use:
+
+```powershell
+$root = if ($env:COPILOT_HOME) { $env:COPILOT_HOME } else { Join-Path $HOME '.copilot' }
+$hooks = Join-Path $root 'hooks'
+New-Item -ItemType Directory -Force -Path $hooks | Out-Null
+Copy-Item hooks/copilot-hooks.json (Join-Path $hooks 'cody.json')
+Copy-Item hooks/cody-forward.sh (Join-Path $hooks 'cody-forward.sh')
+Copy-Item hooks/cody-forward.ps1 (Join-Path $hooks 'cody-forward.ps1')
+```
+
+For a release download, copy `cody-copilot-hooks-<version>.json` to the hook folder as `cody.json`, and copy the matching `cody-copilot-forward-<version>.sh` and `.ps1` files there as `cody-forward.sh` and `cody-forward.ps1`.
+
+The forwarders need `curl` (or `curl.exe` on Windows) wherever Copilot runs. They try `127.0.0.1`, `host.docker.internal`, then the Docker gateway, each with a 0.1 s timeout; they suppress output and always exit successfully so Cody cannot block the agent. If the WSL relay listens on a non-default port, update only the `172.17.0.1:8765` target in both scripts to the relay port. Start a new Copilot session after installing.
+
+The VS Code 1.147.0 Copilot hook picker includes `ErrorOccurred` and does not include an approval/permission-request event. Cody maps errors to ERROR; APPROVAL remains conditional until VS Code exposes an event for it. To verify setup, start a Copilot session and use a harmless request that reads a project file; `cody status` should list the workspace folder as the Copilot session key.
+
+Copilot also runs applicable hooks from repository `.claude/settings.json` and `.claude/settings.local.json`. When Cody's Claude-compatible hooks are configured there, the bridge recognizes Copilot's compatible payload and deduplicates it against the user-level Copilot hook. It does not read Claude Code's user-level `~/.claude/settings.json` as a Copilot hook source.

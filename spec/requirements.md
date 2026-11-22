@@ -84,7 +84,7 @@ A background process on the host that receives agent events from the hooks over 
 
 ## 5. Agent integrations (AGT)
 
-Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). The mapping of each agent's events to states is in [architecture.md](architecture.md). GitHub Copilot's agent hooks in VS Code are in Preview and provide no events for "waiting for approval" or "turn failed", and no session id.
+Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). The mapping of each agent's events to states is in [architecture.md](architecture.md). The user checked the Copilot hook picker in VS Code 1.147.0 on 2026-11-22: it exposes `ErrorOccurred` but no approval/permission-request event. Copilot payloads include a session ID, but Cody deliberately keys them by workspace folder (`cwd`), as required by AGT-06.
 
 | ID | Requirement | Prio |
 |---|---|---|

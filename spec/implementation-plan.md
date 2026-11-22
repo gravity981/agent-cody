@@ -28,7 +28,7 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 |---|---|---|---|
 | 1 | Walking skeleton: toolchain, CI, requirement report, first release candidate | | done |
 | 2 | Status light on the bench with Claude Code | M1 | done (open points) |
-| 3 | Copilot integration | M2 | next |
+| 3 | Copilot integration | M2 | in progress |
 | 4 | Mechanism prototype | | open |
 | 5 | Character and assembly | M3 | open |
 | 6 | Native bridge for Linux and macOS, firmware updater | | open |
@@ -123,7 +123,7 @@ Requirements: DOC-02, DOC-05, DOC-06.
 ### Stage 3 – Copilot integration
 
 **Before the stage starts:**
-- Checked 2026-11-22 against the [VS Code agent hooks documentation](https://code.visualstudio.com/docs/agent-customization/hooks) and [Copilot hooks reference](https://docs.github.com/en/copilot/reference/hooks-reference): hooks remain in Preview. VS Code documents user hook files in `~/.copilot/hooks/` or `$COPILOT_HOME/hooks/`, and lists `sessionStart`, `userPromptSubmitted`, `preToolUse`, `postToolUse`, `preCompact`, `subagentStart`, `subagentStop`, `agentStop` and `sessionEnd`. It also reads repository `.claude/settings.json` and `.claude/settings.local.json`, but does not list Claude Code's user-level `~/.claude/settings.json`; AGT-05's approval/error event availability must be verified in the target VS Code runtime during step 3b.
+- Checked 2026-11-22 against the [VS Code agent hooks documentation](https://code.visualstudio.com/docs/agent-customization/hooks), the [Copilot hooks reference](https://docs.github.com/en/copilot/reference/hooks-reference), and the user's VS Code 1.147.0 hook picker. User hooks are in `~/.copilot/hooks/` or `$COPILOT_HOME/hooks/`; Copilot also reads repository `.claude/settings.json` and `.claude/settings.local.json`, but does not list Claude Code's user-level `~/.claude/settings.json`. The picker exposes `ErrorOccurred` but no approval/permission-request event: step 3b maps ERROR and leaves APPROVAL conditional. Payloads include a session ID, but AGT-06 continues to key by workspace folder (`cwd`).
 
 **Steps:**
 

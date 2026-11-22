@@ -10,6 +10,9 @@ Unicode True
 !ifndef RELAY_EXE
   !error "RELAY_EXE is required"
 !endif
+!ifndef APP_LICENSE
+  !error "APP_LICENSE is required"
+!endif
 !ifndef ESPFLASH_EXE
   !error "ESPFLASH_EXE is required"
 !endif
@@ -43,6 +46,7 @@ Section "Cody" CodyInstall
   SetOutPath "$INSTDIR"
   File /oname=cody.exe "${APP_EXE}"
   File /oname=cody-linux "${RELAY_EXE}"
+  File /oname=LICENSE "${APP_LICENSE}"
   File /oname=espflash.exe "${ESPFLASH_EXE}"
   File /oname=LICENSE-espflash-MIT.txt "${ESPFLASH_MIT_LICENSE}"
   File /oname=LICENSE-espflash-APACHE.txt "${ESPFLASH_APACHE_LICENSE}"
@@ -77,6 +81,7 @@ Section "Uninstall"
   RMDir "$SMPROGRAMS\Cody"
   Delete "$INSTDIR\cody.exe"
   Delete "$INSTDIR\cody-linux"
+  Delete "$INSTDIR\LICENSE"
   Delete "$INSTDIR\espflash.exe"
   Delete "$INSTDIR\LICENSE-espflash-MIT.txt"
   Delete "$INSTDIR\LICENSE-espflash-APACHE.txt"
