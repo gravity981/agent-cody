@@ -120,7 +120,7 @@ func runBridge(
 	if cfg.SerialPort != nil {
 		serialPort = *cfg.SerialPort
 	}
-	link := device.NewLink(device.SerialSystem{}, logger, cfg.Speed, cfg.Volume, serialPort)
+	link := device.NewLink(device.SerialSystem{}, logger, cfg.Volume, cfg.Brightness, serialPort)
 	activeSessions := sessions.New(time.Duration(cfg.SessionTimeoutMin * float64(time.Minute)))
 	app := bridge.New(activeSessions, link, logger, version, commit)
 	server := &http.Server{

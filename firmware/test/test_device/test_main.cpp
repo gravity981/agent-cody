@@ -130,24 +130,26 @@ void test_req_FW_05_completed_and_error_stay_until_next_state() {
   }
 }
 
-// --- FW-08: SPEED sets the motor speed used in WORKING ---
+// --- FW-08: WORKING uses the device tuning; bridge SPEED cannot override it ---
 
-void test_req_FW_08_speed_sets_motor_duty_in_working() {
+void test_req_FW_08_working_uses_device_tuning_and_rejects_bridge_speed() {
   Device d("1.2.3", "abc");
   send(d, "STATE:WORKING", 0);
   TEST_ASSERT_EQUAL_UINT8(255, d.update(0).motorDuty);  // brief kick
   TEST_ASSERT_EQUAL_UINT8(224, d.update(1).motorDuty);  // default
-  send(d, "SPEED:90", 100);
-  TEST_ASSERT_EQUAL_UINT8(90, d.update(100).motorDuty);
-  send(d, "SPEED:200", 300);
-  TEST_ASSERT_EQUAL_UINT8(200, d.update(300).motorDuty);
-  send(d, "SPEED:0", 400);
-  TEST_ASSERT_EQUAL_UINT8(0, d.update(400).motorDuty);
+  TEST_ASSERT_EQUAL_STRING("ERR unknown command\n", send(d, "SPEED:90", 100).c_str());
+  TEST_ASSERT_EQUAL_INT(224, d.speed());
+
+  send(d, "TEST:START", 200);
+  send(d, "TEST:SPEED:90", 201);
+  send(d, "TEST:STOP", 202);
+  send(d, "STATE:WORKING", 203);
+  TEST_ASSERT_EQUAL_UINT8(255, d.update(203).motorDuty);
+  TEST_ASSERT_EQUAL_UINT8(90, d.update(204).motorDuty);
 }
 
 void test_req_FW_08_motor_stopped_outside_working() {
   Device d("1.2.3", "abc");
-  send(d, "SPEED:200", 0);
   const char* states[] = {"STATE:IDLE", "STATE:THINKING", "STATE:APPROVAL", "STATE:COMPLETED",
                           "STATE:ERROR"};
   for (const char* line : states) {
@@ -160,8 +162,8 @@ void test_req_FW_08_motor_stopped_outside_working() {
 
 void test_req_FW_10_every_command_is_answered_ok() {
   Device d("1.2.3", "abc");
-  for (const char* line : {"PING", "STATE:THINKING", "SPEED:10", "VOLUME:50", "BRIGHTNESS:100",
-                           "LED:1,2,3", "BEEP:SUCCESS"}) {
+  for (const char* line :
+       {"PING", "STATE:THINKING", "VOLUME:50", "BRIGHTNESS:100", "LED:1,2,3", "BEEP:SUCCESS"}) {
     TEST_ASSERT_EQUAL_STRING("OK\n", send(d, line, 0).c_str());
   }
 }
@@ -171,25 +173,19 @@ void test_req_FW_10_errors_keep_the_state() {
   send(d, "STATE:THINKING", 0);
   send(d, "SPEED:77", 0);
   const char* bad[][2] = {
-      {"HELLO", "ERR unknown command\n"},
-      {"state:working", "ERR unknown command\n"},
-      {"STATE:SLEEPING", "ERR unknown state\n"},
-      {"STATE:", "ERR unknown state\n"},
-      {"SPEED:256", "ERR bad value\n"},
-      {"SPEED:-1", "ERR bad value\n"},
-      {"SPEED:", "ERR bad value\n"},
-      {"VOLUME:101", "ERR bad value\n"},
-      {"LED:1,2", "ERR bad value\n"},
-      {"LED:1,2,3,4", "ERR bad value\n"},
-      {"LED:300,0,0", "ERR bad value\n"},
-      {"BEEP:HONK", "ERR unknown sound\n"},
-      {"", "ERR unknown command\n"},
+      {"HELLO", "ERR unknown command\n"},        {"state:working", "ERR unknown command\n"},
+      {"STATE:SLEEPING", "ERR unknown state\n"}, {"STATE:", "ERR unknown state\n"},
+      {"SPEED:10", "ERR unknown command\n"},     {"SPEED:256", "ERR unknown command\n"},
+      {"SPEED:-1", "ERR unknown command\n"},     {"SPEED:", "ERR unknown command\n"},
+      {"VOLUME:101", "ERR bad value\n"},         {"LED:1,2", "ERR bad value\n"},
+      {"LED:1,2,3,4", "ERR bad value\n"},        {"LED:300,0,0", "ERR bad value\n"},
+      {"BEEP:HONK", "ERR unknown sound\n"},      {"", "ERR unknown command\n"},
   };
   for (const auto& pair : bad) {
     TEST_ASSERT_EQUAL_STRING(pair[1], send(d, pair[0], 0).c_str());
   }
   TEST_ASSERT_TRUE(d.state() == State::Thinking);
-  TEST_ASSERT_EQUAL_INT(77, d.speed());
+  TEST_ASSERT_EQUAL_INT(224, d.speed());
 }
 
 // --- FW-11: version and commit on request ---
@@ -511,7 +507,7 @@ int main() {
   RUN_TEST(test_req_FW_03_state_command_switches_state);
   RUN_TEST(test_req_FW_03_effects_run_without_commands);
   RUN_TEST(test_req_FW_05_completed_and_error_stay_until_next_state);
-  RUN_TEST(test_req_FW_08_speed_sets_motor_duty_in_working);
+  RUN_TEST(test_req_FW_08_working_uses_device_tuning_and_rejects_bridge_speed);
   RUN_TEST(test_req_FW_08_motor_stopped_outside_working);
   RUN_TEST(test_req_FW_10_every_command_is_answered_ok);
   RUN_TEST(test_req_FW_10_errors_keep_the_state);

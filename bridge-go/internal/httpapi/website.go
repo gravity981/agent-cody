@@ -43,8 +43,8 @@ type websiteStatus struct {
 type websiteConfig struct {
 	UseDefaultWSLDistro bool     `json:"use_default_wsl_distro"`
 	WSLDistros          []string `json:"wsl_distros"`
-	Speed               int      `json:"speed"`
 	Volume              int      `json:"volume"`
+	Brightness          int      `json:"brightness"`
 	SessionTimeoutMin   float64  `json:"session_timeout_min"`
 	SerialPort          string   `json:"serial_port"`
 	LogLevel            string   `json:"log_level"`
@@ -133,6 +133,42 @@ func registerWebsiteRoutes(
 		w.Header().Set("Cache-Control", "no-store")
 		writeJSON(w, http.StatusOK, b.TestStatus())
 	})
+	mux.HandleFunc("/api/test/tuning", func(w http.ResponseWriter, r *http.Request) {
+		if !testMutationAllowed(w, r) {
+			return
+		}
+		var requested tuningActionRequest
+		if err := decodeWebsiteJSON(w, r, &requested, "tuning action"); err != nil {
+			writeAPIError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		now := clock()
+		switch requested.Action {
+		case "query":
+			if err := b.QueryTuning(now); err != nil {
+				writeAPIError(w, testErrorStatus(err), err.Error())
+				return
+			}
+		case "save", "reset":
+			command := "TEST:TUNING:SAVE:"
+			if requested.Action == "reset" {
+				command = "TEST:TUNING:RESET:"
+			}
+			timestamp := now.UTC().Format(time.RFC3339Nano)
+			if err := b.SendTestCommand(command+timestamp, now); err != nil {
+				writeAPIError(w, testErrorStatus(err), err.Error())
+				return
+			}
+			if err := b.QueryTuning(now); err != nil {
+				writeAPIError(w, testErrorStatus(err), err.Error())
+				return
+			}
+		default:
+			writeAPIError(w, http.StatusBadRequest, "action must be query, save or reset")
+			return
+		}
+		writeJSON(w, http.StatusAccepted, map[string]bool{"requested": true})
+	})
 	mux.HandleFunc("/api/test/start", func(w http.ResponseWriter, r *http.Request) {
 		if !testMutationAllowed(w, r) {
 			return
@@ -193,6 +229,10 @@ type testCommandRequest struct {
 	Blue   *int   `json:"blue,omitempty"`
 }
 
+type tuningActionRequest struct {
+	Action string `json:"action"`
+}
+
 func (c testCommandRequest) command() (string, error) {
 	switch c.Action {
 	case "state":
@@ -218,7 +258,7 @@ func (c testCommandRequest) command() (string, error) {
 		case "kick":
 			maximum, command = 100, "TEST:KICK"
 		case "volume":
-			maximum, command = 3, "TEST:VOLUME"
+			maximum, command = 100, "TEST:VOLUME"
 		}
 		if value < minimum || value > maximum {
 			return "", fmt.Errorf("%s must be between %d and %d", c.Action, minimum, maximum)
@@ -313,8 +353,8 @@ func configForWebsite(current config.Config) websiteConfig {
 	return websiteConfig{
 		UseDefaultWSLDistro: current.WSLDistros == nil,
 		WSLDistros:          distros,
-		Speed:               current.Speed,
 		Volume:              current.Volume,
+		Brightness:          current.Brightness,
 		SessionTimeoutMin:   current.SessionTimeoutMin,
 		SerialPort:          serialPort,
 		LogLevel:            current.LogLevel,
@@ -332,8 +372,8 @@ func (c websiteConfig) toConfig() config.Config {
 	}
 	return config.Config{
 		SerialPort:        serialPort,
-		Speed:             c.Speed,
 		Volume:            c.Volume,
+		Brightness:        c.Brightness,
 		SessionTimeoutMin: c.SessionTimeoutMin,
 		LogLevel:          c.LogLevel,
 		WSLDistros:        distros,

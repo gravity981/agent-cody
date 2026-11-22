@@ -147,9 +147,6 @@ const char* parseCommand(const char* line, Command& out) {
   } else if ((arg = argumentOf(line, "STATE")) != nullptr) {
     if (!parseState(arg, out.state)) return "unknown state";
     out.kind = Command::Kind::State;
-  } else if ((arg = argumentOf(line, "SPEED")) != nullptr) {
-    if (!parseInt(arg, 0, 255, out.value)) return "bad value";
-    out.kind = Command::Kind::Speed;
   } else if ((arg = argumentOf(line, "VOLUME")) != nullptr) {
     if (!parseInt(arg, 0, 100, out.value)) return "bad value";
     out.kind = Command::Kind::Volume;

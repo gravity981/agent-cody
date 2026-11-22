@@ -124,7 +124,7 @@ std::string Device::handleLine(const char* line, uint32_t nowMs) {
     return std::string("ERR ") + error + "\n";
   }
 
-  const bool normalControl = cmd.kind == Command::Kind::State || cmd.kind == Command::Kind::Speed ||
+  const bool normalControl = cmd.kind == Command::Kind::State ||
                              cmd.kind == Command::Kind::Volume ||
                              cmd.kind == Command::Kind::Brightness ||
                              cmd.kind == Command::Kind::Led || cmd.kind == Command::Kind::Beep;
@@ -148,9 +148,6 @@ std::string Device::handleLine(const char* line, uint32_t nowMs) {
       enterState(cmd.state, nowMs);
       break;
     case Command::Kind::Ping:
-      break;
-    case Command::Kind::Speed:
-      tuning_.speed = static_cast<uint8_t>(cmd.value);
       break;
     case Command::Kind::Volume:
       volume_ = cmd.value;

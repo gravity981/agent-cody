@@ -27,6 +27,7 @@ type Bridge interface {
 	StartTest(time.Time) error
 	TestHeartbeat(time.Time) error
 	SendTestCommand(string, time.Time) error
+	QueryTuning(time.Time) error
 	StopTest(time.Time) error
 	TestStatus() bridge.TestStatus
 }

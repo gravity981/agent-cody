@@ -27,8 +27,10 @@ type DeviceLink interface {
 	SetState(sessions.State, time.Time)
 	StartTest(time.Time) error
 	SendTestCommand(string, time.Time) error
+	QueryTuning(time.Time) error
 	StopTest(sessions.State, time.Time) error
 	Replies() []string
+	Tuning() device.TuningStatus
 	Step(time.Time)
 	Close(time.Time)
 }
@@ -172,6 +174,12 @@ func (b *Bridge) SendTestCommand(command string, now time.Time) error {
 	return b.link.SendTestCommand(command, now)
 }
 
+func (b *Bridge) QueryTuning(now time.Time) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.link.QueryTuning(now)
+}
+
 func (b *Bridge) StopTest(now time.Time) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -191,14 +199,17 @@ func (b *Bridge) stopTest(now time.Time, cause string) error {
 }
 
 type TestStatus struct {
-	Active  bool     `json:"active"`
-	Replies []string `json:"replies"`
+	Active  bool                `json:"active"`
+	Replies []string            `json:"replies"`
+	Tuning  device.TuningStatus `json:"tuning"`
 }
 
 func (b *Bridge) TestStatus() TestStatus {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	return TestStatus{Active: b.testMode, Replies: b.link.Replies()}
+	return TestStatus{
+		Active: b.testMode, Replies: b.link.Replies(), Tuning: b.link.Tuning(),
+	}
 }
 
 func (b *Bridge) Close(now time.Time) {

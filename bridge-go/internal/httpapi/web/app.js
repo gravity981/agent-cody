@@ -16,6 +16,9 @@ const testStates = byId("test-states");
 let deviceConnected = false;
 let testActive = false;
 let testBusy = false;
+let tuningDirty = false;
+let displayedTuning = "";
+let tuningQuerySent = false;
 
 async function request(path, options = {}) {
   const response = await fetch(path, {
@@ -55,6 +58,15 @@ function renderStatus(status) {
   addDetail("Sessions", String(status.sessions.length));
   statusMessage.textContent = "Connected to the local Cody bridge.";
   deviceConnected = status.device.connected;
+  if (!deviceConnected) {
+    tuningQuerySent = false;
+  } else if (!tuningQuerySent) {
+    tuningQuerySent = true;
+    postTest("/api/test/tuning", { action: "query" }).catch((error) => {
+      tuningQuerySent = false;
+      testError.textContent = `Could not query motor tuning: ${error.message}`;
+    });
+  }
   renderTestControls();
 
   relayList.replaceChildren();
@@ -128,8 +140,9 @@ function renderTestControls() {
       : "Device connected. Enter test mode to enable the controls.";
   for (const control of document.querySelectorAll(
     "#test-states button, #test-speed, #test-frequency, #test-kick, #test-decay, " +
-      "#test-apply-motor, #test-motor-start, #test-motor-stop, #test-red, #test-green, " +
-      "#test-blue, #test-show-led, #test-volume, #test-sound, #test-apply-volume, #test-play-sound"
+    "#test-apply-motor, #test-save-tuning, #test-reset-tuning, #test-motor-start, " +
+    "#test-motor-stop, #test-red, #test-green, #test-blue, #test-show-led, #test-volume, " +
+    "#test-sound, #test-apply-volume, #test-play-sound"
   )) {
     control.disabled = !deviceConnected || !testActive || testBusy;
   }
@@ -150,12 +163,65 @@ async function refreshTestStatus() {
     const status = await response.json();
     testActive = status.active;
     testReplies.textContent = status.replies.join("\n");
+    renderTuning(status.tuning);
     renderTestControls();
     if (testActive && !testBusy) {
       await postTest("/api/test/heartbeat");
     }
   } catch (error) {
     testError.textContent = `Could not update test-panel status: ${error.message}`;
+  }
+}
+
+function renderTuning(tuning) {
+  const message = byId("tuning-message");
+  const details = byId("tuning-details");
+  details.replaceChildren();
+  if (!deviceConnected) {
+    message.textContent = "Connect a Cody device to view its motor tuning.";
+    displayedTuning = "";
+    return;
+  }
+  if (tuning.error) {
+    message.textContent = `Could not read motor tuning: ${tuning.error}`;
+    return;
+  }
+  if (!tuning.known) {
+    message.textContent = "Waiting for motor tuning from the device...";
+    return;
+  }
+
+  const summary = [
+    tuning.speed,
+    tuning.frequency_hz,
+    tuning.kick_start_ms,
+    tuning.decay,
+    tuning.timestamp,
+  ];
+  const signature = JSON.stringify(summary);
+  if (!tuningDirty && signature !== displayedTuning) {
+    byId("test-speed").value = tuning.speed;
+    byId("test-frequency").value = tuning.frequency_hz;
+    byId("test-kick").value = tuning.kick_start_ms;
+    byId("test-decay").value = tuning.decay;
+  }
+  displayedTuning = signature;
+  message.textContent = "Current device motor tuning";
+  const lastWrite = tuning.timestamp === "UNSAVED"
+    ? "Firmware defaults (never saved)"
+    : new Date(tuning.timestamp).toLocaleString();
+  for (const [label, value] of [
+    ["Speed", String(tuning.speed)],
+    ["PWM frequency", `${tuning.frequency_hz} Hz`],
+    ["Startup kick", `${tuning.kick_start_ms} ms`],
+    ["Decay mode", tuning.decay],
+    ["Last write", lastWrite],
+  ]) {
+    const term = document.createElement("dt");
+    term.textContent = label;
+    const description = document.createElement("dd");
+    description.textContent = value;
+    details.append(term, description);
   }
 }
 
@@ -190,8 +256,10 @@ function setConfig(config) {
   byId("use-default-distro").checked = config.use_default_wsl_distro;
   byId("wsl-distros").value = config.wsl_distros.join("\n");
   byId("wsl-distros").disabled = config.use_default_wsl_distro;
-  byId("speed").value = config.speed;
   byId("volume").value = config.volume;
+  byId("brightness").value = config.brightness;
+  byId("volume-value").textContent = `${config.volume}%`;
+  byId("brightness-value").textContent = `${config.brightness}%`;
   byId("session-timeout").value = config.session_timeout_min;
   byId("serial-port").value = config.serial_port;
   byId("log-level").value = config.log_level;
@@ -219,8 +287,8 @@ settingsForm.addEventListener("submit", async (event) => {
       .split(/\r?\n/)
       .map((name) => name.trim())
       .filter(Boolean),
-    speed: Number(byId("speed").value),
     volume: Number(byId("volume").value),
+    brightness: Number(byId("brightness").value),
     session_timeout_min: Number(byId("session-timeout").value),
     serial_port: byId("serial-port").value.trim(),
     log_level: byId("log-level").value,
@@ -316,6 +384,33 @@ byId("test-play-sound").addEventListener("click", () => {
     await sendTestCommand("beep", byId("test-sound").value);
   });
 });
+for (const id of ["test-speed", "test-frequency", "test-kick", "test-decay"]) {
+  byId(id).addEventListener("input", () => {
+    tuningDirty = true;
+  });
+}
+byId("test-save-tuning").addEventListener("click", () => {
+  void runTestAction(async () => {
+    await applyMotorSettings();
+    await postTest("/api/test/tuning", { action: "save" });
+    tuningDirty = false;
+  });
+});
+byId("test-reset-tuning").addEventListener("click", () => {
+  void runTestAction(async () => {
+    await postTest("/api/test/tuning", { action: "reset" });
+    tuningDirty = false;
+  });
+});
+for (const [id, outputId] of [
+  ["volume", "volume-value"],
+  ["brightness", "brightness-value"],
+  ["test-volume", "test-volume-value"],
+]) {
+  byId(id).addEventListener("input", () => {
+    byId(outputId).textContent = `${byId(id).value}%`;
+  });
+}
 window.addEventListener("pagehide", () => {
   navigator.sendBeacon(
     "/api/test/stop",

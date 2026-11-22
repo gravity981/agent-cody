@@ -172,6 +172,11 @@ label {
   font-weight: 550;
 }
 
+output {
+  color: #a9e3dc;
+  font-variant-numeric: tabular-nums;
+}
+
 .check {
   display: flex;
   align-items: center;

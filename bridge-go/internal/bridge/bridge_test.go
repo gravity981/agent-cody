@@ -14,14 +14,16 @@ import (
 )
 
 type fakeLink struct {
-	status       device.Status
-	states       []sessions.State
-	testActive   bool
-	testCommands []string
-	stopped      []sessions.State
-	replies      []string
-	steps        int
-	closed       bool
+	status        device.Status
+	states        []sessions.State
+	testActive    bool
+	testCommands  []string
+	stopped       []sessions.State
+	replies       []string
+	tuning        device.TuningStatus
+	tuningQueries int
+	steps         int
+	closed        bool
 }
 
 func (l *fakeLink) Status() device.Status {
@@ -44,6 +46,11 @@ func (l *fakeLink) SendTestCommand(command string, _ time.Time) error {
 	return nil
 }
 
+func (l *fakeLink) QueryTuning(time.Time) error {
+	l.tuningQueries++
+	return nil
+}
+
 func (l *fakeLink) StopTest(state sessions.State, _ time.Time) error {
 	l.testActive = false
 	l.stopped = append(l.stopped, state)
@@ -53,6 +60,10 @@ func (l *fakeLink) StopTest(state sessions.State, _ time.Time) error {
 
 func (l *fakeLink) Replies() []string {
 	return append([]string{}, l.replies...)
+}
+
+func (l *fakeLink) Tuning() device.TuningStatus {
+	return l.tuning
 }
 
 func (l *fakeLink) Step(time.Time) {
@@ -232,6 +243,26 @@ func Test_req_TST_08_ShutdownStopsTestModeAndRestoresMergedState(t *testing.T) {
 	app.Close(now.Add(2 * time.Second))
 	if !link.closed || link.testActive || !equalStates(link.stopped, []sessions.State{sessions.APPROVAL}) {
 		t.Fatalf("bridge shutdown: closed=%t active=%t restored=%v", link.closed, link.testActive, link.stopped)
+	}
+}
+
+func Test_req_TST_09_BridgeQueriesAndExposesDeviceTuning(t *testing.T) {
+	now := time.Unix(100, 0)
+	tuning := device.TuningStatus{
+		Known: true, Speed: 90, FrequencyHz: 24000, KickStartMs: 7,
+		Decay: "SLOW", Timestamp: "2026-11-22T11:45:00Z",
+	}
+	link := &fakeLink{tuning: tuning}
+	app := New(sessions.New(time.Minute), link, logging.New(io.Discard, "info"), "v", "c")
+
+	if err := app.QueryTuning(now); err != nil {
+		t.Fatal(err)
+	}
+	if link.tuningQueries != 1 {
+		t.Fatalf("tuning queries = %d, want 1", link.tuningQueries)
+	}
+	if got := app.TestStatus().Tuning; got != tuning {
+		t.Fatalf("reported tuning = %+v, want %+v", got, tuning)
 	}
 }
 

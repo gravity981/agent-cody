@@ -20,12 +20,14 @@ import (
 )
 
 type fakeLink struct {
-	status       device.Status
-	states       []sessions.State
-	testActive   bool
-	testCommands []string
-	stopped      []sessions.State
-	replies      []string
+	status        device.Status
+	states        []sessions.State
+	testActive    bool
+	testCommands  []string
+	stopped       []sessions.State
+	replies       []string
+	tuning        device.TuningStatus
+	tuningQueries int
 }
 
 func (l *fakeLink) Status() device.Status {
@@ -52,6 +54,14 @@ func (l *fakeLink) SendTestCommand(command string, _ time.Time) error {
 	return nil
 }
 
+func (l *fakeLink) QueryTuning(time.Time) error {
+	if !l.status.Connected {
+		return device.ErrNotConnected
+	}
+	l.tuningQueries++
+	return nil
+}
+
 func (l *fakeLink) StopTest(state sessions.State, _ time.Time) error {
 	if l.testActive {
 		l.testActive = false
@@ -63,6 +73,10 @@ func (l *fakeLink) StopTest(state sessions.State, _ time.Time) error {
 
 func (l *fakeLink) Replies() []string {
 	return append([]string{}, l.replies...)
+}
+
+func (l *fakeLink) Tuning() device.TuningStatus {
+	return l.tuning
 }
 
 func (*fakeLink) Step(time.Time) {}
@@ -290,7 +304,7 @@ func Test_req_BRG_21_WebsiteServesStatusAndRelayRoutingData(t *testing.T) {
 func Test_req_BRG_22_WebsiteValidatesAndSavesConfiguration(t *testing.T) {
 	server, _, configPath := newTestServer(t)
 	client := server.Client()
-	payload := `{"use_default_wsl_distro":false,"wsl_distros":["Ubuntu"],"speed":120,"volume":0,"session_timeout_min":10,"serial_port":"COM3","log_level":"debug"}`
+	payload := `{"use_default_wsl_distro":false,"wsl_distros":["Ubuntu"],"volume":0,"brightness":100,"session_timeout_min":10,"serial_port":"COM3","log_level":"debug"}`
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Origin", SiteOrigin)
@@ -304,7 +318,8 @@ func Test_req_BRG_22_WebsiteValidatesAndSavesConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if saved.Speed != 120 || saved.Volume != 0 || saved.SessionTimeoutMin != 10 ||
+	if saved.LegacySpeed != nil || saved.Volume != 0 || saved.Brightness != 100 ||
+		saved.SessionTimeoutMin != 10 ||
 		saved.SerialPort == nil || *saved.SerialPort != "COM3" || saved.LogLevel != "debug" ||
 		len(saved.WSLDistros) != 1 || saved.WSLDistros[0] != "Ubuntu" {
 		t.Fatalf("saved config = %+v", saved)
@@ -321,7 +336,7 @@ func Test_req_BRG_22_WebsiteValidatesAndSavesConfiguration(t *testing.T) {
 	headers.Set("Origin", SiteOrigin)
 	response, data = requestWithHeaders(
 		t, client, http.MethodPut, server.URL+"/api/config",
-		[]byte(strings.Replace(payload, `"volume":0`, `"volume":4`, 1)), headers,
+		[]byte(strings.Replace(payload, `"volume":0`, `"volume":101`, 1)), headers,
 	)
 	if response.StatusCode != http.StatusBadRequest || !bytes.Contains(data, []byte("volume")) {
 		t.Fatalf("invalid config status=%d body=%s", response.StatusCode, data)
@@ -333,6 +348,13 @@ func Test_req_BRG_22_WebsiteValidatesAndSavesConfiguration(t *testing.T) {
 	if saved.Volume != 0 {
 		t.Fatalf("invalid config changed saved volume to %d", saved.Volume)
 	}
+	response, data = requestWithHeaders(
+		t, client, http.MethodPut, server.URL+"/api/config",
+		[]byte(strings.Replace(payload, `"brightness":100`, `"brightness":101`, 1)), headers,
+	)
+	if response.StatusCode != http.StatusBadRequest || !bytes.Contains(data, []byte("brightness")) {
+		t.Fatalf("invalid brightness status=%d body=%s", response.StatusCode, data)
+	}
 }
 
 func Test_req_BRG_22_SessionTimeoutFieldAcceptsIntegerAndFractionalValues(t *testing.T) {
@@ -341,6 +363,32 @@ func Test_req_BRG_22_SessionTimeoutFieldAcceptsIntegerAndFractionalValues(t *tes
 	if response.StatusCode != http.StatusOK ||
 		!bytes.Contains(page, []byte(`id="session-timeout" type="number" min="0" step="any" required`)) {
 		t.Fatalf("session timeout field status=%d body=%q", response.StatusCode, page)
+	}
+}
+
+func Test_req_BRG_22_ConfigurationUsesPercentSlidersWithoutMotorSpeed(t *testing.T) {
+	server, _, _ := newTestServer(t)
+	response, page := request(t, server.Client(), http.MethodGet, server.URL+"/", nil)
+	if response.StatusCode != http.StatusOK ||
+		!bytes.Contains(page, []byte(`id="volume" type="range" min="0" max="100" step="1"`)) ||
+		!bytes.Contains(page, []byte(`id="brightness" type="range" min="0" max="100" step="1"`)) ||
+		!bytes.Contains(page, []byte("legacy Python Docker bridge is not compatible")) ||
+		bytes.Contains(page, []byte(`id="speed"`)) {
+		t.Fatalf("settings controls status=%d body=%s", response.StatusCode, page)
+	}
+	response, page = request(t, server.Client(), http.MethodGet, server.URL+"/app.js", nil)
+	if response.StatusCode != http.StatusOK ||
+		!bytes.Contains(page, []byte("toLocaleString()")) ||
+		!bytes.Contains(page, []byte("Firmware defaults (never saved)")) {
+		t.Fatalf("tuning display script status=%d body=%s", response.StatusCode, page)
+	}
+
+	response, data := request(t, server.Client(), http.MethodGet, server.URL+"/api/config", nil)
+	if response.StatusCode != http.StatusOK ||
+		!bytes.Contains(data, []byte(`"volume":50`)) ||
+		!bytes.Contains(data, []byte(`"brightness":100`)) ||
+		bytes.Contains(data, []byte(`"speed"`)) {
+		t.Fatalf("default website config status=%d body=%s", response.StatusCode, data)
 	}
 }
 
@@ -377,6 +425,9 @@ func Test_req_TST_06_WebsiteUsesTheBridgeForPanelControls(t *testing.T) {
 	response, page := request(t, client, http.MethodGet, server.URL+"/", nil)
 	if response.StatusCode != http.StatusOK ||
 		!bytes.Contains(page, []byte("Hardware test panel")) ||
+		!bytes.Contains(page, []byte("Save tuning")) ||
+		!bytes.Contains(page, []byte("Factory reset")) ||
+		!bytes.Contains(page, []byte(`id="test-volume" type="range" min="0" max="100" step="1"`)) ||
 		!bytes.Contains(page, []byte("Device replies")) ||
 		bytes.Contains(page, []byte("Serial device")) ||
 		bytes.Contains(page, []byte("/api/connect")) {
@@ -425,7 +476,74 @@ func Test_req_TST_06_WebsiteUsesTheBridgeForPanelControls(t *testing.T) {
 	}
 }
 
-func Test_req_TST_03_WebsiteValidatesPanelCommandRanges(t *testing.T) {
+func Test_req_TST_09_WebsiteQueriesSavesAndResetsDeviceTuning(t *testing.T) {
+	server, link, _ := newTestServer(t)
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+	headers.Set("Origin", "https://attacker.example")
+	response, _ := requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/tuning",
+		[]byte(`{"action":"query"}`), headers,
+	)
+	if response.StatusCode != http.StatusForbidden || link.tuningQueries != 0 {
+		t.Fatalf("cross-origin tuning query status=%d query count=%d", response.StatusCode, link.tuningQueries)
+	}
+	headers.Set("Origin", SiteOrigin)
+
+	response, _ = requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/tuning",
+		[]byte(`{"action":"query"}`), headers,
+	)
+	if response.StatusCode != http.StatusAccepted || link.tuningQueries != 1 {
+		t.Fatalf("query status=%d query count=%d", response.StatusCode, link.tuningQueries)
+	}
+	response, _ = requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/tuning",
+		[]byte(`{"action":"save"}`), headers,
+	)
+	if response.StatusCode != http.StatusConflict || len(link.testCommands) != 0 {
+		t.Fatalf("save outside test mode status=%d commands=%v", response.StatusCode, link.testCommands)
+	}
+	response, _ = requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/start", []byte(`{}`), headers,
+	)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("test start status=%d", response.StatusCode)
+	}
+
+	response, _ = requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/tuning",
+		[]byte(`{"action":"save"}`), headers,
+	)
+	if response.StatusCode != http.StatusAccepted || link.tuningQueries != 2 ||
+		!equalStrings(link.testCommands, []string{"TEST:TUNING:SAVE:1970-01-01T00:01:40Z"}) {
+		t.Fatalf("save status=%d queries=%d commands=%v", response.StatusCode, link.tuningQueries, link.testCommands)
+	}
+	response, _ = requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/tuning",
+		[]byte(`{"action":"reset"}`), headers,
+	)
+	if response.StatusCode != http.StatusAccepted || link.tuningQueries != 3 ||
+		!equalStrings(link.testCommands, []string{
+			"TEST:TUNING:SAVE:1970-01-01T00:01:40Z",
+			"TEST:TUNING:RESET:1970-01-01T00:01:40Z",
+		}) {
+		t.Fatalf("reset status=%d queries=%d commands=%v", response.StatusCode, link.tuningQueries, link.testCommands)
+	}
+
+	link.tuning = device.TuningStatus{
+		Known: true, Speed: 90, FrequencyHz: 24000, KickStartMs: 7,
+		Decay: "SLOW", Timestamp: "2026-11-22T11:45:00Z",
+	}
+	response, data := request(t, server.Client(), http.MethodGet, server.URL+"/api/test/status", nil)
+	if response.StatusCode != http.StatusOK ||
+		!bytes.Contains(data, []byte(`"frequency_hz":24000`)) ||
+		!bytes.Contains(data, []byte(`"timestamp":"2026-11-22T11:45:00Z"`)) {
+		t.Fatalf("tuning status=%d body=%s", response.StatusCode, data)
+	}
+}
+
+func Test_req_TST_03_req_TST_05_WebsiteValidatesPanelCommandRanges(t *testing.T) {
 	server, link, _ := newTestServer(t)
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
@@ -460,6 +578,22 @@ func Test_req_TST_03_WebsiteValidatesPanelCommandRanges(t *testing.T) {
 		!equalStrings(link.testCommands, []string{"TEST:FREQ:30000"}) {
 		t.Fatalf("valid frequency status=%d commands=%v", response.StatusCode, link.testCommands)
 	}
+	response, data = requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/command",
+		[]byte(`{"action":"volume","value":"101"}`), headers,
+	)
+	if response.StatusCode != http.StatusBadRequest || !bytes.Contains(data, []byte("volume")) ||
+		len(link.testCommands) != 1 {
+		t.Fatalf("out-of-range volume status=%d commands=%v body=%s", response.StatusCode, link.testCommands, data)
+	}
+	response, _ = requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/command",
+		[]byte(`{"action":"volume","value":"100"}`), headers,
+	)
+	if response.StatusCode != http.StatusAccepted ||
+		!equalStrings(link.testCommands, []string{"TEST:FREQ:30000", "TEST:VOLUME:100"}) {
+		t.Fatalf("valid volume status=%d commands=%v", response.StatusCode, link.testCommands)
+	}
 }
 
 func Test_req_TST_06_TestCommandRequestMapsPanelControlsToFirmwareProtocol(t *testing.T) {
@@ -475,7 +609,7 @@ func Test_req_TST_06_TestCommandRequestMapsPanelControlsToFirmwareProtocol(t *te
 		{"frequency", testCommandRequest{Action: "frequency", Value: "1000"}, "TEST:FREQ:1000"},
 		{"kick", testCommandRequest{Action: "kick", Value: "100"}, "TEST:KICK:100"},
 		{"decay", testCommandRequest{Action: "decay", Value: "SLOW"}, "TEST:DECAY:SLOW"},
-		{"volume", testCommandRequest{Action: "volume", Value: "0"}, "TEST:VOLUME:0"},
+		{"volume", testCommandRequest{Action: "volume", Value: "100"}, "TEST:VOLUME:100"},
 		{"beep", testCommandRequest{Action: "beep", Value: "SUCCESS"}, "TEST:BEEP:SUCCESS"},
 		{
 			"LED", testCommandRequest{Action: "led", Red: &red, Green: &green, Blue: &blue},
@@ -489,6 +623,9 @@ func Test_req_TST_06_TestCommandRequestMapsPanelControlsToFirmwareProtocol(t *te
 				t.Fatalf("command() = %q, %v; want %q", got, err, test.expected)
 			}
 		})
+	}
+	if _, err := (testCommandRequest{Action: "volume", Value: "101"}).command(); err == nil {
+		t.Fatal("volume above 100 was accepted")
 	}
 }
 

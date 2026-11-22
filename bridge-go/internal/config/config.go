@@ -14,8 +14,9 @@ import (
 
 type Config struct {
 	SerialPort        *string  `toml:"serial_port"`
-	Speed             int      `toml:"speed"`
+	LegacySpeed       *int     `toml:"speed,omitempty"`
 	Volume            int      `toml:"volume"`
+	Brightness        int      `toml:"brightness"`
 	SessionTimeoutMin float64  `toml:"session_timeout_min"`
 	LogLevel          string   `toml:"log_level"`
 	WSLDistros        []string `toml:"wsl_distros"`
@@ -23,8 +24,8 @@ type Config struct {
 
 func Defaults() Config {
 	return Config{
-		Speed:             224,
-		Volume:            2,
+		Volume:            50,
+		Brightness:        100,
 		SessionTimeoutMin: 10,
 		LogLevel:          "info",
 	}
@@ -59,6 +60,12 @@ func Load(path string) (Config, error) {
 	decoder := toml.NewDecoder(bytes.NewReader(data)).DisallowUnknownFields()
 	if err := decoder.Decode(&config); err != nil {
 		return Config{}, fmt.Errorf("parse config %s: %w", path, err)
+	}
+	if config.LegacySpeed != nil {
+		defaults := Defaults()
+		config.Volume = defaults.Volume
+		config.Brightness = defaults.Brightness
+		config.LegacySpeed = nil
 	}
 	if err := config.Validate(); err != nil {
 		return Config{}, fmt.Errorf("config %s: %w", path, err)
@@ -112,8 +119,8 @@ func Save(path string, config Config) error {
 
 type saveConfig struct {
 	SerialPort        *string   `toml:"serial_port,omitempty"`
-	Speed             int       `toml:"speed"`
 	Volume            int       `toml:"volume"`
+	Brightness        int       `toml:"brightness"`
 	SessionTimeoutMin float64   `toml:"session_timeout_min"`
 	LogLevel          string    `toml:"log_level"`
 	WSLDistros        *[]string `toml:"wsl_distros,omitempty"`
@@ -122,8 +129,8 @@ type saveConfig struct {
 func configForSave(config Config) saveConfig {
 	result := saveConfig{
 		SerialPort:        config.SerialPort,
-		Speed:             config.Speed,
 		Volume:            config.Volume,
+		Brightness:        config.Brightness,
 		SessionTimeoutMin: config.SessionTimeoutMin,
 		LogLevel:          config.LogLevel,
 	}
@@ -138,11 +145,11 @@ func (c Config) Validate() error {
 	if c.SerialPort != nil && *c.SerialPort == "" {
 		return errors.New("serial_port must be a device path")
 	}
-	if c.Speed < 0 || c.Speed > 255 {
-		return errors.New("speed must be an integer from 0 to 255")
+	if c.Volume < 0 || c.Volume > 100 {
+		return errors.New("volume must be an integer from 0 to 100")
 	}
-	if c.Volume < 0 || c.Volume > 3 {
-		return errors.New("volume must be an integer from 0 to 3")
+	if c.Brightness < 0 || c.Brightness > 100 {
+		return errors.New("brightness must be an integer from 0 to 100")
 	}
 	maximumMinutes := float64(math.MaxInt64) / float64(time.Minute)
 	if math.IsNaN(c.SessionTimeoutMin) || math.IsInf(c.SessionTimeoutMin, 0) ||

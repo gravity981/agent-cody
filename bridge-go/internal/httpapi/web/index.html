@@ -35,7 +35,7 @@
 
       <section aria-labelledby="test-heading">
         <h2 id="test-heading">Hardware test panel</h2>
-        <p>Test controls use Cody's connected device. Settings are temporary and reset on reboot.</p>
+        <p>Tuning edits apply immediately but are saved to the device only when you choose Save. Test volume is temporary; exiting test mode restores bridge preferences.</p>
         <p id="test-status" role="status">Loading test-panel status...</p>
         <p id="test-error" role="alert"></p>
         <div class="actions">
@@ -51,6 +51,8 @@
 
         <fieldset>
           <legend>Motor</legend>
+          <p id="tuning-message" role="status">Waiting for motor tuning...</p>
+          <dl id="tuning-details" class="details"></dl>
           <div class="test-controls">
             <label for="test-speed">Speed <span class="hint">(0-255)</span></label>
             <input id="test-speed" type="number" min="0" max="255" step="1" value="224">
@@ -66,6 +68,8 @@
           </div>
           <div class="actions">
             <button id="test-apply-motor" type="button">Apply tuning</button>
+            <button id="test-save-tuning" type="button">Save tuning</button>
+            <button id="test-reset-tuning" type="button">Factory reset</button>
             <button id="test-motor-start" type="button">Start motor</button>
             <button id="test-motor-stop" type="button">Stop motor</button>
           </div>
@@ -87,13 +91,8 @@
         <fieldset>
           <legend>Buzzer</legend>
           <div class="test-controls">
-            <label for="test-volume">Volume <span class="hint">(0 = mute)</span></label>
-            <select id="test-volume">
-              <option value="0">0</option>
-              <option value="1">1</option>
-              <option value="2" selected>2</option>
-              <option value="3">3</option>
-            </select>
+            <label for="test-volume">Volume <span class="hint">(0% is mute)</span> <output id="test-volume-value">50%</output></label>
+            <input id="test-volume" type="range" min="0" max="100" step="1" value="50">
             <label for="test-sound">Sound</label>
             <select id="test-sound">
               <option value="APPROVAL">Approval</option>
@@ -113,7 +112,8 @@
 
       <section aria-labelledby="settings-heading">
         <h2 id="settings-heading">Configuration</h2>
-        <p>Changes are saved to the Cody configuration file and take effect after a restart.</p>
+        <p>Volume and brightness are saved by the bridge and reapplied to the device. Motor tuning belongs to the device and is managed in the test panel. Configuration changes require a restart.</p>
+        <p class="notice">The legacy Python Docker bridge is not compatible with this firmware's volume and motor-tuning protocol. Use the Windows Go bridge with the revised firmware.</p>
         <form id="settings-form">
           <fieldset>
             <legend>WSL relays</legend>
@@ -127,16 +127,11 @@
 
           <fieldset>
             <legend>Device and bridge</legend>
-            <label for="speed">Motor speed <span class="hint">(0-255)</span></label>
-            <input id="speed" type="number" min="0" max="255" step="1" required>
+            <label for="volume">Sound volume <output id="volume-value">50%</output></label>
+            <input id="volume" type="range" min="0" max="100" step="1" value="50" required>
 
-            <label for="volume">Sound volume</label>
-            <select id="volume">
-              <option value="0">Muted</option>
-              <option value="1">Low</option>
-              <option value="2">Medium</option>
-              <option value="3">High</option>
-            </select>
+            <label for="brightness">LED brightness <output id="brightness-value">100%</output></label>
+            <input id="brightness" type="range" min="0" max="100" step="1" value="100" required>
 
             <label for="session-timeout">Session timeout <span class="hint">(minutes)</span></label>
             <input id="session-timeout" type="number" min="0" step="any" required>

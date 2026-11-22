@@ -20,7 +20,6 @@ struct Command {
   enum class Kind : uint8_t {
     State,
     Ping,
-    Speed,
     Volume,
     Brightness,
     VersionQuery,

@@ -70,12 +70,12 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 | Prefix | IDs |
 |---|---|
 | FW | FW-01, FW-04, FW-06 – FW-07, FW-09, FW-13 – FW-15 |
-| BRG | BRG-06, BRG-16 – BRG-19, BRG-22 – BRG-24 |
+| BRG | BRG-06, BRG-16 – BRG-19, BRG-23 – BRG-24 |
 | AGT | AGT-02, AGT-04 – AGT-06, AGT-08 – AGT-10, AGT-12 |
 | ELE | ELE-01 – ELE-07 |
 | FIG | FIG-01 – FIG-17 |
 | DOC | DOC-01 – DOC-07 |
-| TST | TST-01 – TST-05, TST-07, TST-09 – TST-10 |
+| TST | TST-01 – TST-04, TST-10 |
 
 ## 6. Manual verification
 

@@ -45,8 +45,8 @@ type Link struct {
 	system      System
 	logger      *logging.Logger
 	configured  string
-	speed       int
 	volume      int
+	brightness  int
 	state       sessions.State
 	port        Port
 	device      string
@@ -58,18 +58,30 @@ type Link struct {
 	rejected    map[string]struct{}
 	testMode    bool
 	replies     []string
+	tuning      TuningStatus
+	tuningQuery bool
 }
 
-func NewLink(system System, logger *logging.Logger, speed, volume int, configured string) *Link {
+func NewLink(system System, logger *logging.Logger, volume, brightness int, configured string) *Link {
 	return &Link{
 		system:     system,
 		logger:     logger,
 		configured: configured,
-		speed:      speed,
 		volume:     volume,
+		brightness: brightness,
 		state:      sessions.IDLE,
 		rejected:   make(map[string]struct{}),
 	}
+}
+
+type TuningStatus struct {
+	Known       bool   `json:"known"`
+	Speed       int    `json:"speed"`
+	FrequencyHz int    `json:"frequency_hz"`
+	KickStartMs int    `json:"kick_start_ms"`
+	Decay       string `json:"decay"`
+	Timestamp   string `json:"timestamp"`
+	Error       string `json:"error,omitempty"`
 }
 
 type Status struct {
@@ -153,6 +165,14 @@ func (l *Link) StopTest(state sessions.State, now time.Time) error {
 		l.lost(now, err)
 		return fmt.Errorf("stop hardware test mode: %w", err)
 	}
+	if err := l.send(fmt.Sprintf("VOLUME:%d", l.volume), now); err != nil {
+		l.lost(now, err)
+		return fmt.Errorf("restore volume preference: %w", err)
+	}
+	if err := l.send(fmt.Sprintf("BRIGHTNESS:%d", l.brightness), now); err != nil {
+		l.lost(now, err)
+		return fmt.Errorf("restore brightness preference: %w", err)
+	}
 	if err := l.send("STATE:"+string(state), now); err != nil {
 		l.lost(now, err)
 		return fmt.Errorf("restore merged state: %w", err)
@@ -162,6 +182,23 @@ func (l *Link) StopTest(state sessions.State, now time.Time) error {
 
 func (l *Link) Replies() []string {
 	return append([]string{}, l.replies...)
+}
+
+func (l *Link) Tuning() TuningStatus {
+	return l.tuning
+}
+
+func (l *Link) QueryTuning(now time.Time) error {
+	if !l.Status().Connected {
+		return ErrNotConnected
+	}
+	l.tuningQuery = true
+	if err := l.send("TUNING?", now); err != nil {
+		l.tuningQuery = false
+		l.lost(now, err)
+		return fmt.Errorf("query motor tuning: %w", err)
+	}
+	return nil
 }
 
 func (l *Link) Step(now time.Time) {
@@ -282,8 +319,21 @@ func (l *Link) read(now time.Time) error {
 		case strings.HasPrefix(line, "READY") && l.firmware != "":
 			l.logger.Infof("%s restarted", l.device)
 			l.connected(now)
+		case strings.HasPrefix(line, "TUNING:"):
+			tuning, err := parseTuningReply(line)
+			l.tuningQuery = false
+			if err != nil {
+				l.tuning.Error = err.Error()
+				l.logger.Warningf("invalid motor tuning response: %v", err)
+			} else {
+				l.tuning = tuning
+			}
 		case strings.HasPrefix(line, "ERR"):
 			l.logger.Warningf("device: %s", line)
+			if l.tuningQuery {
+				l.tuning.Error = line
+				l.tuningQuery = false
+			}
 		}
 	}
 }
@@ -293,14 +343,14 @@ func (l *Link) connected(now time.Time) {
 	commands := make([]string, 0, 4)
 	if l.testMode {
 		commands = append(commands,
+			fmt.Sprintf("BRIGHTNESS:%d", l.brightness),
 			"TEST:START",
-			fmt.Sprintf("TEST:SPEED:%d", l.speed),
 			fmt.Sprintf("TEST:VOLUME:%d", l.volume),
 		)
 	} else {
 		commands = append(commands,
-			fmt.Sprintf("SPEED:%d", l.speed),
 			fmt.Sprintf("VOLUME:%d", l.volume),
+			fmt.Sprintf("BRIGHTNESS:%d", l.brightness),
 			"STATE:"+string(l.state),
 		)
 	}
@@ -352,5 +402,47 @@ func (l *Link) close(now time.Time) {
 	l.device = ""
 	l.firmware = ""
 	l.buffer = nil
+	l.tuning = TuningStatus{}
+	l.tuningQuery = false
 	l.nextTry = now.Add(RetryInterval)
+}
+
+func parseTuningReply(line string) (TuningStatus, error) {
+	values := strings.Split(strings.TrimPrefix(line, "TUNING:"), ",")
+	if !strings.HasPrefix(line, "TUNING:") || len(values) != 5 {
+		return TuningStatus{}, errors.New("malformed tuning response")
+	}
+	speed, err := strconv.Atoi(values[0])
+	if err != nil || speed < 0 || speed > 255 {
+		return TuningStatus{}, errors.New("invalid tuning speed")
+	}
+	frequency, err := strconv.Atoi(values[1])
+	if err != nil || frequency < 1000 || frequency > 30000 {
+		return TuningStatus{}, errors.New("invalid tuning frequency")
+	}
+	kick, err := strconv.Atoi(values[2])
+	if err != nil || kick < 0 || kick > 100 {
+		return TuningStatus{}, errors.New("invalid tuning kick")
+	}
+	if values[3] != "FAST" && values[3] != "SLOW" {
+		return TuningStatus{}, errors.New("invalid tuning decay mode")
+	}
+	if values[4] != "UNSAVED" {
+		timestamp, err := time.Parse(time.RFC3339Nano, values[4])
+		if err != nil {
+			return TuningStatus{}, errors.New("invalid tuning timestamp")
+		}
+		_, offset := timestamp.Zone()
+		if offset != 0 {
+			return TuningStatus{}, errors.New("tuning timestamp is not UTC")
+		}
+	}
+	return TuningStatus{
+		Known:       true,
+		Speed:       speed,
+		FrequencyHz: frequency,
+		KickStartMs: kick,
+		Decay:       values[3],
+		Timestamp:   values[4],
+	}, nil
 }
