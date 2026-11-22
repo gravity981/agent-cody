@@ -9,12 +9,13 @@ import (
 const End = "END"
 
 type Event struct {
-	Agent   string
-	Session string
-	Name    string
-	State   sessions.State
-	End     bool
-	Ignored bool
+	Agent    string
+	Session  string
+	Name     string
+	State    sessions.State
+	End      bool
+	Ignored  bool
+	DedupKey string
 }
 
 type PayloadError struct {
@@ -34,6 +35,9 @@ func requiredText(payload map[string]any, key string) (string, error) {
 }
 
 func ClaudeCode(payload map[string]any) (Event, error) {
+	if isCopilotCompatiblePayload(payload) {
+		return Copilot(payload)
+	}
 	session, err := requiredText(payload, "session_id")
 	if err != nil {
 		return Event{}, err
@@ -69,6 +73,26 @@ func ClaudeCode(payload map[string]any) (Event, error) {
 		event.Ignored = true
 	}
 	return event, nil
+}
+
+func isCopilotCompatiblePayload(payload map[string]any) bool {
+	if _, ok := payload["cwd"].(string); !ok {
+		return false
+	}
+	if _, ok := payload["timestamp"]; !ok {
+		return false
+	}
+	name, ok := payload["hook_event_name"].(string)
+	if !ok {
+		return false
+	}
+	switch name {
+	case "SessionStart", "UserPromptSubmit", "PreToolUse", "PostToolUse",
+		"Stop", "SessionEnd", "ErrorOccurred":
+		return true
+	default:
+		return false
+	}
 }
 
 func notificationKind(payload map[string]any) string {

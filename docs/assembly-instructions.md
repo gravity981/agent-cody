@@ -53,27 +53,27 @@ Use the release asset `cody-firmware-<version>.bin`, which contains the bootload
 
 ![Manual firmware flashing sequence](images/steps/flash-flow.svg)
 
-## Step 5: Install and start the bridge
+## Step 5: Install and start the bridge on Windows
 
-**Parts:** A Windows or Linux host, the assembled status light and its USB cable.
+**Parts:** A Windows host, the assembled status light and its USB cable.
 
-**Tools:** On Windows, the versioned Cody setup installer. On Linux, Docker Engine and the versioned bridge compose file.
+**Tools:** The versioned Cody setup installer.
 
-On Windows, run `cody-<version>-windows-setup.exe` and start Cody from the notification area. The installer enables autostart by default. Cody owns the serial port and serves the local website; do not attach the device to the devcontainer or run another serial bridge at the same time.
+Run `cody-<version>-windows-setup.exe` and start Cody from the notification area. The installer enables autostart by default. Cody owns the serial port and serves the local website; do not attach the device to the devcontainer or run another serial bridge at the same time. WSL2 and devcontainers on that Windows host reach Cody through its relay.
 
-On Linux, the release includes `cody-bridge-compose-<version>.yaml`. The Python Docker bridge is frozen and uses the legacy firmware protocol; it is not compatible with the revised motor-tuning and percentage output settings. Use it only with compatible legacy firmware.
+Native Linux hosts have no bridge between Stage 3 and Stage 6 step 6a (TD-15).
 
 ![Bridge and device setup](images/steps/bridge-setup.svg)
 
-## Step 6: Install Claude Code hooks
+## Step 6: Install Claude Code and Copilot hooks
 
-**Parts:** The running bridge host and each environment where Claude Code runs.
+**Parts:** The running bridge host and each environment where Claude Code or Copilot runs.
 
-**Tools:** Python 3.10 or newer for the installer, plus `curl` and a POSIX shell where Claude Code runs. On a Windows host, install Git for Windows to provide Git Bash, `sh` and `curl`.
+**Tools:** The Cody tray app and its local website; Python 3.10 or newer for manual Claude Code installation; VS Code with Copilot; and `curl` (`curl.exe` on Windows) wherever an agent hook runs.
 
-From the repository, run `uv run python hooks/install-claude-code`. With the release file, run `python3 cody-install-claude-code-<version>`. Run the installer on the host and in each separate Claude Code configuration environment; a shared devcontainer configuration only needs one install. For a Docker Engine devcontainer in WSL2, pass the relay port shown by Cody, for example `--port 8766`. Restart Claude Code after installing hooks.
+Open Cody's website from the tray menu and choose **Install or update hooks**. The page installs hooks for the Windows user and each WSL distro configured for Cody's relay, checks the device connection and reports missing prerequisites.
 
-Stage 2 covers Claude Code. GitHub Copilot hooks are added in Stage 3.
+This repository's devcontainer shares the configured WSL user's Copilot directory, so hooks installed by the website in that WSL distro are available to Copilot as `vscode`. For a devcontainer with a separate configuration volume or a WSL distro not configured for Cody's relay, install manually using the scripts and instructions in [`hooks/README.md`](../hooks/README.md). Run the Claude installer in each separate Claude Code configuration environment; a shared devcontainer configuration only needs one install. For a Docker Engine devcontainer in WSL2, pass the relay port shown by Cody, for example `--port 8766`. Update the Docker-gateway target in both Copilot forwarders if the relay uses a non-default port. Start new Claude Code and Copilot sessions after installation.
 
 ![Claude Code hook routing](images/steps/hook-routing.svg)
 
@@ -96,5 +96,5 @@ Motor tuning changes take effect immediately but are saved on the device only wi
 | The bridge does not recognize the board | Check the USB data cable and port. For old or unprogrammed firmware, use Manual ROM bootloader flash. |
 | The update flow reports `TUNING?` is unsupported | Use Manual ROM bootloader flash; it may erase saved tuning. |
 | No LED or motor output | Disconnect USB, then compare every wire and board label with the wiring diagram; check the shared ground and 5 V net. |
-| The Linux Docker bridge rejects revised firmware commands | The Python bridge is legacy and frozen; use the Windows Go bridge with current firmware. |
+| Cody is unavailable on a native Linux host | Native Linux support is deferred until Stage 6 step 6a; use the Windows bridge and its WSL relay in the interim. |
 | Hook events do not reach Cody | Confirm the bridge is running, rerun the hook installer in the Claude Code environment, and restart Claude Code. |

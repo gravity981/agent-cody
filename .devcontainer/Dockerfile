@@ -116,7 +116,6 @@ RUN cd /tmp/cody/firmware \
 # Python dependencies of the workspace from the lockfile (workspace members
 # themselves are installed by `uv sync` in the checkout, see postCreateCommand)
 COPY --chown=vscode:vscode pyproject.toml uv.lock .python-version /tmp/cody/
-COPY --chown=vscode:vscode bridge/pyproject.toml /tmp/cody/bridge/pyproject.toml
 COPY --chown=vscode:vscode cad/pyproject.toml /tmp/cody/cad/pyproject.toml
 COPY --chown=vscode:vscode tools/pyproject.toml /tmp/cody/tools/pyproject.toml
 RUN cd /tmp/cody \

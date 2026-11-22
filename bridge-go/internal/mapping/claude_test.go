@@ -17,7 +17,7 @@ func payloadLines(t *testing.T, name string) []map[string]any {
 	if !ok {
 		t.Fatal("could not locate mapping test source")
 	}
-	path := filepath.Join(filepath.Dir(source), "../../../bridge/tests/payloads", name)
+	path := filepath.Join(filepath.Dir(source), "testdata", name)
 	file, err := os.Open(path)
 	if err != nil {
 		t.Fatal(err)

@@ -17,10 +17,6 @@ mkdir -p "$RELEASE_DIR"
 (cd firmware && pio run --environment esp32c3)
 cp firmware/.pio/build/esp32c3/firmware.factory.bin "$RELEASE_DIR/cody-firmware-$VERSION.bin"
 
-# Compose file for the bridge image of this version (published by ci/publish)
-sed -e "s#@IMAGE@#$(cody_bridge_image)#g" -e "s#@VERSION@#$VERSION#g" bridge/compose.yaml \
-  > "$RELEASE_DIR/cody-bridge-compose-$VERSION.yaml"
-
 # Host command (BRG-11, BRG-12): the script with its version filled in
 sed -e "s#^CODY_VERSION=\"0.0.0+unknown\"#CODY_VERSION=\"$VERSION\"#" cli/cody > "$RELEASE_DIR/cody-$VERSION"
 chmod +x "$RELEASE_DIR/cody-$VERSION"
@@ -37,6 +33,12 @@ uv run --frozen python -m cody_tools.build_docs --version "$VERSION" --release-d
 # Claude Code hook installer (AGT-03, AGT-11): Python, standard library only
 cp hooks/install-claude-code "$RELEASE_DIR/cody-install-claude-code-$VERSION"
 chmod +x "$RELEASE_DIR/cody-install-claude-code-$VERSION"
+
+# Copilot user-level hook configuration and platform forwarders (AGT-04, AGT-09)
+cp hooks/copilot-hooks.json "$RELEASE_DIR/cody-copilot-hooks-$VERSION.json"
+cp hooks/cody-forward.sh "$RELEASE_DIR/cody-copilot-forward-$VERSION.sh"
+chmod +x "$RELEASE_DIR/cody-copilot-forward-$VERSION.sh"
+cp hooks/cody-forward.ps1 "$RELEASE_DIR/cody-copilot-forward-$VERSION.ps1"
 
 cp LICENSE "$RELEASE_DIR/LICENSE"
 

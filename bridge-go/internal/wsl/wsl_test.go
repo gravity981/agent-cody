@@ -53,6 +53,51 @@ func Test_req_AGT_12_NoDefaultDistributionReturnsEmpty(t *testing.T) {
 	}
 }
 
+func TestRelayDistributionsUsesConfiguredTargetsOrDefault(t *testing.T) {
+	tests := []struct {
+		name       string
+		configured []string
+		output     []byte
+		want       []string
+	}{
+		{
+			name:       "configured relays",
+			configured: []string{"Ubuntu", "Debian"},
+			output:     []byte("NAME STATE VERSION\n* Other Running 2\n"),
+			want:       []string{"Ubuntu", "Debian"},
+		},
+		{
+			name:       "explicitly disabled",
+			configured: []string{},
+			output:     []byte("NAME STATE VERSION\n* Other Running 2\n"),
+			want:       []string{},
+		},
+		{
+			name:   "default relay",
+			output: []byte("NAME STATE VERSION\n* Ubuntu Running 2\n"),
+			want:   []string{"Ubuntu"},
+		},
+		{
+			name:   "no default relay",
+			output: []byte("NAME STATE VERSION\nUbuntu Running 2\n"),
+			want:   []string{},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := RelayDistributions(test.configured, test.output)
+			if len(got) != len(test.want) {
+				t.Fatalf("RelayDistributions() = %v, want %v", got, test.want)
+			}
+			for index := range got {
+				if got[index] != test.want[index] {
+					t.Fatalf("RelayDistributions() = %v, want %v", got, test.want)
+				}
+			}
+		})
+	}
+}
+
 func utf16LE(value string) []byte {
 	units := utf16.Encode([]rune(value))
 	output := make([]byte, len(units)*2)

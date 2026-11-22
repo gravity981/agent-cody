@@ -23,6 +23,8 @@ fi
 mkdir -p "$RELEASE_DIR"
 
 tmp_dir=$(mktemp -d)
+mkdir -p "$tmp_dir/hooks"
+cp hooks/copilot-hooks.json hooks/cody-forward.sh hooks/cody-forward.ps1 "$tmp_dir/hooks/"
 espflash_archive="$tmp_dir/espflash-x86_64-pc-windows-msvc.zip"
 curl --fail --location --retry 3 --silent --show-error \
   --output "$espflash_archive" \
@@ -55,6 +57,8 @@ makensis -V2 \
   -DVERSION="$VERSION" \
   -DAPP_EXE="$tmp_dir/cody.exe" \
   -DRELAY_EXE="$tmp_dir/cody-linux" \
+  -DHOOKS_DIR="$tmp_dir/hooks" \
+  -DAPP_LICENSE="$PWD/LICENSE" \
   -DESPFLASH_EXE="$tmp_dir/espflash.exe" \
   -DESPFLASH_MIT_LICENSE="$tmp_dir/LICENSE-espflash-MIT.txt" \
   -DESPFLASH_APACHE_LICENSE="$tmp_dir/LICENSE-espflash-APACHE.txt" \

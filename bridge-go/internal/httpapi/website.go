@@ -17,6 +17,7 @@ import (
 	"github.com/gravity981/agent-cody/bridge-go/internal/bridge"
 	"github.com/gravity981/agent-cody/bridge-go/internal/config"
 	"github.com/gravity981/agent-cody/bridge-go/internal/device"
+	"github.com/gravity981/agent-cody/bridge-go/internal/hooksinstall"
 )
 
 const websiteBodyLimit = 64 * 1024
@@ -30,6 +31,25 @@ type WebsiteOptions struct {
 	Restart       func()
 	FirmwareFlash *FirmwareFlashService
 	FlashRunner   FirmwareFlashRunner
+	HookInstaller *hooksinstall.Installer
+	WSLHookSetup  WSLHookSetup
+}
+
+type WSLHookSetup interface {
+	Status(context.Context) ([]WSLHookStatus, error)
+	Install(context.Context) ([]WSLHookStatus, error)
+}
+
+type WSLHookStatus struct {
+	Distro string `json:"distro"`
+	hooksinstall.Status
+	Error string `json:"error,omitempty"`
+}
+
+type HookSetupStatus struct {
+	hooksinstall.Status
+	WSL      []WSLHookStatus `json:"wsl"`
+	WSLError string          `json:"wsl_error,omitempty"`
 }
 
 type RelayStatus struct {
@@ -131,6 +151,56 @@ func registerWebsiteRoutes(
 			flusher.Flush()
 		}
 		options.Restart()
+	})
+	mux.HandleFunc("/api/setup", func(w http.ResponseWriter, r *http.Request) {
+		if options.HookInstaller == nil {
+			writeAPIError(w, http.StatusServiceUnavailable, "hook setup is unavailable on this host")
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			status, err := options.HookInstaller.Status()
+			if err != nil {
+				writeAPIError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			result := HookSetupStatus{
+				Status: status,
+				WSL:    []WSLHookStatus{},
+			}
+			if options.WSLHookSetup != nil {
+				result.WSL, err = options.WSLHookSetup.Status(r.Context())
+				if err != nil {
+					result.WSLError = err.Error()
+				}
+			}
+			w.Header().Set("Cache-Control", "no-store")
+			writeJSON(w, http.StatusOK, result)
+		case http.MethodPost:
+			if !sameOrigin(r) {
+				writeAPIError(w, http.StatusForbidden, "request origin is not allowed")
+				return
+			}
+			status, err := options.HookInstaller.Install()
+			if err != nil {
+				writeAPIError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			result := HookSetupStatus{
+				Status: status,
+				WSL:    []WSLHookStatus{},
+			}
+			if options.WSLHookSetup != nil {
+				result.WSL, err = options.WSLHookSetup.Install(r.Context())
+				if err != nil {
+					result.WSLError = err.Error()
+				}
+			}
+			w.Header().Set("Cache-Control", "no-store")
+			writeJSON(w, http.StatusOK, result)
+		default:
+			methodNotAllowed(w, http.MethodGet+", "+http.MethodPost)
+		}
 	})
 	mux.HandleFunc("/api/test/status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

@@ -16,6 +16,7 @@ import (
 	"github.com/gravity981/agent-cody/bridge-go/internal/buildinfo"
 	"github.com/gravity981/agent-cody/bridge-go/internal/config"
 	"github.com/gravity981/agent-cody/bridge-go/internal/device"
+	"github.com/gravity981/agent-cody/bridge-go/internal/hooksinstall"
 	"github.com/gravity981/agent-cody/bridge-go/internal/httpapi"
 	"github.com/gravity981/agent-cody/bridge-go/internal/logging"
 	"github.com/gravity981/agent-cody/bridge-go/internal/sessions"
@@ -28,6 +29,9 @@ func main() {
 }
 
 func run(args []string) int {
+	if len(args) > 0 && args[0] == "install-hooks" {
+		return runHookInstaller(args[1:])
+	}
 	if len(args) > 0 && args[0] == "relay" {
 		return runRelay(args[1:])
 	}
@@ -125,11 +129,18 @@ func runBridge(
 	activeSessions := sessions.New(time.Duration(cfg.SessionTimeoutMin * float64(time.Minute)))
 	app := bridge.New(activeSessions, link, logger, version, commit)
 	var firmwareFlash *httpapi.FirmwareFlashService
+	var hookInstaller *hooksinstall.Installer
+	var wslHookSetup httpapi.WSLHookSetup
 	if runtime.GOOS == "windows" {
 		executable, err := os.Executable()
 		if err != nil {
 			return fmt.Errorf("locate Cody executable for firmware flashing: %w", err)
 		}
+		hookInstaller, err = hooksinstall.Default(filepath.Join(filepath.Dir(executable), "hooks"))
+		if err != nil {
+			return fmt.Errorf("configure hook installer: %w", err)
+		}
+		wslHookSetup = newWSLHookInstaller(cfg, executable)
 		firmwareFlash = httpapi.NewFirmwareFlashService(
 			runCtx, app,
 			httpapi.EspflashRunner{Executable: filepath.Join(filepath.Dir(executable), "espflash.exe")},
@@ -143,6 +154,8 @@ func runBridge(
 			RelayStatuses: relayStatuses.Snapshot,
 			Restart:       restart,
 			FirmwareFlash: firmwareFlash,
+			HookInstaller: hookInstaller,
+			WSLHookSetup:  wslHookSetup,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}

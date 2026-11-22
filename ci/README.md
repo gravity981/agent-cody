@@ -1,3 +1,3 @@
 # ci/
 
-Entry points for CI and releases (`ci/check`, `ci/build-release`, `ci/publish`, `ci/promote`), contract in [spec/delivery.md](../spec/delivery.md) section 2. Written in stage 1 (steps 1b, 1c).
+Entry points for CI and releases (`ci/check`, `ci/build-release`), contract in [spec/delivery.md](../spec/delivery.md) section 2. The optional bridge image publishing entry points were retired in Stage 3.

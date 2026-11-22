@@ -118,6 +118,25 @@ func Test_req_BRG_02_BridgeMergesSessionsAndIgnoresUnmappedEvents(t *testing.T) 
 	}
 }
 
+func Test_req_AGT_08_DuplicateCopilotSourcesCountOneWorkspaceEvent(t *testing.T) {
+	start := time.Unix(100, 0)
+	link := &fakeLink{}
+	app := New(sessions.New(time.Minute), link, logging.New(io.Discard, "info"), "v", "c")
+	event := mapping.Event{
+		Agent: "copilot", Session: "/workspace/project", Name: "PreToolUse",
+		State: sessions.WORKING, DedupKey: "copilot-event-1",
+	}
+	app.Event(event, start)
+	app.Event(event, start.Add(5*time.Second))
+
+	status := app.Status(start.Add(5 * time.Second))
+	if len(status.Sessions) != 1 || status.Sessions[0].Agent != "copilot" ||
+		status.Sessions[0].Session != "/workspace/project" ||
+		status.Sessions[0].IdleSeconds != 5 {
+		t.Fatalf("duplicate event changed or duplicated the workspace session: %+v", status)
+	}
+}
+
 func Test_req_BRG_03_SendsOnlyChangedMergedState(t *testing.T) {
 	now := time.Unix(100, 0)
 	link := &fakeLink{status: device.Status{Connected: true}}

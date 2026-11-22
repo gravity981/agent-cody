@@ -28,8 +28,8 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 |---|---|---|---|
 | 1 | Walking skeleton: toolchain, CI, requirement report, first release candidate | | done |
 | 2 | Status light on the bench with Claude Code | M1 | done (open points) |
-| 3 | Copilot integration | M2 | next |
-| 4 | Mechanism prototype | | open |
+| 3 | Copilot integration | M2 | done (open points) |
+| 4 | Mechanism prototype | | next |
 | 5 | Character and assembly | M3 | open |
 | 6 | Native bridge for Linux and macOS, firmware updater | | open |
 
@@ -70,7 +70,7 @@ Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived. Or
 Requirements: FW-02, FW-03, FW-05, FW-10 – FW-12.
 
 **2b – Bridge — done.** HTTP endpoints, session merging, timeouts, heartbeat, serial connection tested with a fake serial device, config file, autostart, log with rotation; host command `cody` (status, manual state).
-Requirements: BRG-01 – BRG-05, BRG-07 – BRG-14.
+Requirements: BRG-01 – BRG-06, BRG-08 – BRG-14.
 
 **2c – Claude Code integration — done.** User-level curl command hooks that find the bridge on the host and in containers, event mapping with recorded payloads, timeout behaviour; real sessions on WSL2 and in a devcontainer (the bridge without a device is enough).
 Requirements: AGT-01 – AGT-03, AGT-07, AGT-11.
@@ -123,18 +123,20 @@ Requirements: DOC-02, DOC-05, DOC-06.
 ### Stage 3 – Copilot integration
 
 **Before the stage starts:**
-- Current state of VS Code agent hooks checked (Preview; events, config location).
+- Checked 2026-11-22 against the [VS Code agent hooks documentation](https://code.visualstudio.com/docs/agent-customization/hooks), the [Copilot hooks reference](https://docs.github.com/en/copilot/reference/hooks-reference), and the user's VS Code 1.147.0 hook picker. User hooks are in `~/.copilot/hooks/` or `$COPILOT_HOME/hooks/`; Copilot also reads repository `.claude/settings.json` and `.claude/settings.local.json`, but does not list Claude Code's user-level `~/.claude/settings.json`. The picker exposes `ErrorOccurred` but no approval/permission-request event: step 3b maps ERROR and leaves APPROVAL conditional. Payloads include a session ID, but AGT-06 continues to key by workspace folder (`cwd`).
 
 **Steps:**
 
-**3a – Retire the Python Docker bridge.** Remove the `bridge/` Python package and tests, its uv workspace/pytest configuration, Docker image and compose asset generation, bridge-only helpers in `ci/lib.sh`, and `ci/publish`/`ci/promote`; regenerate `uv.lock`. Update `ci/README.md`, `docs/assembly-instructions.md`, and `delivery.md`; mark TD-03 and TD-04 retired. Native Linux bridge support will not return until step 6a (TD-15).
+**3a – Retire the Python Docker bridge — done.** Removed the `bridge/` Python package and tests, its uv workspace/pytest configuration, Docker image and compose asset generation, bridge-only helpers in `ci/lib.sh`, and `ci/publish`/`ci/promote`; regenerated `uv.lock`. Updated `ci/README.md`, `docs/assembly-instructions.md`, and `delivery.md`; marked TD-03 and TD-04 retired. Native Linux bridge support will not return until step 6a (TD-15).
 Requirements: none (retirement of the Stage 2 BRG-07 implementation).
 
-**3b – Copilot hooks.** User-level hooks, mapping, session key by workspace folder, deduplication against Claude Code hooks; setup guide for both agents.
+**3b – Copilot hooks — done for available events.** Added user-level hooks, mapping, session key by workspace folder, deduplication against all applicable hook sources, and the setup guide for both agents. The VS Code 1.147.0 picker provides `ErrorOccurred` but no approval event; ERROR is mapped and AGT-05 remains open for APPROVAL.
 Requirements: AGT-04 – AGT-06, AGT-08, AGT-09.
 
-**3c – One-command setup.** `cody setup`: starts the bridge with autostart, installs the hooks of both agents at user level, checks the device connection and reports what is missing.
+**3c – Setup through Cody's web UI — implementation done; manual verification pending.** The Windows installer starts the tray app with autostart. The web UI installs both agents' hooks at user level on Windows and in each WSL distro configured for Cody's relay, checks the device connection and reports what is missing, including guidance for devcontainer routing. Existing hook scripts and manual installation instructions remain available. This devcontainer bind-mounts the WSL user's Copilot configuration; independent devcontainer volumes still need manual installation. Native Linux reports the bridge as unsupported until step 6a (TD-15).
 Requirements: AGT-10.
+
+**Owner decision (2026-11-22):** Mark Stage 3 done with AGT-05 open because VS Code does not yet provide an approval event. Keep AGT-05 on the "not yet implemented" list; this is a deferral, not a claim that Copilot drives APPROVAL. The fresh-host AGT-10 demonstration also remains pending and is not recorded as passing evidence.
 
 ### Stage 4 – Mechanism prototype
 
@@ -238,7 +240,7 @@ After each completed stage, Claude appends a report with this structure to secti
 - Plug & play for the device connection: BRG-06 reworded, BRG-07 port setting optional.
 - REL-05 reworded: the tag ruleset can't restrict creation, because GitHub can't put the GitHub Actions actor on a bypass list.
 - New topic DOC (parts list, assembly instructions, 7 requirements): others can rebuild Cody; ELE-07 reduced to the wiring diagram.
-- New AGT-10 (one-command setup) and AGT-11 (same hooks on host and in devcontainers) to reduce setup effort; the bridge stays.
+- New AGT-10 setup flow and AGT-11 (same hooks on host and in devcontainers) to reduce setup effort; AGT-10's flow was revised in Stage 3.
 - Spec review findings recorded as risks R1 – R8 (architecture.md 7.1); R1 addressed by AGT-11.
 - `spec/idea.md` removed (conflicted with the spec); "Decisions" limited to decisions that change requirements or architecture.
 
@@ -247,8 +249,8 @@ After each completed stage, Claude appends a report with this structure to secti
 | Stage | Content | Status |
 |---|---|---|
 | 1 | Walking skeleton | done |
-| 2 | Status light on the bench with Claude Code | in progress |
-| 3 | Copilot integration | open |
+| 2 | Status light on the bench with Claude Code | done (open points) |
+| 3 | Copilot integration | in progress |
 | 4 | Mechanism prototype | open |
 | 5 | Character and assembly | open |
 
@@ -302,9 +304,51 @@ After each completed stage, Claude appends a report with this structure to secti
 
 **Waiting on the project owner:**
 - Before Stage 3, check the current VS Code agent-hook behavior (Preview, available events and configuration location).
-- At Stage 3 start, decide whether the Go program takes over `cody` and `cody hooks install` (AGT-10), and whether Copilot reads user-level Claude Code hook configuration (AGT-08).
+- Stage 3 decisions: retain the `cody` shell command and manual hook scripts, and provide host hook installation through the Windows bridge website (AGT-10); Copilot's hook sources and deduplication are specified under AGT-08.
 - Existing open points before later stages remain in `spec/README.md`.
 
 **Risks and notes:**
 - Native Linux hosts lose the Python Docker bridge in Stage 3 and have no native replacement until Stage 6 step 6a. The owner accepted this gap; Windows, WSL and devcontainers use the Windows bridge/relay in the interim.
 - Deferred verifications remain open in `spec/verification.md`; the latest requirement report has 3 warnings and no errors.
+
+### Stage 3 – Copilot integration (2026-11-22)
+
+**Summary:** Claude Code and GitHub Copilot hooks now drive Cody through the Windows bridge. The Windows web UI installs hooks on Windows and in each configured WSL relay distro; the repository devcontainer shares the WSL Copilot configuration. Manual scripts and the `cody` shell command remain available.
+
+**Steps:**
+- 3a – done: retired the Python Docker bridge; native Linux bridge support remains deferred to Stage 6 step 6a.
+- 3b – done for available events: Copilot hooks, mapping, workspace session keys, cross-source deduplication and setup documentation. AGT-05 remains open because the current VS Code hook picker has no approval event.
+- 3c – implementation done: added Windows and configured-WSL hook setup in Cody's web UI, with status/error reporting and the devcontainer Copilot bind mount. The fresh-host manual demonstration remains pending.
+
+**Requirements:** 5 of 6 planned for this stage are implemented; all 6 have passing evidence. AGT-05 remains open at the owner's request. Overall: 70 of 105 active requirements are implemented.
+
+**Verification:** `ci/check` passed: 38 Python tests, 29 firmware native tests, 131 Go tests, static checks, firmware build, Windows app/installer and Linux build. The requirement report has 0 errors and 4 warnings (FW-15, AGT-02, AGT-05, AGT-12). One manual record was added: AGT-04, a real Copilot session in VS Code 1.147.0 in the WSL2 devcontainer driving IDLE, THINKING, WORKING and COMPLETED. The fresh-host Windows plus configured-WSL setup check for AGT-10 is still pending.
+
+**Spec changes and deviations:**
+- Retired the Python Docker bridge in Stage 3a and accepted the native-Linux support gap until Stage 6 step 6a (TD-15); withdrew BRG-07.
+- Added Copilot hook behavior, source deduplication and setup guidance. VS Code 1.147.0 exposes `ErrorOccurred` but no approval event, so ERROR is supported and APPROVAL remains conditional.
+- Replaced the planned `cody setup` command with setup through the Windows bridge website. The UI installs hooks on Windows and in each configured WSL relay distro; the `cody` shell command and manual hook scripts remain.
+- Added a WSL-home bind mount for this repository's Copilot configuration so the WSL-installed hooks are visible to the devcontainer. Separate devcontainer hook volumes remain a manual-installation case.
+- At the owner's request, Stage 3 is marked done with AGT-05 unimplemented and AGT-10's fresh-host demonstration pending. Neither is counted as passing manual evidence.
+
+**Overall status:**
+
+| Stage | Content | Status |
+|---|---|---|
+| 1 | Walking skeleton | done |
+| 2 | Status light on the bench with Claude Code | done (open points) |
+| 3 | Copilot integration | done (open points) |
+| 4 | Mechanism prototype | next |
+| 5 | Character and assembly | open |
+| 6 | Native bridge for Linux and macOS, firmware updater | open |
+
+**Remaining requirements by stage:** 1 → 0, 2 → 7, 3 → 1, 4 → 10, 5 → 14, 6 → 3.
+
+**Waiting on the project owner:**
+- Before Stage 4, choose the motor model and gear ratio (the 300 rpm N20 is recommended for the preferred mechanism); provide filament and screws.
+- Confirm the arm mechanism concept. The preferred option in architecture.md 8.3 is the chest cam drive with action-figure shoulder joints; after confirmation, adapt step 4a, FIG-10 and TD-05.
+
+**Risks and notes:**
+- AGT-05 depends on VS Code exposing an approval hook event; keep it open until that event is available and verified.
+- AGT-10's fresh-host Windows and configured-WSL installation demonstration remains pending.
+- AGT topic status remains in progress because AGT-05 is not implemented.

@@ -54,7 +54,16 @@ func NewHandler(b Bridge, clock func() time.Time, website WebsiteOptions) http.H
 		writeJSON(w, http.StatusOK, status)
 	})
 	mux.HandleFunc("/hooks/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/hooks/claude-code" {
+		if r.Method != http.MethodPost {
+			notFound(w)
+			return
+		}
+		mapEvent := mapping.ClaudeCode
+		switch r.URL.Path {
+		case "/hooks/claude-code":
+		case "/hooks/copilot":
+			mapEvent = mapping.Copilot
+		default:
 			notFound(w)
 			return
 		}
@@ -63,7 +72,7 @@ func NewHandler(b Bridge, clock func() time.Time, website WebsiteOptions) http.H
 			writeText(w, http.StatusBadRequest, "expected a JSON object\n")
 			return
 		}
-		event, err := mapping.ClaudeCode(body)
+		event, err := mapEvent(body)
 		if err != nil {
 			var payloadError mapping.PayloadError
 			if errors.As(err, &payloadError) {

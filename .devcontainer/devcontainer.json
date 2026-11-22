@@ -15,10 +15,15 @@
   },
   "mounts": [
     // Claude Code login and settings survive container rebuilds, shared across projects
-    "source=claude-config,target=/home/vscode/.claude,type=volume"
+    "source=claude-config,target=/home/vscode/.claude,type=volume",
+    // copilot-config: share hooks with the WSL user where the Cody installer writes them
+    "source=${localEnv:HOME}/.copilot,target=/home/vscode/.copilot,type=bind"
   ],
+  // Docker's --mount requires a bind source to exist before the container starts.
+  "initializeCommand": "mkdir -p \"${localEnv:HOME}/.copilot\"",
   "containerEnv": {
-    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
+    "COPILOT_HOME": "/home/vscode/.copilot"
   },
   // Fixes toolchain ownership in CI and installs the workspace members
   "postCreateCommand": ".devcontainer/post-create.sh",

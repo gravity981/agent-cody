@@ -28,9 +28,21 @@ def test_req_DOC_02_instructions_cover_stage_two_setup() -> None:
         "wire the modules",
         "flash the firmware",
         "install and start the bridge",
-        "install claude code hooks",
+        "install claude code and copilot hooks",
     ):
         assert topic in instructions
+
+
+def test_req_AGT_09_describes_user_level_setup_for_both_agents() -> None:
+    guide = (ROOT / "hooks" / "README.md").read_text(encoding="utf-8").lower()
+    for topic in (
+        "install-claude-code",
+        "github copilot in vs code",
+        "~/.copilot/hooks/",
+        "copilot-hooks.json",
+        "cody status",
+    ):
+        assert topic in guide
 
 
 def test_req_DOC_05_each_step_names_parts_tools_and_existing_images() -> None:

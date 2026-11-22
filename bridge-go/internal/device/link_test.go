@@ -134,7 +134,7 @@ func Test_req_BRG_03_SendsStateOnlyWhenItChanges(t *testing.T) {
 	}
 }
 
-func Test_req_BRG_07_SendsSettingsOnConnect(t *testing.T) {
+func Test_req_BRG_06_SendsSettingsOnConnect(t *testing.T) {
 	system := newFakeSystem()
 	port := newFakePort()
 	system.plug("/dev/ttyACM0", port, "303A")

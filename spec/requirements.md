@@ -53,7 +53,7 @@ The ESP32 firmware turns simple commands from the bridge into physical behaviour
 
 ## 4. Host bridge (BRG)
 
-A background process on the host that receives agent events from the hooks over local HTTP, merges the state of all sessions and drives the device over USB serial (FW). On Windows it is a tray app with a local web interface (BRG-16 – BRG-18, BRG-20 – BRG-24); on Linux it runs as a Docker container until the native Linux build (BRG-19).
+A background process on the host that receives agent events from the hooks over local HTTP, merges the state of all sessions and drives the device over USB serial (FW). On Windows it is a tray app with a local web interface (BRG-16 – BRG-18, BRG-20 – BRG-24); WSL2 and devcontainers use its relay. Native Linux support returns in Stage 6 (BRG-19), leaving an intentional gap after the Stage 3 retirement (TD-15).
 
 | ID | Requirement | Prio |
 |---|---|---|
@@ -63,7 +63,7 @@ A background process on the host that receives agent events from the hooks over 
 | BRG-04 | It drops a session in WORKING, THINKING or APPROVAL after no event for a configurable time (default 10 min); a session in COMPLETED or ERROR stays until its next event or its end. | Must |
 | BRG-05 | It sends a heartbeat to the device at least every 10 s. | Must |
 | BRG-06 | Plug & play: it runs without the device; when the device is plugged in (first time or replug) or reset, it finds and uses it within 10 s without a port setting or any manual step on the host (after a one-time host setup), and then resends the settings and the current state. | Must |
-| BRG-07 | The frozen Python Docker bridge reads its legacy settings (including motor speed, volume, session timeout and optional serial-port override) from its config file. It is not required to work with firmware implementing revised FW-08, FW-09 and FW-13–FW-15; Windows Go bridge settings are specified in BRG-22. | Must |
+| ~~BRG-07~~ | ~~The frozen Python Docker bridge reads its legacy settings (including motor speed, volume, session timeout and optional serial-port override) from its config file. It is not required to work with firmware implementing revised FW-08, FW-09 and FW-13–FW-15; Windows Go bridge settings are specified in BRG-22.~~ (withdrawn: retired with the Python Docker bridge in Stage 3; native Linux support is deferred to Stage 6.) | – |
 | BRG-08 | It listens only on the loopback interface and the local Docker/WSL interfaces, never on the LAN. | Must |
 | BRG-09 | It starts automatically and runs in the background. | Should |
 | BRG-10 | It reports its version and commit (REL-02). | Must |
@@ -84,7 +84,7 @@ A background process on the host that receives agent events from the hooks over 
 
 ## 5. Agent integrations (AGT)
 
-Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). The mapping of each agent's events to states is in [architecture.md](architecture.md). GitHub Copilot's agent hooks in VS Code are in Preview and provide no events for "waiting for approval" or "turn failed", and no session id.
+Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). The mapping of each agent's events to states is in [architecture.md](architecture.md). The user checked the Copilot hook picker in VS Code 1.147.0 on 2026-11-22: it exposes `ErrorOccurred` but no approval/permission-request event. Copilot payloads include a session ID, but Cody deliberately keys them by workspace folder (`cwd`), as required by AGT-06.
 
 | ID | Requirement | Prio |
 |---|---|---|
@@ -97,7 +97,7 @@ Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). 
 | AGT-07 | If the bridge is unreachable, a hook returns within 1 s and never blocks or fails the agent. | Must |
 | AGT-08 | No agent event is counted twice (e.g. Copilot also reads Claude Code hook configuration). | Must |
 | AGT-09 | The hook setup for both agents is described step by step in the repository. | Should |
-| AGT-10 | One command sets up Cody on a host: it starts the bridge with autostart, installs the Claude Code and Copilot hooks at user level, checks the connection to the device, and reports what is missing. | Must |
+| AGT-10 | The Windows Cody installer enables bridge autostart, and the bridge web UI installs Claude Code and Copilot hooks at user level on Windows and in each configured WSL relay distro, checks device connectivity, and reports what is missing. | Must |
 | AGT-11 | The same hook configuration works on the host and in devcontainers; the hooks find the bridge on `localhost` or on the Docker host. | Must |
 | AGT-12 | The hooks reach the bridge in every WSL2 networking mode and from devcontainers on Docker Desktop and on Docker Engine in WSL2, without changing network settings. | Must |
 
