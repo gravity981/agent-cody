@@ -17,6 +17,7 @@ import (
 	"github.com/gravity981/agent-cody/bridge-go/internal/bridge"
 	"github.com/gravity981/agent-cody/bridge-go/internal/config"
 	"github.com/gravity981/agent-cody/bridge-go/internal/device"
+	"github.com/gravity981/agent-cody/bridge-go/internal/hooksinstall"
 )
 
 const websiteBodyLimit = 64 * 1024
@@ -30,6 +31,7 @@ type WebsiteOptions struct {
 	Restart       func()
 	FirmwareFlash *FirmwareFlashService
 	FlashRunner   FirmwareFlashRunner
+	HookInstaller *hooksinstall.Installer
 }
 
 type RelayStatus struct {
@@ -131,6 +133,36 @@ func registerWebsiteRoutes(
 			flusher.Flush()
 		}
 		options.Restart()
+	})
+	mux.HandleFunc("/api/setup", func(w http.ResponseWriter, r *http.Request) {
+		if options.HookInstaller == nil {
+			writeAPIError(w, http.StatusServiceUnavailable, "hook setup is unavailable on this host")
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			status, err := options.HookInstaller.Status()
+			if err != nil {
+				writeAPIError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			w.Header().Set("Cache-Control", "no-store")
+			writeJSON(w, http.StatusOK, status)
+		case http.MethodPost:
+			if !sameOrigin(r) {
+				writeAPIError(w, http.StatusForbidden, "request origin is not allowed")
+				return
+			}
+			status, err := options.HookInstaller.Install()
+			if err != nil {
+				writeAPIError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			w.Header().Set("Cache-Control", "no-store")
+			writeJSON(w, http.StatusOK, status)
+		default:
+			methodNotAllowed(w, http.MethodGet+", "+http.MethodPost)
+		}
 	})
 	mux.HandleFunc("/api/test/status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {

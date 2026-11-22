@@ -97,7 +97,7 @@ Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). 
 | AGT-07 | If the bridge is unreachable, a hook returns within 1 s and never blocks or fails the agent. | Must |
 | AGT-08 | No agent event is counted twice (e.g. Copilot also reads Claude Code hook configuration). | Must |
 | AGT-09 | The hook setup for both agents is described step by step in the repository. | Should |
-| AGT-10 | One command sets up Cody on a host: it starts the bridge with autostart, installs the Claude Code and Copilot hooks at user level, checks the connection to the device, and reports what is missing. | Must |
+| AGT-10 | The Windows Cody installer enables bridge autostart, and the bridge web UI installs Claude Code and Copilot hooks at user level, checks device connectivity, and reports what is missing. | Must |
 | AGT-11 | The same hook configuration works on the host and in devcontainers; the hooks find the bridge on `localhost` or on the Docker host. | Must |
 | AGT-12 | The hooks reach the bridge in every WSL2 networking mode and from devcontainers on Docker Desktop and on Docker Engine in WSL2, without changing network settings. | Must |
 

@@ -10,6 +10,9 @@ Unicode True
 !ifndef RELAY_EXE
   !error "RELAY_EXE is required"
 !endif
+!ifndef HOOKS_DIR
+  !error "HOOKS_DIR is required"
+!endif
 !ifndef APP_LICENSE
   !error "APP_LICENSE is required"
 !endif
@@ -46,6 +49,11 @@ Section "Cody" CodyInstall
   SetOutPath "$INSTDIR"
   File /oname=cody.exe "${APP_EXE}"
   File /oname=cody-linux "${RELAY_EXE}"
+  SetOutPath "$INSTDIR\hooks"
+  File "${HOOKS_DIR}\copilot-hooks.json"
+  File "${HOOKS_DIR}\cody-forward.sh"
+  File "${HOOKS_DIR}\cody-forward.ps1"
+  SetOutPath "$INSTDIR"
   File /oname=LICENSE "${APP_LICENSE}"
   File /oname=espflash.exe "${ESPFLASH_EXE}"
   File /oname=LICENSE-espflash-MIT.txt "${ESPFLASH_MIT_LICENSE}"
@@ -81,6 +89,10 @@ Section "Uninstall"
   RMDir "$SMPROGRAMS\Cody"
   Delete "$INSTDIR\cody.exe"
   Delete "$INSTDIR\cody-linux"
+  Delete "$INSTDIR\hooks\copilot-hooks.json"
+  Delete "$INSTDIR\hooks\cody-forward.sh"
+  Delete "$INSTDIR\hooks\cody-forward.ps1"
+  RMDir "$INSTDIR\hooks"
   Delete "$INSTDIR\LICENSE"
   Delete "$INSTDIR\espflash.exe"
   Delete "$INSTDIR\LICENSE-espflash-MIT.txt"

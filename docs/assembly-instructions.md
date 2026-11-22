@@ -69,11 +69,11 @@ Native Linux hosts have no bridge between Stage 3 and Stage 6 step 6a (TD-15).
 
 **Parts:** The running bridge host and each environment where Claude Code or Copilot runs.
 
-**Tools:** Python 3.10 or newer for the Claude Code installer; VS Code with Copilot; and `curl` (`curl.exe` on Windows) wherever an agent hook runs.
+**Tools:** The Cody tray app and its local website; Python 3.10 or newer for manual Claude Code installation; VS Code with Copilot; and `curl` (`curl.exe` on Windows) wherever an agent hook runs.
 
-From the repository, run `uv run python hooks/install-claude-code`. With the release file, run `python3 cody-install-claude-code-<version>`. Run the installer on the host and in each separate Claude Code configuration environment; a shared devcontainer configuration only needs one install. For a Docker Engine devcontainer in WSL2, pass the relay port shown by Cody, for example `--port 8766`.
+For Windows user-level hooks, open Cody's website from the tray menu and choose **Install or update hooks**. The page checks the device connection and reports missing prerequisites.
 
-For Copilot, follow the copy instructions in [`hooks/README.md`](../hooks/README.md#github-copilot-in-vs-code) to place the user hook configuration and forwarders in `~/.copilot/hooks/` (or `$COPILOT_HOME/hooks/`). Repeat in the environment where VS Code's Copilot session runs. If the Docker Engine WSL2 relay uses a non-default port, update the Docker-gateway target in both Copilot forwarders. Start a new Claude Code and Copilot session after installation.
+For manual installation in WSL or a devcontainer, use the scripts and instructions in [`hooks/README.md`](../hooks/README.md). Run the Claude installer in each separate Claude Code configuration environment; a shared devcontainer configuration only needs one install. For a Docker Engine devcontainer in WSL2, pass the relay port shown by Cody, for example `--port 8766`. Manually install Copilot's user hook configuration in the environment where its session runs, and update the Docker-gateway target in both Copilot forwarders if the relay uses a non-default port. Start new Claude Code and Copilot sessions after installation.
 
 ![Claude Code hook routing](images/steps/hook-routing.svg)
 

@@ -18,6 +18,7 @@ import (
 	"github.com/gravity981/agent-cody/bridge-go/internal/bridge"
 	"github.com/gravity981/agent-cody/bridge-go/internal/config"
 	"github.com/gravity981/agent-cody/bridge-go/internal/device"
+	"github.com/gravity981/agent-cody/bridge-go/internal/hooksinstall"
 	"github.com/gravity981/agent-cody/bridge-go/internal/logging"
 	"github.com/gravity981/agent-cody/bridge-go/internal/sessions"
 )
@@ -371,6 +372,8 @@ func Test_req_BRG_21_WebsiteServesStatusAndRelayRoutingData(t *testing.T) {
 	server, _, _ := newTestServer(t)
 	response, page := request(t, server.Client(), http.MethodGet, server.URL+"/", nil)
 	if response.StatusCode != http.StatusOK ||
+		!bytes.Contains(page, []byte("Set up agent hooks")) ||
+		!bytes.Contains(page, []byte("Install or update hooks")) ||
 		!bytes.Contains(page, []byte("Configure Claude Code hooks to use the relay")) ||
 		!bytes.Contains(page, []byte("Run it in the environment that owns Claude Code's settings file")) ||
 		!bytes.Contains(page, []byte("172.17.0.1:&lt;relay-port&gt;")) {
@@ -381,7 +384,8 @@ func Test_req_BRG_21_WebsiteServesStatusAndRelayRoutingData(t *testing.T) {
 	}
 	response, script := request(t, server.Client(), http.MethodGet, server.URL+"/app.js", nil)
 	if response.StatusCode != http.StatusOK ||
-		!bytes.Contains(script, []byte("uv run python hooks/install-claude-code --port ${port}")) {
+		!bytes.Contains(script, []byte("uv run python hooks/install-claude-code --port ${port}")) ||
+		!bytes.Contains(script, []byte(`request("/api/setup", { method: "POST" })`)) {
 		t.Fatalf("website script status=%d body=%q", response.StatusCode, script)
 	}
 
@@ -407,6 +411,70 @@ func Test_req_BRG_21_WebsiteServesStatusAndRelayRoutingData(t *testing.T) {
 		!status.Device.Connected || status.Device.Firmware == nil ||
 		len(status.Relays) != 1 || status.Relays[0].DockerAddress != "172.17.0.1:8767" {
 		t.Fatalf("website status = %+v", status)
+	}
+}
+
+func Test_req_AGT_10_WebsiteInstallsBothUserHooksAndChecksDevice(t *testing.T) {
+	root := t.TempDir()
+	assets := filepath.Join(root, "assets")
+	if err := os.MkdirAll(assets, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"copilot-hooks.json", "cody-forward.sh", "cody-forward.ps1"} {
+		data, err := os.ReadFile(filepath.Join("..", "..", "..", "hooks", name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(assets, name), data, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	installer, err := hooksinstall.New(hooksinstall.Paths{
+		ClaudeSettings: filepath.Join(root, ".claude", "settings.json"),
+		CopilotHooks:   filepath.Join(root, ".copilot", "hooks"),
+		Assets:         assets,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	server, _, _ := newTestServer(t, WebsiteOptions{HookInstaller: installer})
+	client := server.Client()
+
+	response, data := request(t, client, http.MethodGet, server.URL+"/api/setup", nil)
+	var initial hooksinstall.Status
+	if err := json.Unmarshal(data, &initial); err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusOK || initial.ClaudeCodeInstalled || initial.CopilotInstalled {
+		t.Fatalf("initial setup status = %+v, %d", initial, response.StatusCode)
+	}
+
+	response, data = request(t, client, http.MethodPost, server.URL+"/api/setup", nil)
+	if response.StatusCode != http.StatusForbidden {
+		t.Fatalf("setup without same-origin header = %d: %s", response.StatusCode, data)
+	}
+	headers := make(http.Header)
+	headers.Set("Origin", SiteOrigin)
+	response, data = requestWithHeaders(t, client, http.MethodPost, server.URL+"/api/setup", nil, headers)
+	var installed hooksinstall.Status
+	if err := json.Unmarshal(data, &installed); err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusOK || !installed.ClaudeCodeInstalled || !installed.CopilotInstalled {
+		t.Fatalf("installed setup status = %+v, %d: %s", installed, response.StatusCode, data)
+	}
+
+	response, data = request(t, client, http.MethodGet, server.URL+"/api/status", nil)
+	var status struct {
+		Device struct {
+			Connected bool `json:"connected"`
+		} `json:"device"`
+	}
+	if err := json.Unmarshal(data, &status); err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusOK || !status.Device.Connected {
+		t.Fatalf("device status = %+v, %d", status.Device, response.StatusCode)
 	}
 }
 

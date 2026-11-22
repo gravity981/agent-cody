@@ -133,7 +133,7 @@ Requirements: none (retirement of the Stage 2 BRG-07 implementation).
 **3b – Copilot hooks.** User-level hooks, mapping, session key by workspace folder, deduplication against all applicable hook sources; verify AGT-05's approval/error event availability in the target VS Code runtime; setup guide for both agents.
 Requirements: AGT-04 – AGT-06, AGT-08, AGT-09.
 
-**3c – One-command setup.** The Go program takes over `cody` and its hook installer, replacing the shell command and Python installer. `cody setup` starts the bridge with autostart, installs the hooks of both agents at user level, checks the device connection and reports what is missing on Windows and through its WSL/devcontainer relay. Native Linux reports the bridge as unsupported until step 6a (TD-15).
+**3c – Setup through Cody's web UI.** The Windows installer starts the tray app with autostart. The web UI installs both agents' hooks at user level, checks the device connection and reports what is missing, including guidance for WSL/devcontainer routing. Keep the existing hook scripts and manual installation instructions as alternatives. Native Linux reports the bridge as unsupported until step 6a (TD-15).
 Requirements: AGT-10.
 
 ### Stage 4 – Mechanism prototype
@@ -238,7 +238,7 @@ After each completed stage, Claude appends a report with this structure to secti
 - Plug & play for the device connection: BRG-06 reworded, BRG-07 port setting optional.
 - REL-05 reworded: the tag ruleset can't restrict creation, because GitHub can't put the GitHub Actions actor on a bypass list.
 - New topic DOC (parts list, assembly instructions, 7 requirements): others can rebuild Cody; ELE-07 reduced to the wiring diagram.
-- New AGT-10 (one-command setup) and AGT-11 (same hooks on host and in devcontainers) to reduce setup effort; the bridge stays.
+- New AGT-10 setup flow and AGT-11 (same hooks on host and in devcontainers) to reduce setup effort; AGT-10's flow was revised in Stage 3.
 - Spec review findings recorded as risks R1 – R8 (architecture.md 7.1); R1 addressed by AGT-11.
 - `spec/idea.md` removed (conflicted with the spec); "Decisions" limited to decisions that change requirements or architecture.
 
@@ -302,7 +302,7 @@ After each completed stage, Claude appends a report with this structure to secti
 
 **Waiting on the project owner:**
 - Before Stage 3, check the current VS Code agent-hook behavior (Preview, available events and configuration location).
-- At Stage 3 start, decide whether the Go program takes over `cody` and `cody hooks install` (AGT-10), and whether Copilot reads user-level Claude Code hook configuration (AGT-08).
+- Stage 3 decisions: retain the `cody` shell command and manual hook scripts, and provide host hook installation through the Windows bridge website (AGT-10); Copilot's hook sources and deduplication are specified under AGT-08.
 - Existing open points before later stages remain in `spec/README.md`.
 
 **Risks and notes:**

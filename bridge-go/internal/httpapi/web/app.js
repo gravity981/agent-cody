@@ -5,6 +5,8 @@ const statusMessage = byId("status-message");
 const statusDetails = byId("status-details");
 const relayList = byId("relay-list");
 const sessionList = byId("session-list");
+const setupChecklist = byId("setup-checklist");
+const setupMessage = byId("setup-message");
 const settingsMessage = byId("settings-message");
 const restartPanel = byId("restart-panel");
 const restartMessage = byId("restart-message");
@@ -15,6 +17,7 @@ const testReplies = byId("test-replies");
 const testStates = byId("test-states");
 let deviceConnected = false;
 let devicePort = "";
+let setupStatus = null;
 let flashTargetPort = "";
 let testActive = false;
 let testBusy = false;
@@ -64,6 +67,7 @@ function renderStatus(status) {
   const wasConnected = deviceConnected;
   deviceConnected = status.device.connected;
   devicePort = status.device.port || "";
+  renderSetupChecklist();
   if (wasConnected !== deviceConnected) {
     tuningQuerySent = false;
     void refreshFlashPorts();
@@ -128,6 +132,40 @@ function renderStatus(status) {
   }
 }
 
+function renderSetupChecklist() {
+  if (!setupStatus) return;
+  setupChecklist.replaceChildren();
+  const checks = [
+    [
+      "Device",
+      deviceConnected ? "Connected" : "Not connected. Connect the Cody device over USB.",
+    ],
+    [
+      "Claude Code hooks",
+      setupStatus.claude_code_installed
+        ? `Installed in ${setupStatus.claude_settings_path}`
+        : `Not installed in ${setupStatus.claude_settings_path}`,
+    ],
+    [
+      "GitHub Copilot hooks",
+      setupStatus.copilot_installed
+        ? `Installed in ${setupStatus.copilot_hooks_path}`
+        : `Not installed in ${setupStatus.copilot_hooks_path}`,
+    ],
+    [
+      "curl",
+      setupStatus.curl_available
+        ? "Available for agent hook forwarding."
+        : "Missing. Install Git for Windows or make curl.exe available on PATH.",
+    ],
+  ];
+  for (const [label, result] of checks) {
+    const item = document.createElement("li");
+    item.textContent = `${label}: ${result}`;
+    setupChecklist.append(item);
+  }
+}
+
 async function refreshStatus() {
   try {
     const response = await request("/api/status");
@@ -136,8 +174,36 @@ async function refreshStatus() {
     statusMessage.textContent = `Could not load bridge status: ${error.message}`;
     deviceConnected = false;
     devicePort = "";
+    renderSetupChecklist();
     renderTestControls();
     renderFlashControls();
+  }
+}
+
+async function refreshSetupStatus() {
+  try {
+    const response = await request("/api/setup");
+    setupStatus = await response.json();
+    setupMessage.textContent = "Review the setup checks, then install the hooks.";
+    renderSetupChecklist();
+  } catch (error) {
+    setupMessage.textContent = `Could not check hook setup: ${error.message}`;
+  }
+}
+
+async function installHooks() {
+  byId("install-hooks").disabled = true;
+  setupMessage.textContent = "Installing hooks...";
+  try {
+    const response = await request("/api/setup", { method: "POST" });
+    setupStatus = await response.json();
+    setupMessage.textContent =
+      "Hooks installed. Start new Claude Code and Copilot sessions to load them.";
+    renderSetupChecklist();
+  } catch (error) {
+    setupMessage.textContent = `Could not install hooks: ${error.message}`;
+  } finally {
+    byId("install-hooks").disabled = false;
   }
 }
 
@@ -431,6 +497,7 @@ async function loadConfig() {
 byId("use-default-distro").addEventListener("change", (event) => {
   byId("wsl-distros").disabled = event.target.checked;
 });
+byId("install-hooks").addEventListener("click", () => void installHooks());
 
 settingsForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -580,6 +647,7 @@ window.addEventListener("pagehide", () => {
 renderTestControls();
 renderFlashControls();
 void refreshStatus();
+void refreshSetupStatus();
 void loadConfig();
 void refreshTestStatus();
 void refreshFlashPorts();

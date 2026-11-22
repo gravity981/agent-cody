@@ -70,7 +70,7 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 |---|---|
 | FW | FW-15 |
 | BRG | BRG-18 – BRG-19, BRG-23 – BRG-24 |
-| AGT | AGT-02, AGT-05, AGT-10, AGT-12 |
+| AGT | AGT-02, AGT-05, AGT-12 |
 | ELE | ELE-01 – ELE-06 |
 | FIG | FIG-01 – FIG-17 |
 | DOC | DOC-01, DOC-03 – DOC-04, DOC-07 |

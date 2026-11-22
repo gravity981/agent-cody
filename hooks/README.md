@@ -2,6 +2,12 @@
 
 Hook configuration for Claude Code and GitHub Copilot ([spec/architecture.md](../spec/architecture.md) 4.1). Requirements: AGT in [spec/requirements.md](../spec/requirements.md).
 
+## Windows setup in Cody
+
+Run the Cody Windows installer, start Cody from the notification area, open its website from the tray menu, and choose **Install or update hooks**. The website installs both agents' hooks for the current Windows user, checks the device connection and reports missing prerequisites. Start new agent sessions after installing.
+
+The scripts below remain available for manual installation, including WSL and devcontainers whose user configuration is separate from Windows.
+
 ## Claude Code
 
 `install-claude-code` installs Cody's Claude Code hooks at user level. They forward every Claude Code event to the bridge.
@@ -33,6 +39,8 @@ Set `wsl_distros = []` to disable the relay. The app applies changes after **Res
 
 ### Install
 
+For a manual install:
+
 ```bash
 uv run python hooks/install-claude-code     # in this repository
 python3 cody-install-claude-code-<version>  # release file, any environment with Python
@@ -54,6 +62,8 @@ With Cody running, start a Claude Code session and send a prompt. Run `cody stat
 The Copilot harness reads user hook files from `~/.copilot/hooks/`, or `$COPILOT_HOME/hooks/` when `COPILOT_HOME` is set. The configuration uses PascalCase-compatible event names so Copilot sends a common payload containing `hook_event_name`, `session_id`, `timestamp` and `cwd`. The bridge keys each Copilot session by `cwd`.
 
 ### Install
+
+For a manual install:
 
 From the repository, copy the configuration and both platform forwarders:
 
