@@ -133,7 +133,7 @@ Requirements: none (retirement of the Stage 2 BRG-07 implementation).
 **3b – Copilot hooks.** User-level hooks, mapping, session key by workspace folder, deduplication against all applicable hook sources; verify AGT-05's approval/error event availability in the target VS Code runtime; setup guide for both agents.
 Requirements: AGT-04 – AGT-06, AGT-08, AGT-09.
 
-**3c – Setup through Cody's web UI.** The Windows installer starts the tray app with autostart. The web UI installs both agents' hooks at user level, checks the device connection and reports what is missing, including guidance for WSL/devcontainer routing. Keep the existing hook scripts and manual installation instructions as alternatives. Native Linux reports the bridge as unsupported until step 6a (TD-15).
+**3c – Setup through Cody's web UI.** The Windows installer starts the tray app with autostart. The web UI installs both agents' hooks at user level on Windows and in each WSL distro configured for Cody's relay, checks the device connection and reports what is missing, including guidance for devcontainer routing. Keep the existing hook scripts and manual installation instructions as alternatives. Native Linux reports the bridge as unsupported until step 6a (TD-15).
 Requirements: AGT-10.
 
 ### Stage 4 – Mechanism prototype

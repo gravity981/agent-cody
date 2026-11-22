@@ -4,9 +4,9 @@ Hook configuration for Claude Code and GitHub Copilot ([spec/architecture.md](..
 
 ## Windows setup in Cody
 
-Run the Cody Windows installer, start Cody from the notification area, open its website from the tray menu, and choose **Install or update hooks**. The website installs both agents' hooks for the current Windows user, checks the device connection and reports missing prerequisites. Start new agent sessions after installing.
+Run the Cody Windows installer, start Cody from the notification area, open its website from the tray menu, and choose **Install or update hooks**. The website installs both agents' hooks for the current Windows user and each WSL distro configured for Cody's relay, checks the device connection and reports missing prerequisites. Start new agent sessions after installing.
 
-The scripts below remain available for manual installation, including WSL and devcontainers whose user configuration is separate from Windows.
+The scripts below remain available for manual installation, including devcontainers with separate hook configurations and WSL distros not configured for Cody's relay.
 
 ## Claude Code
 
@@ -60,6 +60,8 @@ With Cody running, start a Claude Code session and send a prompt. Run `cody stat
 ## GitHub Copilot in VS Code
 
 The Copilot harness reads user hook files from `~/.copilot/hooks/`, or `$COPILOT_HOME/hooks/` when `COPILOT_HOME` is set. The configuration uses PascalCase-compatible event names so Copilot sends a common payload containing `hook_event_name`, `session_id`, `timestamp` and `cwd`. The bridge keys each Copilot session by `cwd`.
+
+This repository's devcontainer bind-mounts the WSL user's `.copilot` directory at `/home/vscode/.copilot`. When Cody installs hooks into that WSL user, the devcontainer sees the same hooks; other devcontainers with independent Copilot config volumes need their own manual installation.
 
 ### Install
 

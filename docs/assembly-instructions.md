@@ -71,9 +71,9 @@ Native Linux hosts have no bridge between Stage 3 and Stage 6 step 6a (TD-15).
 
 **Tools:** The Cody tray app and its local website; Python 3.10 or newer for manual Claude Code installation; VS Code with Copilot; and `curl` (`curl.exe` on Windows) wherever an agent hook runs.
 
-For Windows user-level hooks, open Cody's website from the tray menu and choose **Install or update hooks**. The page checks the device connection and reports missing prerequisites.
+Open Cody's website from the tray menu and choose **Install or update hooks**. The page installs hooks for the Windows user and each WSL distro configured for Cody's relay, checks the device connection and reports missing prerequisites.
 
-For manual installation in WSL or a devcontainer, use the scripts and instructions in [`hooks/README.md`](../hooks/README.md). Run the Claude installer in each separate Claude Code configuration environment; a shared devcontainer configuration only needs one install. For a Docker Engine devcontainer in WSL2, pass the relay port shown by Cody, for example `--port 8766`. Manually install Copilot's user hook configuration in the environment where its session runs, and update the Docker-gateway target in both Copilot forwarders if the relay uses a non-default port. Start new Claude Code and Copilot sessions after installation.
+This repository's devcontainer shares the configured WSL user's Copilot directory, so hooks installed by the website in that WSL distro are available to Copilot as `vscode`. For a devcontainer with a separate configuration volume or a WSL distro not configured for Cody's relay, install manually using the scripts and instructions in [`hooks/README.md`](../hooks/README.md). Run the Claude installer in each separate Claude Code configuration environment; a shared devcontainer configuration only needs one install. For a Docker Engine devcontainer in WSL2, pass the relay port shown by Cody, for example `--port 8766`. Update the Docker-gateway target in both Copilot forwarders if the relay uses a non-default port. Start new Claude Code and Copilot sessions after installation.
 
 ![Claude Code hook routing](images/steps/hook-routing.svg)
 

@@ -159,6 +159,24 @@ function renderSetupChecklist() {
         : "Missing. Install Git for Windows or make curl.exe available on PATH.",
     ],
   ];
+  if (setupStatus.wsl_error) {
+    checks.push(["WSL setup", `Could not inspect configured distros: ${setupStatus.wsl_error}`]);
+  } else if (!setupStatus.wsl || setupStatus.wsl.length === 0) {
+    checks.push(["WSL setup", "No WSL distro is configured for Cody's relay."]);
+  } else {
+    for (const distro of setupStatus.wsl) {
+      let result;
+      if (distro.error) {
+        result = `Could not install or check hooks: ${distro.error}`;
+      } else {
+        const claude = distro.claude_code_installed ? "installed" : "missing";
+        const copilot = distro.copilot_installed ? "installed" : "missing";
+        const curl = distro.curl_available ? "available" : "missing";
+        result = `Claude Code ${claude} (${distro.claude_settings_path}); Copilot ${copilot} (${distro.copilot_hooks_path}); curl ${curl}.`;
+      }
+      checks.push([`${distro.distro} (WSL)`, result]);
+    }
+  }
   for (const [label, result] of checks) {
     const item = document.createElement("li");
     item.textContent = `${label}: ${result}`;
@@ -197,8 +215,16 @@ async function installHooks() {
   try {
     const response = await request("/api/setup", { method: "POST" });
     setupStatus = await response.json();
-    setupMessage.textContent =
-      "Hooks installed. Start new Claude Code and Copilot sessions to load them.";
+    const wslFailed =
+      setupStatus.wsl_error || setupStatus.wsl.some((distro) => distro.error);
+    if (wslFailed) {
+      setupMessage.textContent = "Windows hooks installed; WSL setup reported issues. See the checks.";
+    } else if (setupStatus.wsl.length === 0) {
+      setupMessage.textContent = "Windows hooks installed; no WSL relay distro is configured.";
+    } else {
+      setupMessage.textContent =
+        "Hooks installed for Windows and the configured WSL distros. Restart agent sessions to load them.";
+    }
     renderSetupChecklist();
   } catch (error) {
     setupMessage.textContent = `Could not install hooks: ${error.message}`;

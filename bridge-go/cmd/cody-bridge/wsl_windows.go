@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +18,8 @@ import (
 	"time"
 
 	"github.com/gravity981/agent-cody/bridge-go/internal/config"
+	"github.com/gravity981/agent-cody/bridge-go/internal/hooksinstall"
+	"github.com/gravity981/agent-cody/bridge-go/internal/httpapi"
 	"github.com/gravity981/agent-cody/bridge-go/internal/relay"
 	"github.com/gravity981/agent-cody/bridge-go/internal/wsl"
 	"golang.org/x/sys/windows"
@@ -41,23 +44,13 @@ func startWSLRelays(
 		return nil, fmt.Errorf("locate wsl.exe: %w", err)
 	}
 
-	distros := cfg.WSLDistros
-	if distros == nil {
-		output, err := newWSLCommandContext(
-			ctx,
-			wslExecutable,
-			"--list",
-			"--verbose",
-		).Output()
-		if err != nil {
-			return nil, fmt.Errorf("list WSL distributions: %w", err)
-		}
-		defaultDistro := wsl.DefaultDistribution(output)
-		if defaultDistro == "" {
-			logger.Infof("no default WSL distribution; relay is disabled")
-			return nil, nil
-		}
-		distros = []string{defaultDistro}
+	distros, err := configuredWSLDistros(ctx, wslExecutable, cfg)
+	if err != nil {
+		return nil, err
+	}
+	if len(distros) == 0 {
+		logger.Infof("no default WSL distribution; relay is disabled")
+		return nil, nil
 	}
 
 	executable, err := os.Executable()
@@ -87,6 +80,107 @@ func startWSLRelays(
 		workers.Wait()
 	}()
 	return done, nil
+}
+
+func configuredWSLDistros(
+	ctx context.Context,
+	wslExecutable string,
+	cfg config.Config,
+) ([]string, error) {
+	if cfg.WSLDistros != nil {
+		return wsl.RelayDistributions(cfg.WSLDistros, nil), nil
+	}
+	output, err := newWSLCommandContext(
+		ctx,
+		wslExecutable,
+		"--list",
+		"--verbose",
+	).Output()
+	if err != nil {
+		return nil, fmt.Errorf("list WSL distributions: %w", err)
+	}
+	return wsl.RelayDistributions(nil, output), nil
+}
+
+type wslHookInstaller struct {
+	config     config.Config
+	executable string
+}
+
+func newWSLHookInstaller(cfg config.Config, executable string) httpapi.WSLHookSetup {
+	return &wslHookInstaller{config: cfg, executable: executable}
+}
+
+func (i *wslHookInstaller) Status(ctx context.Context) ([]httpapi.WSLHookStatus, error) {
+	return i.run(ctx, "--status")
+}
+
+func (i *wslHookInstaller) Install(ctx context.Context) ([]httpapi.WSLHookStatus, error) {
+	return i.run(ctx)
+}
+
+func (i *wslHookInstaller) run(
+	ctx context.Context,
+	args ...string,
+) ([]httpapi.WSLHookStatus, error) {
+	if i.config.WSLDistros != nil && len(i.config.WSLDistros) == 0 {
+		return []httpapi.WSLHookStatus{}, nil
+	}
+	wslExecutable, err := exec.LookPath("wsl.exe")
+	if err != nil {
+		return nil, fmt.Errorf("locate wsl.exe: %w", err)
+	}
+	distros, err := configuredWSLDistros(ctx, wslExecutable, i.config)
+	if err != nil {
+		return nil, err
+	}
+	if len(distros) == 0 {
+		return []httpapi.WSLHookStatus{}, nil
+	}
+	relayPath, err := wsl.RelayBinaryPath(i.executable)
+	if err != nil {
+		return nil, fmt.Errorf("locate WSL relay binary: %w", err)
+	}
+	relayBinary := filepath.Join(filepath.Dir(i.executable), "cody-linux")
+	if _, err := os.Stat(relayBinary); err != nil {
+		return nil, fmt.Errorf("find WSL relay binary next to Cody: %w", err)
+	}
+
+	statuses := make([]httpapi.WSLHookStatus, 0, len(distros))
+	for _, distro := range distros {
+		commandArgs := []string{"-d", distro, "--exec", relayPath, "install-hooks"}
+		commandArgs = append(commandArgs, args...)
+		output, err := newWSLCommandContext(ctx, wslExecutable, commandArgs...).Output()
+		if err != nil {
+			statuses = append(statuses, httpapi.WSLHookStatus{
+				Distro: distro,
+				Error:  wslCommandError(distro, err),
+			})
+			continue
+		}
+		var status hooksinstall.Status
+		if err := json.Unmarshal(output, &status); err != nil {
+			statuses = append(statuses, httpapi.WSLHookStatus{
+				Distro: distro,
+				Error:  fmt.Sprintf("decode hook status from WSL distro %q: %v", distro, err),
+			})
+			continue
+		}
+		statuses = append(statuses, httpapi.WSLHookStatus{
+			Distro: distro,
+			Status: status,
+		})
+	}
+	return statuses, nil
+}
+
+func wslCommandError(distro string, err error) string {
+	message := fmt.Sprintf("run hook setup in WSL distro %q: %v", distro, err)
+	var commandError *exec.ExitError
+	if errors.As(err, &commandError) && len(commandError.Stderr) > 0 {
+		message += ": " + strings.TrimSpace(string(commandError.Stderr))
+	}
+	return message
 }
 
 func superviseWSLRelay(

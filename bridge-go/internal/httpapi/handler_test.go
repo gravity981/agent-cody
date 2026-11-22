@@ -30,6 +30,23 @@ type fakeFirmwareFlashRunner struct {
 	runError error
 }
 
+type fakeWSLHookSetup struct {
+	statuses       []WSLHookStatus
+	installResults []WSLHookStatus
+	statusError    error
+	installError   error
+	installCalled  bool
+}
+
+func (s *fakeWSLHookSetup) Status(context.Context) ([]WSLHookStatus, error) {
+	return s.statuses, s.statusError
+}
+
+func (s *fakeWSLHookSetup) Install(context.Context) ([]WSLHookStatus, error) {
+	s.installCalled = true
+	return s.installResults, s.installError
+}
+
 func (*fakeFirmwareFlashRunner) Available() error {
 	return nil
 }
@@ -437,16 +454,29 @@ func Test_req_AGT_10_WebsiteInstallsBothUserHooksAndChecksDevice(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	server, _, _ := newTestServer(t, WebsiteOptions{HookInstaller: installer})
+	wslSetup := &fakeWSLHookSetup{
+		statuses: []WSLHookStatus{{Distro: "Ubuntu"}},
+		installResults: []WSLHookStatus{
+			{Distro: "Ubuntu", Status: hooksinstall.Status{ClaudeCodeInstalled: true, CopilotInstalled: true}},
+			{Distro: "Debian", Error: "distribution is not installed"},
+		},
+	}
+	server, _, _ := newTestServer(t, WebsiteOptions{
+		HookInstaller: installer,
+		WSLHookSetup:  wslSetup,
+	})
 	client := server.Client()
 
 	response, data := request(t, client, http.MethodGet, server.URL+"/api/setup", nil)
-	var initial hooksinstall.Status
+	var initial HookSetupStatus
 	if err := json.Unmarshal(data, &initial); err != nil {
 		t.Fatal(err)
 	}
 	if response.StatusCode != http.StatusOK || initial.ClaudeCodeInstalled || initial.CopilotInstalled {
 		t.Fatalf("initial setup status = %+v, %d", initial, response.StatusCode)
+	}
+	if len(initial.WSL) != 1 || initial.WSL[0].Distro != "Ubuntu" {
+		t.Fatalf("initial WSL setup status = %+v", initial.WSL)
 	}
 
 	response, data = request(t, client, http.MethodPost, server.URL+"/api/setup", nil)
@@ -456,12 +486,17 @@ func Test_req_AGT_10_WebsiteInstallsBothUserHooksAndChecksDevice(t *testing.T) {
 	headers := make(http.Header)
 	headers.Set("Origin", SiteOrigin)
 	response, data = requestWithHeaders(t, client, http.MethodPost, server.URL+"/api/setup", nil, headers)
-	var installed hooksinstall.Status
+	var installed HookSetupStatus
 	if err := json.Unmarshal(data, &installed); err != nil {
 		t.Fatal(err)
 	}
 	if response.StatusCode != http.StatusOK || !installed.ClaudeCodeInstalled || !installed.CopilotInstalled {
 		t.Fatalf("installed setup status = %+v, %d: %s", installed, response.StatusCode, data)
+	}
+	if !wslSetup.installCalled || len(installed.WSL) != 2 ||
+		!installed.WSL[0].ClaudeCodeInstalled || !installed.WSL[0].CopilotInstalled ||
+		installed.WSL[1].Error == "" {
+		t.Fatalf("WSL installation result = %+v; called=%t", installed.WSL, wslSetup.installCalled)
 	}
 
 	response, data = request(t, client, http.MethodGet, server.URL+"/api/status", nil)

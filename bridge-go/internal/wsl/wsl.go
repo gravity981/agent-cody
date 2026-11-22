@@ -51,6 +51,17 @@ func DefaultDistribution(output []byte) string {
 	return ""
 }
 
+func RelayDistributions(configured []string, output []byte) []string {
+	if configured != nil {
+		return append([]string{}, configured...)
+	}
+	defaultDistro := DefaultDistribution(output)
+	if defaultDistro == "" {
+		return []string{}
+	}
+	return []string{defaultDistro}
+}
+
 func decodeOutput(output []byte) string {
 	switch {
 	case bytes.HasPrefix(output, []byte{0xff, 0xfe}):

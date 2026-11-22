@@ -32,6 +32,24 @@ type WebsiteOptions struct {
 	FirmwareFlash *FirmwareFlashService
 	FlashRunner   FirmwareFlashRunner
 	HookInstaller *hooksinstall.Installer
+	WSLHookSetup  WSLHookSetup
+}
+
+type WSLHookSetup interface {
+	Status(context.Context) ([]WSLHookStatus, error)
+	Install(context.Context) ([]WSLHookStatus, error)
+}
+
+type WSLHookStatus struct {
+	Distro string `json:"distro"`
+	hooksinstall.Status
+	Error string `json:"error,omitempty"`
+}
+
+type HookSetupStatus struct {
+	hooksinstall.Status
+	WSL      []WSLHookStatus `json:"wsl"`
+	WSLError string          `json:"wsl_error,omitempty"`
 }
 
 type RelayStatus struct {
@@ -146,8 +164,18 @@ func registerWebsiteRoutes(
 				writeAPIError(w, http.StatusInternalServerError, err.Error())
 				return
 			}
+			result := HookSetupStatus{
+				Status: status,
+				WSL:    []WSLHookStatus{},
+			}
+			if options.WSLHookSetup != nil {
+				result.WSL, err = options.WSLHookSetup.Status(r.Context())
+				if err != nil {
+					result.WSLError = err.Error()
+				}
+			}
 			w.Header().Set("Cache-Control", "no-store")
-			writeJSON(w, http.StatusOK, status)
+			writeJSON(w, http.StatusOK, result)
 		case http.MethodPost:
 			if !sameOrigin(r) {
 				writeAPIError(w, http.StatusForbidden, "request origin is not allowed")
@@ -158,8 +186,18 @@ func registerWebsiteRoutes(
 				writeAPIError(w, http.StatusInternalServerError, err.Error())
 				return
 			}
+			result := HookSetupStatus{
+				Status: status,
+				WSL:    []WSLHookStatus{},
+			}
+			if options.WSLHookSetup != nil {
+				result.WSL, err = options.WSLHookSetup.Install(r.Context())
+				if err != nil {
+					result.WSLError = err.Error()
+				}
+			}
 			w.Header().Set("Cache-Control", "no-store")
-			writeJSON(w, http.StatusOK, status)
+			writeJSON(w, http.StatusOK, result)
 		default:
 			methodNotAllowed(w, http.MethodGet+", "+http.MethodPost)
 		}
