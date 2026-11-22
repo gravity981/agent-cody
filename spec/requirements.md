@@ -147,7 +147,7 @@ Written so that a maker with a 3D printer and a soldering iron can build a Cody 
 |---|---|---|
 | DOC-01 | A parts list names every part of one Cody: purchased parts (with source and price), printed parts (file, material, quantity), fasteners and consumables. | Must |
 | DOC-02 | Assembly instructions cover the electronics and the setup: soldering, wiring, flashing the firmware, installing the bridge and the hooks. | Must |
-| DOC-03 | Assembly instructions cover the mechanism: motor, crank, connecting rods, arms. | Must |
+| DOC-03 | Assembly instructions cover the mechanism: motor, cam drive, shoulder axle and arm joints, levers, stops, and arms. | Must |
 | DOC-04 | Assembly instructions cover printing the parts and assembling the full figure. | Must |
 | DOC-05 | Each step of the instructions names the parts and tools it needs and has a picture or render. | Must |
 | DOC-06 | The parts list and the assembly instructions are release files, with the version in their names. | Must |

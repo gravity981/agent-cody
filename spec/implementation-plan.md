@@ -29,7 +29,7 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 | 1 | Walking skeleton: toolchain, CI, requirement report, first release candidate | | done |
 | 2 | Status light on the bench with Claude Code | M1 | done (open points) |
 | 3 | Copilot integration | M2 | done (open points) |
-| 4 | Mechanism prototype | | next |
+| 4 | Mechanism prototype | | in progress |
 | 5 | Character and assembly | M3 | open |
 | 6 | Native bridge for Linux and macOS, firmware updater | | open |
 
@@ -146,7 +146,7 @@ Requirements: AGT-10.
 
 **Steps:**
 
-**4a – Chest cam and arms.** Code-CAD test rig based on the concept: a 2 mm steel shoulder axle at mid-depth about 10 mm below the shoulder top; action-figure sleeve joints, with the left arm's sleeve extending along the axle so both levers sit side by side; 8 mm levers pointing forward, with hands about 37 mm forward; and stops above both lever tips. Place the 34 mm motor across the chest, with its axis about 8 mm in front of and 6 mm below the axle. Fit one printed double eccentric to the motor's Ø3 × 10 mm D-shaft, with two side-by-side Ø10 × 4 mm lobes offset 0.65 mm and phased 180° apart; arm weight holds each lever tip on its lobe. Check the 62 × 38 mm shoulder envelope (about 58 × 34 mm inside with 2 mm walls), the motor surface about 4 mm from the axle center, about 1.5 mm clearance to the arm sleeves, and its 5 mm recess from the chest surface (2 mm wall plus 3 mm gap). Tune target hand travel to about 6 mm and verify alternating motion, follower contact at up to 4 strokes/s, and 1–4 strokes/s per arm. The owner measured about 0.52 s per revolution (about 1.9 strokes/s per arm); the motor can run faster, so tune to the fastest non-distracting rate at 1 m within FIG-08.
+**4a – Chest cam and arms.** Code-CAD test rig based on the concept: a 2 mm steel shoulder axle at mid-depth about 10 mm below the shoulder top; action-figure sleeve joints, with the left arm's sleeve extending along the axle so both levers sit side by side; 8 mm levers pointing forward, with hands about 37 mm forward; and stops above both lever tips. Place the 34 mm motor across the chest, with its axis about 8 mm in front of and 6 mm below the axle. Fit one printed double eccentric to the motor's Ø3 × 10 mm D-shaft, with two side-by-side Ø10 × 4 mm lobes offset 0.65 mm and phased 180° apart; arm weight holds each lever tip on its lobe. Check the 62 × 38 mm shoulder envelope (about 58 × 34 mm inside with 2 mm walls), the motor surface about 4 mm from the axle center, about 1.5 mm clearance to the arm sleeves, and its 5 mm recess from the chest surface (2 mm wall plus 3 mm gap). Tune target hand travel to about 6 mm and verify alternating motion, follower contact at up to 4 strokes/s, and 1–4 strokes/s per arm. The owner reports the motor's current operating speed is about 120 rpm (about 2 strokes/s per arm); it can run faster, so tune to the fastest non-distracting rate at 1 m within FIG-08.
 Requirements: FIG-06 – FIG-09, FIG-11.
 
 **4b – Power and endurance.** Measure USB current including motor start; check ESP32 and USB stability; run for 8 h without failure with the motor below 60 °C; assess noise at 1 m.
