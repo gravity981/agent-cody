@@ -63,7 +63,7 @@ A background process on the host that receives agent events from the hooks over 
 | BRG-04 | It drops a session in WORKING, THINKING or APPROVAL after no event for a configurable time (default 10 min); a session in COMPLETED or ERROR stays until its next event or its end. | Must |
 | BRG-05 | It sends a heartbeat to the device at least every 10 s. | Must |
 | BRG-06 | Plug & play: it runs without the device; when the device is plugged in (first time or replug) or reset, it finds and uses it within 10 s without a port setting or any manual step on the host (after a one-time host setup), and then resends the settings and the current state. | Must |
-| BRG-07 | The frozen Python Docker bridge reads its legacy settings (including motor speed, volume, session timeout and optional serial-port override) from its config file. It is not required to work with firmware implementing revised FW-08, FW-09 and FW-13–FW-15 and is retired in Stage 6; Windows Go bridge settings are specified in BRG-22. | Must |
+| BRG-07 | The frozen Python Docker bridge reads its legacy settings (including motor speed, volume, session timeout and optional serial-port override) from its config file. It is not required to work with firmware implementing revised FW-08, FW-09 and FW-13–FW-15; Windows Go bridge settings are specified in BRG-22. | Must |
 | BRG-08 | It listens only on the loopback interface and the local Docker/WSL interfaces, never on the LAN. | Must |
 | BRG-09 | It starts automatically and runs in the background. | Should |
 | BRG-10 | It reports its version and commit (REL-02). | Must |

@@ -10,7 +10,7 @@ Cody is built for the owner's own desk; the repository is open, and others can r
 flowchart LR
     CC["Claude Code<br/>(Windows, Linux, WSL2, devcontainer)"] -->|"command hook (curl)<br/>POST /hooks/claude-code"| BR
     CP["GitHub Copilot<br/>(VS Code agent mode)"] -->|"command hook (curl)<br/>POST /hooks/copilot"| BR
-    BR["Bridge<br/>(tray app and local website on Windows, with WSL relay;<br/>Docker container on Linux until stage 6)"] -->|"USB serial<br/>text protocol"| FW
+    BR["Bridge<br/>(tray app and local website on Windows, with WSL relay;<br/>Docker container on Linux until stage 3)"] -->|"USB serial<br/>text protocol"| FW
     FW["ESP32-C3 firmware"] --> MD["Motor driver → geared motor → crank → arms"]
     FW --> LED["WS2812 LED"]
     FW --> BZ["Passive buzzer"]
@@ -25,7 +25,7 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device.
 - Power and data through one USB port of the host, ≤ 500 mA in total (ELE-04).
 - Parts budget ≤ CHF 25 (ELE-06); printer Prusa MK3S+, FDM, PLA/PETG (FIG-03).
 - Ready-made modules only; soldering limited to header pins and wires (ELE-01, ELE-02).
-- Host: Windows or Linux. On Windows the bridge app (TD-06) opens the ESP32's COM port directly and serves the local website (TD-08); WSL2 and its devcontainers reach the bridge through the WSL relay (4.6), in any WSL networking mode. Firmware flashing is performed by the Windows bridge; the devcontainer does not receive USB device access. On Linux the bridge runs as a Docker container (TD-04) until the native Linux build (BRG-19, stage 6).
+- Host: Windows or Linux. On Windows the bridge app (TD-06) opens the ESP32's COM port directly and serves the local website (TD-08); WSL2 and its devcontainers reach the bridge through the WSL relay (4.6), in any WSL networking mode. Firmware flashing is performed by the Windows bridge; the devcontainer does not receive USB device access. On Linux the bridge runs as a Docker container (TD-04) until its Stage 3 retirement; native Linux support returns in Stage 6 (BRG-19).
 - Claude Code on native Windows runs command hooks in Git Bash (PowerShell without Git for Windows), so Git for Windows is needed there for the curl hooks; the setup guide says so.
 - GitHub Copilot's agent hooks are in Preview and may change; they provide no session id and no events for approval or failed turns.
 
@@ -36,7 +36,7 @@ Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device.
 | `spec/` | Specification | Markdown |
 | `ci/` | Entry points for CI and releases (delivery.md 2) | Shell |
 | `firmware/` | ESP32-C3 firmware with host unit tests | C++, Arduino-ESP32, PlatformIO (TD-01, TD-02) |
-| `bridge/` | Host bridge for Linux: HTTP in, serial out, config, Dockerfile, compose file. Frozen (fixes only) since 2026-11-21; retired in stage 6 | Python, Docker (TD-03, TD-04) |
+| `bridge/` | Host bridge for Linux: HTTP in, serial out, config, Dockerfile, compose file. Frozen (fixes only) since 2026-11-21; retired in stage 3 | Python, Docker (TD-03, TD-04, TD-15) |
 | `bridge-go/` | Bridge app for Windows (tray, autostart, HTTP API and website, serial out, config, log, updater) and the WSL relay (4.6) in one Go module; NSIS installer script. Native Linux and macOS builds in stage 6 | Go, NSIS (TD-06, TD-08, TD-09) |
 | `cli/` | Host command `cody`: status and manual state (BRG-11, BRG-12), setup (AGT-10) | Bash, curl |
 | `hooks/` | Hook installers and configuration for Claude Code and Copilot, setup guide | Python (standard library), shell, JSON |
@@ -162,7 +162,7 @@ The bench KY-006 measured 15 Ω across its signal and ground pins and is wired a
 
 ### 4.4 Bridge configuration (BRG-07)
 
-**Docker bridge (Linux, until stage 6):** `~/.config/cody/bridge.toml` on the host, mounted read-only into the container by the compose file; a missing file or key means the default. It remains frozen with its legacy keys: `serial_port` (optional override), `speed` (default 224), `volume` (default 2), `session_timeout_min` (default 10), `listen` (default `["127.0.0.1", "172.17.0.1"]`), `log_level` (`"info"` or `"debug"`, default `"info"`). It is not compatible with the new firmware settings: its `SPEED` command is no longer supported and its old 0–3 volume values are interpreted on the new 0–100 scale. Use the Windows Go app with firmware implementing TD-10; the Python bridge is retired in Stage 6.
+**Docker bridge (Linux, until Stage 3):** `~/.config/cody/bridge.toml` on the host, mounted read-only into the container by the compose file; a missing file or key means the default. It remains frozen with its legacy keys: `serial_port` (optional override), `speed` (default 224), `volume` (default 2), `session_timeout_min` (default 10), `listen` (default `["127.0.0.1", "172.17.0.1"]`), `log_level` (`"info"` or `"debug"`, default `"info"`). It is not compatible with the new firmware settings: its `SPEED` command is no longer supported and its old 0–3 volume values are interpreted on the new 0–100 scale. Use the Windows Go app with firmware implementing TD-10; the Python bridge is retired in Stage 3.
 
 The bridge is a Python program with the standard library's threaded HTTP server and pyserial for the port and device discovery. It finds the device among the serial ports by Espressif's USB vendor ID (`303A`) and accepts it only after `VERSION?` is answered (FW-11). It sends `PING` every 5 s (BRG-05).
 
@@ -210,8 +210,8 @@ WSL2 in NAT mode and devcontainers in Docker Engine in WSL2 cannot reach `127.0.
 |---|---|---|---|
 | Controller board | ESP32-C3 SuperMini | – | TD-01 |
 | Firmware framework | Arduino-ESP32 3.x with PlatformIO (pioarduino platform) | PlatformIO 6.2.0, pioarduino 55.03.312-1; toolchain baked into the devcontainer image | TD-02 |
-| Bridge (Linux, until stage 6) | Python | 3.14 | TD-03 |
-| Bridge runtime (Linux, until stage 6) | Docker container, image on GHCR | – | TD-04 |
+| Bridge (Linux, until stage 3) | Python | 3.14 | TD-03 |
+| Bridge runtime (Linux, until stage 3) | Docker container, image on GHCR | – | TD-04 |
 | Bridge app (Windows) and WSL relay | Go; fyne.io/systray, go.bug.st/serial, hashicorp/yamux, pelletier/go-toml/v2, natefinch/lumberjack; tests with go test and gotestsum (JUnit) | Go 1.27.4, gotestsum 1.13.0; libraries pinned in `go.sum` | TD-06 |
 | Windows installer | NSIS (`makensis`) | 3.08-3+deb12u1 from Debian Bookworm | TD-06 |
 | CAD | build123d; head mesh from Meshy.ai, processed with manifold3d | build123d 0.13.0, manifold3d 3.5.4 | TD-05 |
@@ -255,7 +255,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 #### TD-03 Bridge language: Python
 
-**Status:** decided (2026-11-05); since 2026-11-21 limited to the Linux Docker bridge, frozen, superseded by TD-06 in stage 6
+**Status:** decided (2026-11-05); since 2026-11-21 limited to the Linux Docker bridge, frozen, superseded by TD-06; retirement timing updated by TD-15
 
 **Context:** BRG-01 – BRG-12: HTTP server, serial, config, CLI; Linux/WSL2.
 
@@ -267,7 +267,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 #### TD-04 Bridge runtime: Docker container, image on GHCR
 
-**Status:** decided (2026-11-05); since 2026-11-21 Linux hosts only, superseded by TD-06 in stage 6
+**Status:** decided (2026-11-05); since 2026-11-21 Linux hosts only, superseded by TD-06; retirement timing updated by TD-15
 
 **Context:** BRG-06 (reconnect after replug), BRG-08 (local interfaces only), BRG-09 (autostart), runs on Linux/WSL2.
 
@@ -297,9 +297,9 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 **Options evaluated:** Go (one static binary per OS, cross-compiles from the devcontainer without cgo on Windows and Linux, libraries for tray, serial with USB IDs, TOML, log rotation, stream multiplexing); Python with PyInstaller and pystray (reuses the bridge code, but heavy exe, antivirus false alarms, no small static relay for WSL); Rust (same strengths as Go, slower to write). For WSL access: relay started by the app through `wsl.exe` (chosen); relay as a systemd unit in WSL (second autostart, needs systemd); app listening on the WSL virtual adapter (firewall rule, misses devcontainers in Docker Engine in WSL2). Installer: NSIS (chosen, runs on Linux); Inno Setup (only under Wine, not supported there); plain exe.
 
-**Decision:** The bridge is rewritten in Go (`bridge-go/`) as a tray app for Windows with the WSL relay (4.4, 4.6); the installer is built with NSIS. The Python Docker bridge stays for Linux hosts, frozen at the stage 2 feature set (fixes only); stage 3 features go into the Go bridge only. Stage 6 adds native Linux and macOS builds and retires the Python bridge, the image and `ci/publish`/`ci/promote`. The `cody` shell command and the Python hook installer stay; moving them into the Go program is decided at stage 3 start (AGT-10).
+**Decision:** The bridge is rewritten in Go (`bridge-go/`) as a tray app for Windows with the WSL relay (4.4, 4.6); the installer is built with NSIS. The Python Docker bridge stays for Linux hosts, frozen at the stage 2 feature set (fixes only); stage 3 features go into the Go bridge only. Stage 6 adds native Linux and macOS builds; its earlier retirement timing is superseded by TD-15. The `cody` shell command and the Python hook installer stay; moving them into the Go program is decided at stage 3 start (AGT-10).
 
-**Consequences:** Go toolchain, gotestsum and NSIS in the devcontainer; Go tests in `ci/check`, named `Test_req_BRG_02_…` so the requirement report reads them unchanged. Bridge logic, mapping and recorded payloads are tested on Linux in CI; Windows-only parts (tray, Run key, COM ports, `wsl.exe`, installer) are demonstrated on Windows (verification log). Two bridges exist until stage 6. The tray library must build for Windows without cgo (checked in step 2g; otherwise a pure-Go Windows tray library); macOS will need cgo for the tray (stage 6).
+**Consequences:** Go toolchain, gotestsum and NSIS in the devcontainer; Go tests in `ci/check`, named `Test_req_BRG_02_…` so the requirement report reads them unchanged. Bridge logic, mapping and recorded payloads are tested on Linux in CI; Windows-only parts (tray, Run key, COM ports, `wsl.exe`, installer) are demonstrated on Windows (verification log). The two bridges coexist until Stage 3 retirement; native Linux bridge support is absent until Stage 6. The tray library must build for Windows without cgo (checked in step 2g; otherwise a pure-Go Windows tray library); macOS will need cgo for the tray (stage 6).
 
 #### TD-07 Developer hardware test panel: local browser UI in the devcontainer
 
@@ -343,7 +343,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 **Context:** Motor tuning varies by device and needs to survive restarts; volume and brightness are user preferences. The test panel is bridge-backed (TST-06, TST-08), and the bridge website already owns settings (BRG-22).
 
-**Decision:** Store motor speed, PWM frequency, startup kick, decay mode and the last-write timestamp in ESP32 NVS. Tuning changes take effect in RAM; only explicit Save and Factory reset write NVS. The Windows Go bridge supplies UTC timestamps; the website displays local date/time and identifies firmware defaults that have never been saved. Store volume and brightness in the Windows Go bridge config. Both website sliders use 0–100% and 1% steps; volume defaults to 50% and maps to the buzzer's maximum duty with `V=(x/100)^2.5`; brightness defaults to 100% and uses the gamma-corrected multiplier `b=(x/100)^2.2` on the RGB channels after the existing 50% cap. Keep the Python Docker bridge frozen, knowingly incompatible with firmware implementing this decision until its Stage 6 retirement.
+**Decision:** Store motor speed, PWM frequency, startup kick, decay mode and the last-write timestamp in ESP32 NVS. Tuning changes take effect in RAM; only explicit Save and Factory reset write NVS. The Windows Go bridge supplies UTC timestamps; the website displays local date/time and identifies firmware defaults that have never been saved. Store volume and brightness in the Windows Go bridge config. Both website sliders use 0–100% and 1% steps; volume defaults to 50% and maps to the buzzer's maximum duty with `V=(x/100)^2.5`; brightness defaults to 100% and uses the gamma-corrected multiplier `b=(x/100)^2.2` on the RGB channels after the existing 50% cap. Keep the Python Docker bridge frozen, knowingly incompatible with firmware implementing this decision until its Stage 3 retirement.
 
 **Consequences:** The Go bridge queries tuning from the device and sends volume/brightness on connection. The serial protocol has explicit tuning query/save/reset operations. The Python bridge retains its old configuration and must not be used with the new firmware.
 
@@ -387,6 +387,16 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 **Consequences:** `ci/build-release` emits `cody-parts-list-<version>.csv` and `cody-assembly-instructions-<version>.pdf`. The Stage 2 parts list remains a draft; DOC-01 moves to step 5d, when the printed parts and fasteners are known.
 
+#### TD-15 Python Docker bridge retirement in Stage 3
+
+**Status:** decided (2026-11-22)
+
+**Context:** The Python Docker bridge is frozen and incompatible with the revised firmware. Keeping it until the Stage 6 native builds would extend the support burden; retiring it earlier leaves a gap for native Linux hosts.
+
+**Decision:** Retire the Python Docker bridge as the first step of Stage 3. Remove its source, image, compose file and image publish/promote entry points, and update the setup and delivery documentation. Native Linux and macOS Go builds remain in Stage 6. The owner accepts that native Linux hosts have no Cody bridge between Stage 3 retirement and Stage 6; Windows, WSL and devcontainers use the Windows Go bridge and relay in the interim.
+
+**Consequences:** The Stage 2 release remains usable with the Linux Docker bridge; Stage 3 releases no longer include it. Stage 6 restores native Linux support.
+
 ## 6. Version information
 
 | Artifact | How it reveals version and commit (REL-02) |
@@ -403,7 +413,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 |---|---|
 | Motor, LED and buzzer exceed 500 mA (ELE-04), especially at motor start | Small N20 motor, PWM soft start, LED brightness limited; measured in stage 4. |
 | Slow-decay PWM changes motor response and current compared with the existing fast-decay behavior | Keep fast decay as the default; compare both modes through the test panel on the bench before selecting any different normal setting. |
-| Serial plug & play inside the Docker container (TD-04, BRG-06) | No longer needed on Windows hosts (TD-06): BRG-06 is shown with the Windows app in step 2h. The Linux container's replug stays unproven until stage 6 replaces it. |
+| Serial plug & play inside the Docker container (TD-04, BRG-06) | No longer needed on Windows hosts (TD-06): BRG-06 is shown with the Windows app in step 2h. The Linux container's replug stays unproven until Stage 3 retires it. |
 | Tray library needs cgo on Windows (TD-06) | Checked with a `CGO_ENABLED=0` Windows build in step 2g; fallback: a pure-Go Windows tray library. |
 | Docker Desktop's `host.docker.internal` doesn't reach a listener on Windows `127.0.0.1`; the relay can't bind in WSL mirrored mode (AGT-12) | Shown in step 2i in each environment; if Docker Desktop fails, the app also listens on the address `host.docker.internal` reaches. |
 | Unsigned installer and exe: SmartScreen warning, antivirus false alarms | Documented in the setup guide; signing only if it becomes a real problem. |

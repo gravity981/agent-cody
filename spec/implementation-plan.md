@@ -27,8 +27,8 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 | Stage | Content | Milestone | Status |
 |---|---|---|---|
 | 1 | Walking skeleton: toolchain, CI, requirement report, first release candidate | | done |
-| 2 | Status light on the bench with Claude Code | M1 | in progress |
-| 3 | Copilot integration | M2 | open |
+| 2 | Status light on the bench with Claude Code | M1 | done (open points) |
+| 3 | Copilot integration | M2 | next |
 | 4 | Mechanism prototype | | open |
 | 5 | Character and assembly | M3 | open |
 | 6 | Native bridge for Linux and macOS, firmware updater | | open |
@@ -61,6 +61,8 @@ Requirements: REL-02 – REL-06.
 - *Redesign of the bridge (2026-11-21, TD-06): the Windows host uses the Windows app for serial access; usbipd-win is not needed for that workflow. Steps 2g – 2i were added after 2d. Local image flashing from the test panel, with no devcontainer USB access, was decided on 2026-11-22 (TD-11).*
 
 **Steps:**
+
+**Owner decision (2026-11-22):** Stage 2 is marked done with open points. All remaining manual verification is deferred, not passed; see the Stage 2 report in section 5.
 
 Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived. Order after 2d (decided 2026-11-21, TD-06, TD-08, TD-09; updated 2026-11-22, TD-11, TD-13): 2g, 2h, 2i, 2j, 2k, 2n, 2o, 2m, 2p, then 2e. Step 2l was moved to Stage 6 on 2026-11-22; Stage 2 adds local image flashing, while Stage 6 retains the GitHub release updater.
 
@@ -125,10 +127,13 @@ Requirements: DOC-02, DOC-05, DOC-06.
 
 **Steps:**
 
-**3a – Copilot hooks.** User-level hooks, mapping, session key by workspace folder, deduplication against Claude Code hooks; setup guide for both agents.
+**3a – Retire the Python Docker bridge.** Remove the `bridge/` Python package and tests, its uv workspace/pytest configuration, Docker image and compose asset generation, bridge-only helpers in `ci/lib.sh`, and `ci/publish`/`ci/promote`; regenerate `uv.lock`. Update `ci/README.md`, `docs/assembly-instructions.md`, and `delivery.md`; mark TD-03 and TD-04 retired. Native Linux bridge support will not return until step 6a (TD-15).
+Requirements: none (retirement of the Stage 2 BRG-07 implementation).
+
+**3b – Copilot hooks.** User-level hooks, mapping, session key by workspace folder, deduplication against Claude Code hooks; setup guide for both agents.
 Requirements: AGT-04 – AGT-06, AGT-08, AGT-09.
 
-**3b – One-command setup.** `cody setup`: starts the bridge with autostart, installs the hooks of both agents at user level, checks the device connection and reports what is missing.
+**3c – One-command setup.** `cody setup`: starts the bridge with autostart, installs the hooks of both agents at user level, checks the device connection and reports what is missing.
 Requirements: AGT-10.
 
 ### Stage 4 – Mechanism prototype
@@ -170,7 +175,7 @@ Requirements: DOC-01, DOC-04, DOC-07.
 ### Stage 6 – Native bridge for Linux and macOS, firmware updater
 
 Added 2026-11-21 (TD-06).
-Step 6c was added on 2026-11-22 by moving GitHub release checking from Stage 2. Local image flashing is delivered in Stage 2 (TD-11); the release updater remains Windows-first and its setup instructions are added to the build documentation here.
+Step 6b was added on 2026-11-22 by moving GitHub release checking from Stage 2. Local image flashing is delivered in Stage 2 (TD-11); the release updater remains Windows-first and its setup instructions are added to the build documentation here. The Python Docker bridge is retired in Stage 3, so native Linux bridge support is unavailable between that retirement and step 6a (TD-15).
 
 **Before the stage starts:**
 - A Mac (or a macOS CI runner) for building the tray with cgo and for the demonstrations.
@@ -181,10 +186,7 @@ Step 6c was added on 2026-11-22 by moving GitHub release checking from Stage 2. 
 **6a – Linux and macOS builds.** Native builds of the Go bridge with autostart and plug & play; delivered as release files; shown on a Linux host and a Mac.
 Requirements: BRG-19.
 
-**6b – Retire the Python bridge.** `bridge/`, the Docker image, the compose file, `ci/publish` and `ci/promote` removed; TD-03 and TD-04 marked superseded; setup guide and delivery.md updated.
-Requirements: none (part of BRG-19).
-
-**6c – GitHub release updater.** Add a user-initiated check of the latest stable Cody release to the Windows bridge website, with explicit confirmation, SHA-256 verification, serial handoff, the pinned espflash helper bundled in step 2m, progress, automatic bootloader entry and manual recovery/retry on failure; reconnect the bridge and report the result. Unknown current firmware can be updated only after explicit confirmation; same/newer versions do not offer an update. Add the updater setup instructions to the build documentation.
+**6b – GitHub release updater.** Add a user-initiated check of the latest stable Cody release to the Windows bridge website, with explicit confirmation, SHA-256 verification, serial handoff, the pinned espflash helper bundled in step 2m, progress, automatic bootloader entry and manual recovery/retry on failure; reconnect the bridge and report the result. Unknown current firmware can be updated only after explicit confirmation; same/newer versions do not offer an update. Add the updater setup instructions to the build documentation.
 Requirements: BRG-23, BRG-24.
 
 ## 4. Status report template
@@ -263,3 +265,46 @@ After each completed stage, Claude appends a report with this structure to secti
 - The KY-006 measured 15 Ω across its signal and ground pins on the bench and is driven through the DRV8833's second channel (2026-11-21).
 - Product photos in the parts list are the shops' images; replace them with own photos before a release.
 - GitHub Copilot's agent hooks are still in Preview (stage 3).
+
+### Stage 2 – Status light on the bench with Claude Code (2026-11-22)
+
+**Summary:** Stage 2's firmware, Windows bridge, test panel, local firmware flashing, LED brightness control and electronics documentation are implemented and merged to `main`. At the project owner's request, manual verification not recorded in the verification log is deferred. Its absence is not a claim that a check was not done, but unrecorded checks are not counted as passing evidence.
+
+**Steps:**
+- 2a, 2b, 2c, 2f, 2g – done.
+- 2d – implemented; ELE-01 – ELE-03 remain open.
+- 2h, 2i, 2j, 2k, 2m, 2n, 2o, 2p, 2e – implementation done; remaining hands-on checks deferred by the owner.
+- 2l – moved to Stage 6; local image flashing was added as 2m, while GitHub release checking remains a separate Stage 6 feature.
+- Python Docker bridge retirement – moved from Stage 6 step 6b to Stage 3 step 3a; the accepted native-Linux support gap is recorded in TD-15.
+
+**Requirements:** 53 of 60 planned for this stage are implemented; 56 have passing evidence. Seven remain open: FW-15, BRG-18, AGT-02, AGT-12 and ELE-01 – ELE-03. Four have no evidence in the report (BRG-18, ELE-01 – ELE-03); three have passing evidence but remain listed as not implemented because the required manual confirmation is not recorded (FW-15, AGT-02, AGT-12). Overall: 66 of 106 active requirements implemented.
+
+**Verification:** `ci/check` passed with 140 Python tests, 29 firmware native tests, 114 Go tests, static checks and firmware/Go/Windows installer builds. The requirement report has 0 errors and 3 warnings (FW-15, AGT-02, AGT-12). Fifteen manual records were added: FW-01, FW-04, FW-06, FW-07, FW-09, FW-13, FW-14, BRG-06, BRG-16, BRG-17, ELE-07 and TST-01 – TST-04. Unrecorded checks include factory reset, the Windows installer lifecycle, Windows-native Claude Code, WSL2/Docker Desktop routing, electronics inspections/measurements, first-time/update/recovery flashing and remaining website/panel/documentation demonstrations; these are deferred and are not counted as passing evidence.
+
+**Spec changes and deviations:**
+- Added decisions TD-10 – TD-14 for tuning/output preferences, local firmware flashing, manual bootloader flashing, temporary LED brightness and versioned documentation exports.
+- Moved the GitHub release updater from Stage 2 to Stage 6; moved the complete parts list DOC-01 to Stage 5 step 5d.
+- TD-15 moves Python Docker bridge retirement to Stage 3 step 3a. Native Linux bridge support is intentionally absent until Stage 6 step 6a; WSL and devcontainers continue to use the Windows bridge relay.
+- Stage 2 is marked done with seven requirements and additional manual evidence still open, at the owner's request. Passing automated evidence for a requirement does not replace the required manual record.
+
+**Overall status:**
+
+| Stage | Content | Status |
+|---|---|---|
+| 1 | Walking skeleton | done |
+| 2 | Status light on the bench with Claude Code | done (open points) |
+| 3 | Copilot integration | next |
+| 4 | Mechanism prototype | open |
+| 5 | Character and assembly | open |
+| 6 | Native bridge for Linux and macOS, firmware updater | open |
+
+**Remaining requirements by stage:** 1 → 0, 2 → 7, 3 → 6, 4 → 10, 5 → 14, 6 → 3.
+
+**Waiting on the project owner:**
+- Before Stage 3, check the current VS Code agent-hook behavior (Preview, available events and configuration location).
+- At Stage 3 start, decide whether the Go program takes over `cody` and `cody hooks install` (AGT-10), and whether Copilot reads user-level Claude Code hook configuration (AGT-08).
+- Existing open points before later stages remain in `spec/README.md`.
+
+**Risks and notes:**
+- Native Linux hosts lose the Python Docker bridge in Stage 3 and have no native replacement until Stage 6 step 6a. The owner accepted this gap; Windows, WSL and devcontainers use the Windows bridge/relay in the interim.
+- Deferred verifications remain open in `spec/verification.md`; the latest requirement report has 3 warnings and no errors.

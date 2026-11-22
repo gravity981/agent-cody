@@ -62,15 +62,15 @@ Everything a user needs to make Cody work is a release file; nothing has to be t
 | Entry point | Does in Cody |
 |---|---|
 | `ci/check` | Firmware unit tests (PlatformIO `native`), firmware build, bridge tests (pytest), Go bridge app and relay tests (go test, gotestsum) and builds for Windows and Linux, hook mapping tests, CAD model checks, requirement report tests; then the requirement report. |
-| `ci/build-release` | Into `RELEASE_DIR`: firmware as one combined image `cody-firmware-<version>.bin` (bootloader, partition table and app, flashed at 0x0), print files (3MF/STL), Windows installer `cody-<version>-windows-setup.exe` (bridge app, WSL relay, embedded website, pinned espflash helper and its license notices, TD-06/TD-08/TD-09), compose file for the Linux bridge (until stage 6), hook installer `cody-install-claude-code-<version>` (Python script) and setup guide, host command `cody-<version>` (shell script), parts list as CSV and assembly instructions as PDF rendered from the Markdown (DOC-06), wiring diagram, each with the version in its name; and `LICENSE`. |
-| `ci/publish` | Builds the bridge image and pushes it to GHCR as `cody-bridge:<version>-rc.<M>` (from `CANDIDATE_TAG`); needs `packages: write`. |
-| `ci/promote` | Adds the tags `<version>` and `latest` to the candidate's image on GHCR, without rebuilding; needs `packages: write`. |
+| `ci/build-release` | Into `RELEASE_DIR`: firmware as one combined image `cody-firmware-<version>.bin` (bootloader, partition table and app, flashed at 0x0), print files (3MF/STL), Windows installer `cody-<version>-windows-setup.exe` (bridge app, WSL relay, embedded website, pinned espflash helper and its license notices, TD-06/TD-08/TD-09), compose file for the Linux bridge (until Stage 3), hook installer `cody-install-claude-code-<version>` (Python script) and setup guide, host command `cody-<version>` (shell script), parts list as CSV and assembly instructions as PDF rendered from the Markdown (DOC-06), wiring diagram, each with the version in its name; and `LICENSE`. |
+| `ci/publish` | Builds the bridge image and pushes it to GHCR as `cody-bridge:<version>-rc.<M>` (from `CANDIDATE_TAG`); needs `packages: write`; retired in Stage 3. |
+| `ci/promote` | Adds the tags `<version>` and `latest` to the candidate's image on GHCR, without rebuilding; needs `packages: write`; retired in Stage 3. |
 
 For DOC-06, `ci/build-release` creates `cody-parts-list-<version>.csv` from the parts-list Markdown and `cody-assembly-instructions-<version>.pdf` from the assembly-instructions Markdown, using the pinned Pandoc and WeasyPrint packages in the devcontainer.
 
 The Windows updater reads the firmware asset's SHA-256 digest from the official GitHub release metadata and fails closed if the digest is absent or does not match; the firmware image remains a release asset.
 
-The bridge image on GHCR is public, so the compose file pulls it without a login. It carries the OCI labels for version, commit, source repository and licence (`MIT`). `ci/publish` and `ci/promote` log in to GHCR with the workflow's `GITHUB_TOKEN` (`packages: write`), passed into the devcontainer; no personal token is needed. The entry points get Docker through the devcontainer feature docker-outside-of-docker. The first release (stage 1) contains skeletons: firmware that only sends `READY <version>`, and a bridge image that only answers `--version`, with its compose file.
+Until Stage 3, the bridge image on GHCR is public, so the compose file pulls it without a login. It carries the OCI labels for version, commit, source repository and licence (`MIT`). `ci/publish` and `ci/promote` log in to GHCR with the workflow's `GITHUB_TOKEN` (`packages: write`), passed into the devcontainer; no personal token is needed. The entry points get Docker through the devcontainer feature docker-outside-of-docker. The first release (stage 1) contains skeletons: firmware that only sends `READY <version>`, and a bridge image that only answers `--version`, with its compose file.
 
 ## 3. Release flow
 
@@ -105,7 +105,7 @@ flowchart LR
 
 ## 4. Delivery to users
 
-Download only, plus the bridge image on GHCR until stage 6. The owner downloads the release files from the GitHub release, flashes the firmware, prints the parts, runs the hook installer, and starts the bridge: on Windows by running the installer and ticking "Start automatically" in the tray; on Linux with the compose file, which pulls `cody-bridge:<version>` from GHCR. Stage 6 replaces the image with native Linux and macOS builds as release files. Recorded in README.md "Decisions".
+Download only, plus the bridge image on GHCR until Stage 3. The owner downloads the release files from the GitHub release, flashes the firmware, prints the parts, runs the hook installer, and starts the bridge: on Windows by running the installer and ticking "Start automatically" in the tray; on Linux with the compose file, which pulls `cody-bridge:<version>` from GHCR. Stage 3 retires the Linux Docker bridge; native Linux and macOS builds arrive in Stage 6, leaving an intentional native-Linux support gap in between (TD-15). Recorded in README.md "Decisions".
 
 ## 5. Environments
 
