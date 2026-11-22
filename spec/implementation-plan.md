@@ -123,17 +123,17 @@ Requirements: DOC-02, DOC-05, DOC-06.
 ### Stage 3 – Copilot integration
 
 **Before the stage starts:**
-- Current state of VS Code agent hooks checked (Preview; events, config location).
+- Checked 2026-11-22 against the [VS Code agent hooks documentation](https://code.visualstudio.com/docs/agent-customization/hooks) and [Copilot hooks reference](https://docs.github.com/en/copilot/reference/hooks-reference): hooks remain in Preview. VS Code documents user hook files in `~/.copilot/hooks/` or `$COPILOT_HOME/hooks/`, and lists `sessionStart`, `userPromptSubmitted`, `preToolUse`, `postToolUse`, `preCompact`, `subagentStart`, `subagentStop`, `agentStop` and `sessionEnd`. It also reads repository `.claude/settings.json` and `.claude/settings.local.json`, but does not list Claude Code's user-level `~/.claude/settings.json`; AGT-05's approval/error event availability must be verified in the target VS Code runtime during step 3b.
 
 **Steps:**
 
 **3a – Retire the Python Docker bridge.** Remove the `bridge/` Python package and tests, its uv workspace/pytest configuration, Docker image and compose asset generation, bridge-only helpers in `ci/lib.sh`, and `ci/publish`/`ci/promote`; regenerate `uv.lock`. Update `ci/README.md`, `docs/assembly-instructions.md`, and `delivery.md`; mark TD-03 and TD-04 retired. Native Linux bridge support will not return until step 6a (TD-15).
 Requirements: none (retirement of the Stage 2 BRG-07 implementation).
 
-**3b – Copilot hooks.** User-level hooks, mapping, session key by workspace folder, deduplication against Claude Code hooks; setup guide for both agents.
+**3b – Copilot hooks.** User-level hooks, mapping, session key by workspace folder, deduplication against all applicable hook sources; verify AGT-05's approval/error event availability in the target VS Code runtime; setup guide for both agents.
 Requirements: AGT-04 – AGT-06, AGT-08, AGT-09.
 
-**3c – One-command setup.** `cody setup`: starts the bridge with autostart, installs the hooks of both agents at user level, checks the device connection and reports what is missing.
+**3c – One-command setup.** The Go program takes over `cody` and its hook installer, replacing the shell command and Python installer. `cody setup` starts the bridge with autostart, installs the hooks of both agents at user level, checks the device connection and reports what is missing on Windows and through its WSL/devcontainer relay. Native Linux reports the bridge as unsupported until step 6a (TD-15).
 Requirements: AGT-10.
 
 ### Stage 4 – Mechanism prototype
@@ -247,8 +247,8 @@ After each completed stage, Claude appends a report with this structure to secti
 | Stage | Content | Status |
 |---|---|---|
 | 1 | Walking skeleton | done |
-| 2 | Status light on the bench with Claude Code | in progress |
-| 3 | Copilot integration | open |
+| 2 | Status light on the bench with Claude Code | done (open points) |
+| 3 | Copilot integration | in progress |
 | 4 | Mechanism prototype | open |
 | 5 | Character and assembly | open |
 
