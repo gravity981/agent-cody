@@ -24,6 +24,8 @@ bool parseInt(const char* text, int min, int max, int& out) {
   return true;
 }
 
+bool isDigit(char c) { return c >= '0' && c <= '9'; }
+
 // The argument after "NAME:" if line starts with it, else nullptr.
 const char* argumentOf(const char* line, const char* name) {
   const size_t n = std::strlen(name);
@@ -71,6 +73,13 @@ bool parseDecay(const char* text, MotorDecay& out) {
   return true;
 }
 
+bool copyTimestamp(const char* text, Command& out) {
+  const size_t length = std::strlen(text);
+  if (length >= sizeof(out.timestamp) || !isUtcTimestamp(text)) return false;
+  std::memcpy(out.timestamp, text, length + 1);
+  return true;
+}
+
 bool parseRgb(const char* arg, Command& out) {
   char parts[3][4] = {};
   int part = 0;
@@ -100,12 +109,33 @@ bool parseRgb(const char* arg, Command& out) {
 
 }  // namespace
 
+bool isUtcTimestamp(const char* text) {
+  const size_t length = std::strlen(text);
+  if (length < 20 || length > 39 || text[4] != '-' || text[7] != '-' || text[10] != 'T' ||
+      text[13] != ':' || text[16] != ':') {
+    return false;
+  }
+  for (size_t i = 0; i < 19; ++i) {
+    if (i != 4 && i != 7 && i != 10 && i != 13 && i != 16 && !isDigit(text[i])) return false;
+  }
+  size_t suffix = 19;
+  if (text[suffix] == '.') {
+    ++suffix;
+    const size_t fractionStart = suffix;
+    while (suffix < length && isDigit(text[suffix])) ++suffix;
+    if (suffix == fractionStart) return false;
+  }
+  return suffix + 1 == length && text[suffix] == 'Z';
+}
+
 const char* parseCommand(const char* line, Command& out) {
   const char* arg = nullptr;
   if (std::strcmp(line, "PING") == 0) {
     out.kind = Command::Kind::Ping;
   } else if (std::strcmp(line, "VERSION?") == 0) {
     out.kind = Command::Kind::VersionQuery;
+  } else if (std::strcmp(line, "TUNING?") == 0) {
+    out.kind = Command::Kind::TuningQuery;
   } else if (std::strcmp(line, "TEST:START") == 0) {
     out.kind = Command::Kind::TestStart;
   } else if (std::strcmp(line, "TEST:STOP") == 0) {
@@ -121,8 +151,11 @@ const char* parseCommand(const char* line, Command& out) {
     if (!parseInt(arg, 0, 255, out.value)) return "bad value";
     out.kind = Command::Kind::Speed;
   } else if ((arg = argumentOf(line, "VOLUME")) != nullptr) {
-    if (!parseInt(arg, 0, 3, out.value)) return "bad value";
+    if (!parseInt(arg, 0, 100, out.value)) return "bad value";
     out.kind = Command::Kind::Volume;
+  } else if ((arg = argumentOf(line, "BRIGHTNESS")) != nullptr) {
+    if (!parseInt(arg, 0, 100, out.value)) return "bad value";
+    out.kind = Command::Kind::Brightness;
   } else if ((arg = argumentOf(line, "BEEP")) != nullptr) {
     if (!parseSound(arg, out.sound)) return "unknown sound";
     out.kind = Command::Kind::Beep;
@@ -145,8 +178,14 @@ const char* parseCommand(const char* line, Command& out) {
     if (!parseDecay(arg, out.decay)) return "bad decay mode";
     out.kind = Command::Kind::TestDecay;
   } else if ((arg = argumentOf(line, "TEST:VOLUME")) != nullptr) {
-    if (!parseInt(arg, 0, 3, out.value)) return "bad value";
+    if (!parseInt(arg, 0, 100, out.value)) return "bad value";
     out.kind = Command::Kind::TestVolume;
+  } else if ((arg = argumentOf(line, "TEST:TUNING:SAVE")) != nullptr) {
+    if (!copyTimestamp(arg, out)) return "bad timestamp";
+    out.kind = Command::Kind::TestTuningSave;
+  } else if ((arg = argumentOf(line, "TEST:TUNING:RESET")) != nullptr) {
+    if (!copyTimestamp(arg, out)) return "bad timestamp";
+    out.kind = Command::Kind::TestTuningReset;
   } else if ((arg = argumentOf(line, "TEST:LED")) != nullptr) {
     if (!parseRgb(arg, out)) return "bad value";
     out.kind = Command::Kind::TestLed;

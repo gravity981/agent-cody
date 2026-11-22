@@ -10,11 +10,42 @@
 using cody::Device;
 using cody::LineReader;
 using cody::MotorDecay;
+using cody::MotorTuning;
 using cody::Outputs;
 using cody::Rgb;
 using cody::State;
+using cody::TuningLoadResult;
+using cody::TuningStore;
 
 namespace {
+
+class FakeTuningStore : public TuningStore {
+ public:
+  TuningLoadResult load(MotorTuning& out, std::string& outTimestamp) override {
+    ++loadCount;
+    if (loadResult == TuningLoadResult::Loaded) {
+      out = storedTuning;
+      outTimestamp = storedTimestamp;
+    }
+    return loadResult;
+  }
+
+  bool save(const MotorTuning& tuning, const std::string& timestamp) override {
+    ++saveCount;
+    if (!saveResult) return false;
+    storedTuning = tuning;
+    storedTimestamp = timestamp;
+    loadResult = TuningLoadResult::Loaded;
+    return true;
+  }
+
+  TuningLoadResult loadResult = TuningLoadResult::Missing;
+  bool saveResult = true;
+  MotorTuning storedTuning;
+  std::string storedTimestamp;
+  int loadCount = 0;
+  int saveCount = 0;
+};
 
 std::string send(Device& d, const char* line, uint32_t t) { return d.handleLine(line, t); }
 
@@ -129,8 +160,8 @@ void test_req_FW_08_motor_stopped_outside_working() {
 
 void test_req_FW_10_every_command_is_answered_ok() {
   Device d("1.2.3", "abc");
-  for (const char* line :
-       {"PING", "STATE:THINKING", "SPEED:10", "VOLUME:1", "LED:1,2,3", "BEEP:SUCCESS"}) {
+  for (const char* line : {"PING", "STATE:THINKING", "SPEED:10", "VOLUME:50", "BRIGHTNESS:100",
+                           "LED:1,2,3", "BEEP:SUCCESS"}) {
     TEST_ASSERT_EQUAL_STRING("OK\n", send(d, line, 0).c_str());
   }
 }
@@ -147,7 +178,7 @@ void test_req_FW_10_errors_keep_the_state() {
       {"SPEED:256", "ERR bad value\n"},
       {"SPEED:-1", "ERR bad value\n"},
       {"SPEED:", "ERR bad value\n"},
-      {"VOLUME:4", "ERR bad value\n"},
+      {"VOLUME:101", "ERR bad value\n"},
       {"LED:1,2", "ERR bad value\n"},
       {"LED:1,2,3,4", "ERR bad value\n"},
       {"LED:300,0,0", "ERR bad value\n"},
@@ -294,13 +325,13 @@ void test_req_TST_04_raw_led_test_is_capped_and_cleared_by_state_preset() {
 void test_req_TST_05_test_volume_applies_to_normal_state_sounds() {
   Device d("1.2.3", "abc");
   send(d, "TEST:START", 0);
-  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:VOLUME:3", 1).c_str());
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:VOLUME:100", 1).c_str());
   send(d, "TEST:BEEP:SUCCESS", 10);
   TEST_ASSERT_EQUAL_UINT16(512, d.update(20).toneDuty);
   send(d, "TEST:STOP", 500);
   send(d, "STATE:APPROVAL", 501);
   TEST_ASSERT_EQUAL_UINT16(512, d.update(510).toneDuty);
-  TEST_ASSERT_EQUAL_STRING("ERR bad value\n", send(d, "TEST:VOLUME:4", 511).c_str());
+  TEST_ASSERT_EQUAL_STRING("ERR bad value\n", send(d, "TEST:VOLUME:101", 511).c_str());
 }
 
 void test_req_TST_07_timeout_stops_test_motor_and_keeps_volatile_tunings() {
@@ -379,14 +410,98 @@ void test_req_FW_07_disconnected_until_first_command() {
 
 void test_req_FW_09_volume_levels_and_mute() {
   Device d("1.2.3", "abc");
-  const uint16_t expected[] = {0, 30, 120, 512};
-  for (int level = 0; level <= 3; ++level) {
-    send(d, (std::string("VOLUME:") + std::to_string(level)).c_str(), 0);
+  const struct {
+    int percent;
+    uint16_t duty;
+  } cases[] = {{0, 0}, {50, 91}, {100, 512}};
+  for (const auto& test : cases) {
+    send(d, (std::string("VOLUME:") + std::to_string(test.percent)).c_str(), 0);
     send(d, "BEEP:WARNING", 0);
     const Outputs out = d.update(10);
     TEST_ASSERT_EQUAL_UINT16(3000, out.toneHz);
-    TEST_ASSERT_EQUAL_UINT16(expected[level], out.toneDuty);
+    TEST_ASSERT_EQUAL_UINT16(test.duty, out.toneDuty);
   }
+  TEST_ASSERT_EQUAL_STRING("ERR bad value\n", send(d, "VOLUME:101", 20).c_str());
+}
+
+void test_req_FW_14_brightness_uses_gamma_after_the_led_cap() {
+  Device d("1.2.3", "abc");
+  send(d, "STATE:ERROR", 0);
+  TEST_ASSERT_EQUAL_UINT8(127, d.update(10).led.r);
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "BRIGHTNESS:50", 20).c_str());
+  TEST_ASSERT_EQUAL_UINT8(28, d.update(20).led.r);
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "BRIGHTNESS:0", 30).c_str());
+  assertLed({}, d.update(30).led);
+  TEST_ASSERT_EQUAL_STRING("ERR bad value\n", send(d, "BRIGHTNESS:101", 40).c_str());
+}
+
+void test_req_FW_13_tuning_defaults_are_unsaved_and_save_load_persistently() {
+  constexpr const char* savedAt = "2026-03-16T12:34:56.789Z";
+  FakeTuningStore store;
+  Device d("1.2.3", "abc");
+  d.loadTuning(store);
+  TEST_ASSERT_EQUAL_INT(1, store.loadCount);
+  TEST_ASSERT_EQUAL_STRING("TUNING:224,10000,1,FAST,UNSAVED\nOK\n", send(d, "TUNING?", 0).c_str());
+  TEST_ASSERT_EQUAL_INT(0, store.saveCount);
+
+  TEST_ASSERT_EQUAL_STRING("ERR test mode inactive\n",
+                           send(d, "TEST:TUNING:SAVE:2026-03-16T12:34:56Z", 1).c_str());
+  send(d, "TEST:START", 2);
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:SPEED:100", 3).c_str());
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:FREQ:30000", 4).c_str());
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:KICK:5", 5).c_str());
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:DECAY:SLOW", 6).c_str());
+  TEST_ASSERT_EQUAL_STRING(
+      "OK\n", send(d, (std::string("TEST:TUNING:SAVE:") + savedAt).c_str(), 7).c_str());
+  TEST_ASSERT_EQUAL_INT(1, store.saveCount);
+  TEST_ASSERT_EQUAL_STRING(savedAt, store.storedTimestamp.c_str());
+  TEST_ASSERT_EQUAL_STRING("TUNING:100,30000,5,SLOW,2026-03-16T12:34:56.789Z\nOK\n",
+                           send(d, "TUNING?", 8).c_str());
+
+  Device rebooted("1.2.3", "abc");
+  rebooted.loadTuning(store);
+  TEST_ASSERT_EQUAL_INT(2, store.loadCount);
+  TEST_ASSERT_EQUAL_INT(100, rebooted.speed());
+  TEST_ASSERT_EQUAL_UINT32(30000, rebooted.tuning().frequencyHz);
+  TEST_ASSERT_EQUAL_STRING(savedAt, rebooted.tuningTimestamp().c_str());
+}
+
+void test_req_FW_15_factory_reset_persists_defaults_and_timestamp() {
+  FakeTuningStore store;
+  store.loadResult = TuningLoadResult::Loaded;
+  store.storedTuning.speed = 100;
+  store.storedTuning.frequencyHz = 30000;
+  store.storedTuning.kickStartMs = 5;
+  store.storedTuning.decay = MotorDecay::Slow;
+  store.storedTimestamp = "2026-03-16T12:34:56Z";
+  Device d("1.2.3", "abc");
+  d.loadTuning(store);
+  send(d, "TEST:START", 0);
+  const char* resetAt = "2026-03-16T13:00:00Z";
+  TEST_ASSERT_EQUAL_STRING(
+      "OK\n", send(d, (std::string("TEST:TUNING:RESET:") + resetAt).c_str(), 1).c_str());
+  TEST_ASSERT_EQUAL_INT(1, store.saveCount);
+  TEST_ASSERT_EQUAL_INT(224, store.storedTuning.speed);
+  TEST_ASSERT_EQUAL_UINT32(10000, store.storedTuning.frequencyHz);
+  TEST_ASSERT_EQUAL_UINT8(1, store.storedTuning.kickStartMs);
+  TEST_ASSERT_TRUE(store.storedTuning.decay == MotorDecay::Fast);
+  TEST_ASSERT_EQUAL_STRING(resetAt, store.storedTimestamp.c_str());
+  TEST_ASSERT_EQUAL_STRING("TUNING:224,10000,1,FAST,2026-03-16T13:00:00Z\nOK\n",
+                           send(d, "TUNING?", 2).c_str());
+}
+
+void test_req_FW_13_req_FW_15_storage_failures_are_reported() {
+  FakeTuningStore store;
+  store.loadResult = TuningLoadResult::Error;
+  store.saveResult = false;
+  Device d("1.2.3", "abc");
+  d.loadTuning(store);
+  TEST_ASSERT_EQUAL_STRING("ERR tuning storage unavailable\n", send(d, "TUNING?", 0).c_str());
+  send(d, "TEST:START", 1);
+  TEST_ASSERT_EQUAL_STRING("ERR tuning save failed\n",
+                           send(d, "TEST:TUNING:SAVE:2026-03-16T12:34:56Z", 2).c_str());
+  TEST_ASSERT_EQUAL_STRING("ERR tuning reset failed\n",
+                           send(d, "TEST:TUNING:RESET:2026-03-16T12:34:56Z", 3).c_str());
 }
 
 int main() {
@@ -415,5 +530,9 @@ int main() {
   RUN_TEST(test_req_FW_06_timeout_stops_motor_and_shows_disconnected);
   RUN_TEST(test_req_FW_07_disconnected_until_first_command);
   RUN_TEST(test_req_FW_09_volume_levels_and_mute);
+  RUN_TEST(test_req_FW_14_brightness_uses_gamma_after_the_led_cap);
+  RUN_TEST(test_req_FW_13_tuning_defaults_are_unsaved_and_save_load_persistently);
+  RUN_TEST(test_req_FW_15_factory_reset_persists_defaults_and_timestamp);
+  RUN_TEST(test_req_FW_13_req_FW_15_storage_failures_are_reported);
   return UNITY_END();
 }

@@ -6,6 +6,10 @@ namespace cody {
 
 namespace {
 
+constexpr uint16_t kMaximumVolumeDuty = 512;
+constexpr double kBrightnessGamma = 2.2;
+constexpr double kVolumeGamma = 2.5;
+
 struct Note {
   uint16_t hz;  // 0 = pause
   uint16_t ms;
@@ -49,11 +53,17 @@ Sound soundOf(State state) {
 
 constexpr double kPi = 3.14159265358979323846;
 
-// colour at percent of the capped brightness
-Rgb scaled(uint8_t r, uint8_t g, uint8_t b, double percent) {
+// Apply state brightness and the hardware cap before the user's gamma setting.
+Rgb scaled(uint8_t r, uint8_t g, uint8_t b, double percent, int brightness) {
   const double f = percent / 100.0 * kLedCap / 255.0;
-  auto c = [f](uint8_t v) { return static_cast<uint8_t>(std::lround(v * f)); };
+  const double gamma = std::pow(brightness / 100.0, kBrightnessGamma);
+  auto c = [f, gamma](uint8_t v) { return static_cast<uint8_t>(std::lround(v * f * gamma)); };
   return {c(r), c(g), c(b)};
+}
+
+uint16_t volumeDuty(int volume) {
+  const double level = volume / 100.0;
+  return static_cast<uint16_t>(std::lround(kMaximumVolumeDuty * std::pow(level, kVolumeGamma)));
 }
 
 // 0..1..0 over one period (cosine), starting at the low point
@@ -66,6 +76,44 @@ bool blinkOn(uint32_t ms, uint32_t periodMs) { return (ms % periodMs) < periodMs
 
 }  // namespace
 
+void Device::loadTuning(TuningStore& store) {
+  tuningStore_ = &store;
+  MotorTuning loaded;
+  std::string timestamp;
+  switch (store.load(loaded, timestamp)) {
+    case TuningLoadResult::Missing:
+      tuning_ = MotorTuning{};
+      tuningTimestamp_.clear();
+      tuningStoreReady_ = true;
+      return;
+    case TuningLoadResult::Loaded:
+      if (!validTuning(loaded) || !isUtcTimestamp(timestamp.c_str())) {
+        tuningStoreReady_ = false;
+        return;
+      }
+      tuning_ = loaded;
+      tuningTimestamp_ = timestamp;
+      tuningStoreReady_ = true;
+      return;
+    case TuningLoadResult::Error:
+      tuningStoreReady_ = false;
+      return;
+  }
+}
+
+bool Device::validTuning(const MotorTuning& tuning) const {
+  return tuning.frequencyHz >= 1000 && tuning.frequencyHz <= 30000 && tuning.kickStartMs <= 100 &&
+         (tuning.decay == MotorDecay::Fast || tuning.decay == MotorDecay::Slow);
+}
+
+std::string Device::tuningReply() const {
+  if (!tuningStoreReady_) return "ERR tuning storage unavailable\n";
+  return "TUNING:" + std::to_string(tuning_.speed) + "," + std::to_string(tuning_.frequencyHz) +
+         "," + std::to_string(tuning_.kickStartMs) + "," +
+         (tuning_.decay == MotorDecay::Fast ? "FAST" : "SLOW") + "," +
+         (tuningTimestamp_.empty() ? "UNSAVED" : tuningTimestamp_) + "\n";
+}
+
 bool Device::connected(uint32_t nowMs) const {
   return everConnected_ && (nowMs - lastCommandMs_) < kTimeoutMs;
 }
@@ -77,13 +125,15 @@ std::string Device::handleLine(const char* line, uint32_t nowMs) {
   }
 
   const bool normalControl = cmd.kind == Command::Kind::State || cmd.kind == Command::Kind::Speed ||
-                             cmd.kind == Command::Kind::Volume || cmd.kind == Command::Kind::Led ||
-                             cmd.kind == Command::Kind::Beep;
+                             cmd.kind == Command::Kind::Volume ||
+                             cmd.kind == Command::Kind::Brightness ||
+                             cmd.kind == Command::Kind::Led || cmd.kind == Command::Kind::Beep;
   const bool testControl =
       cmd.kind == Command::Kind::TestState || cmd.kind == Command::Kind::TestMotorStart ||
       cmd.kind == Command::Kind::TestMotorStop || cmd.kind == Command::Kind::TestSpeed ||
       cmd.kind == Command::Kind::TestFrequency || cmd.kind == Command::Kind::TestKick ||
       cmd.kind == Command::Kind::TestDecay || cmd.kind == Command::Kind::TestVolume ||
+      cmd.kind == Command::Kind::TestTuningSave || cmd.kind == Command::Kind::TestTuningReset ||
       cmd.kind == Command::Kind::TestLed || cmd.kind == Command::Kind::TestBeep;
   if (testMode_ && normalControl) return "ERR test mode active\n";
   if (!testMode_ && testControl) return "ERR test mode inactive\n";
@@ -100,13 +150,20 @@ std::string Device::handleLine(const char* line, uint32_t nowMs) {
     case Command::Kind::Ping:
       break;
     case Command::Kind::Speed:
-      speed_ = cmd.value;
+      tuning_.speed = static_cast<uint8_t>(cmd.value);
       break;
     case Command::Kind::Volume:
       volume_ = cmd.value;
       break;
+    case Command::Kind::Brightness:
+      brightness_ = cmd.value;
+      break;
     case Command::Kind::VersionQuery:
       response = std::string("VERSION ") + version_ + " " + commit_ + "\n";
+      break;
+    case Command::Kind::TuningQuery:
+      response = tuningReply();
+      if (response.rfind("ERR ", 0) == 0) return response;
       break;
     case Command::Kind::Led:
       ledOverride_ = true;
@@ -144,20 +201,42 @@ std::string Device::handleLine(const char* line, uint32_t nowMs) {
       testMotorEnabled_ = false;
       break;
     case Command::Kind::TestSpeed:
-      speed_ = cmd.value;
+      tuning_.speed = static_cast<uint8_t>(cmd.value);
       break;
     case Command::Kind::TestFrequency:
-      motorFrequencyHz_ = static_cast<uint32_t>(cmd.value);
+      tuning_.frequencyHz = static_cast<uint32_t>(cmd.value);
       break;
     case Command::Kind::TestKick:
-      kickStartMs_ = static_cast<uint32_t>(cmd.value);
+      tuning_.kickStartMs = static_cast<uint8_t>(cmd.value);
       break;
     case Command::Kind::TestDecay:
-      motorDecay_ = cmd.decay;
+      tuning_.decay = cmd.decay;
       break;
     case Command::Kind::TestVolume:
       volume_ = cmd.value;
       break;
+    case Command::Kind::TestTuningSave: {
+      const std::string timestamp(cmd.timestamp);
+      if (!tuningStore_ || !tuningStore_->save(tuning_, timestamp)) {
+        tuningStoreReady_ = false;
+        return "ERR tuning save failed\n";
+      }
+      tuningTimestamp_ = timestamp;
+      tuningStoreReady_ = true;
+      break;
+    }
+    case Command::Kind::TestTuningReset: {
+      const MotorTuning defaults;
+      const std::string timestamp(cmd.timestamp);
+      if (!tuningStore_ || !tuningStore_->save(defaults, timestamp)) {
+        tuningStoreReady_ = false;
+        return "ERR tuning reset failed\n";
+      }
+      tuning_ = defaults;
+      tuningTimestamp_ = timestamp;
+      tuningStoreReady_ = true;
+      break;
+    }
     case Command::Kind::TestLed:
       ledOverride_ = true;
       ledOverrideColour_ = {cmd.r, cmd.g, cmd.b};
@@ -193,17 +272,17 @@ Rgb Device::stateLed(uint32_t nowMs) const {
   const uint32_t t = nowMs - stateSinceMs_;
   switch (state_) {
     case State::Idle:
-      return scaled(0, 0, 255, 15);
+      return scaled(0, 0, 255, 15, brightness_);
     case State::Working:
-      return scaled(0, 0, 255, 20 + 80 * pulse(t, 2000));
+      return scaled(0, 0, 255, 20 + 80 * pulse(t, 2000), brightness_);
     case State::Thinking:
-      return scaled(255, 160, 0, 50);
+      return scaled(255, 160, 0, 50, brightness_);
     case State::Approval:
-      return blinkOn(t, 1000) ? scaled(255, 60, 0, 100) : Rgb{};
+      return blinkOn(t, 1000) ? scaled(255, 60, 0, 100, brightness_) : Rgb{};
     case State::Completed:
-      return scaled(0, 255, 0, 50);
+      return scaled(0, 255, 0, 50, brightness_);
     case State::Error:
-      return blinkOn(t, 500) ? scaled(255, 0, 0, 100) : Rgb{};
+      return blinkOn(t, 500) ? scaled(255, 0, 0, 100, brightness_) : Rgb{};
   }
   return {};
 }
@@ -214,7 +293,7 @@ void Device::soundAt(uint32_t nowMs, Outputs& out) {
   for (int i = 0; i < tune.count; ++i) {
     if (t < tune.notes[i].ms) {
       out.toneHz = tune.notes[i].hz;
-      out.toneDuty = tune.notes[i].hz ? kVolumeDuty[volume_] : 0;
+      out.toneDuty = tune.notes[i].hz ? volumeDuty(volume_) : 0;
       return;
     }
     t -= tune.notes[i].ms;
@@ -224,8 +303,8 @@ void Device::soundAt(uint32_t nowMs, Outputs& out) {
 
 Outputs Device::update(uint32_t nowMs) {
   Outputs out;
-  out.motorFrequencyHz = motorFrequencyHz_;
-  out.motorDecay = motorDecay_;
+  out.motorFrequencyHz = tuning_.frequencyHz;
+  out.motorDecay = tuning_.decay;
   if (!connected(nowMs)) {
     // FW-06, FW-07: motor stopped, slow dim white pulse
     if (wasConnected_ || testMode_) {
@@ -235,21 +314,24 @@ Outputs Device::update(uint32_t nowMs) {
     wasConnected_ = false;
     motorRunning_ = false;
     sound_ = Sound::None;
-    out.led = scaled(255, 255, 255, 10 * pulse(nowMs, 4000));
+    out.led = scaled(255, 255, 255, 10 * pulse(nowMs, 4000), brightness_);
     return out;
   }
   wasConnected_ = true;
 
-  out.led = ledOverride_
-                ? scaled(ledOverrideColour_.r, ledOverrideColour_.g, ledOverrideColour_.b, 100)
-                : stateLed(nowMs);
+  out.led = ledOverride_ ? scaled(ledOverrideColour_.r, ledOverrideColour_.g, ledOverrideColour_.b,
+                                  100, brightness_)
+                         : stateLed(nowMs);
   soundAt(nowMs, out);
 
   const bool manualMotor = testMode_ && testMotorOverride_;
-  const bool run = (manualMotor ? testMotorEnabled_ : state_ == State::Working) && speed_ > 0;
+  const bool run =
+      (manualMotor ? testMotorEnabled_ : state_ == State::Working) && tuning_.speed > 0;
   if (run && !motorRunning_) motorSinceMs_ = nowMs;
   motorRunning_ = run;
-  if (run) out.motorDuty = (nowMs - motorSinceMs_) < kickStartMs_ ? 255 : speed_;
+  if (run) {
+    out.motorDuty = (nowMs - motorSinceMs_) < tuning_.kickStartMs ? 255 : tuning_.speed;
+  }
   return out;
 }
 

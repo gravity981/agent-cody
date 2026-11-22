@@ -155,7 +155,7 @@ Written so that a maker with a 3D printer and a soldering iron can build a Cody 
 
 ## 9. Hardware test panel (TST)
 
-A developer-only bench tool for exercising the firmware and its peripherals. Its controls are served by the Windows bridge's local web interface; it does not open USB serial directly.
+A developer-only bench tool for exercising the firmware and its peripherals. Its controls and local firmware flashing are served by the Windows bridge's local web interface; it does not open USB serial directly.
 
 | ID | Requirement | Prio |
 |---|---|---|
@@ -168,3 +168,4 @@ A developer-only bench tool for exercising the firmware and its peripherals. Its
 | TST-07 | Unsaved motor tuning is volatile; saved motor tuning persists across reboot. Exiting test mode clears temporary outputs and stops the test motor while retaining the current motor tuning. Volume and brightness preferences are stored by the bridge and reapplied after reconnect; test-panel volume changes are temporary. Loss of the device connection stops the motor and enters disconnected behavior. | Must |
 | TST-08 | During test mode the bridge remains the sole serial owner and suspends normal device writes while continuing to merge agent events; on panel stop or 10 s without a panel heartbeat, it exits test mode and applies the latest merged state. | Must |
 | TST-09 | The bridge website shows the current motor tuning and last-write date, allows tuning changes followed by explicit Save, and provides a factory-reset control that restores firmware defaults. Before the first NVS write it identifies the firmware defaults as never saved; timestamps are shown in local date and time. | Must |
+| TST-10 | The bridge test panel supports both first-time flashing an unprogrammed ESP32-C3 and updating a recognized Cody device, without devcontainer USB access. First flash lets the user select an Espressif serial port and guides entry to ROM bootloader mode without requiring a Cody handshake. The panel accepts a non-empty `.bin` up to 4 MiB, explains that the user must select a combined Cody image, and asks browser confirmation naming the image and target port before flashing it at `0x0`. For recognized devices it snapshots motor tuning and timestamp before flashing and restores them after Cody firmware reconnects; `UNSAVED` remains unsaved. It reports flash phases, captured output and errors, exits test mode, and restores the latest bridge preferences and merged state after reconnect. | Must |

@@ -62,13 +62,13 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | ELE | Electronics | 6 | 7 | 2, 4, 5 | specified |
 | FIG | Figure and mechanism | 7 | 17 | 4, 5 | specified |
 | DOC | Build documentation | 8 | 7 | 2, 4, 5 | specified |
-| TST | Hardware test panel | 9 | 9 | 2 | in progress |
+| TST | Hardware test panel | 9 | 10 | 2 | in progress |
 
 ## Decisions
 
 | Date | Decision | Recorded in |
 |---|---|---|
-| 2026-11-05 | Built for the owner's own desk; repo open, no build kit for others (no polished BOM, assembly guide or toolchain-free initial flashing). *Build kit part superseded on 2026-11-06 (DOC); firmware updating from the running Windows bridge was added separately on 2026-11-21.* | README.md (this table) |
+| 2026-11-05 | Built for the owner's own desk; repo open, no build kit for others (no polished BOM, assembly guide or toolchain-free initial flashing). *Build kit part superseded on 2026-11-06 (DOC); local image flashing from the test panel was added in Stage 2, while GitHub release checking remains a separate Stage 6 feature.* | README.md (this table) |
 | 2026-11-05 | Claude Code and GitHub Copilot (VS Code) integrations are both Must. | requirements.md (AGT) |
 | 2026-11-05 | A host-side bridge (localhost HTTP in, USB serial out) is used, because hooks run in containers/WSL that can't open the serial port, and it merges sessions. Alternatives rejected: hook writes serial directly; Wi-Fi on the ESP32. | requirements.md (BRG) |
 | 2026-11-05 | The bridge runs on Linux and WSL2 (USB attached with usbipd-win on WSL); containerizing it is evaluated in architecture. | architecture.md 2 |
@@ -100,6 +100,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-21 | The Windows tray app starts its WSL child processes without showing console windows. | requirements.md 4, architecture.md 4.3, 4.6 |
 | 2026-11-21 | The Windows tray remains a launcher/status indicator; Cody serves one embedded local website for status, configuration, the bridge-backed test panel and firmware updates. The site is loopback-only with same-origin checks for browser mutations; settings require restart. The updater is Windows-first and uses a pinned espflash helper. | requirements.md 4, 9; architecture.md 4, 5, TD-08, TD-09; delivery.md 2; implementation-plan.md |
 | 2026-11-22 | Motor tuning is per-device NVS data, saved explicitly with a bridge-supplied UTC timestamp; the website shows it and can save or restore firmware defaults. Volume and brightness are Windows Go bridge preferences with 1%-step sliders; volume uses `V=(x/100)^2.5`, defaults to 50%, and brightness uses `b=(x/100)^2.2` on channels after the existing 50% cap, defaulting to 100%. The frozen Python bridge is knowingly incompatible with the new firmware until Stage 6. | requirements.md 3–4, 9; architecture.md 4.2–4.4, TD-10; verification.md; implementation-plan.md |
+| 2026-11-22 | Add first-time and update `.bin` flashing through the bridge, with explicit ESP32-C3 bootloader selection, preserving saved motor tuning through protocol snapshot/restore; no devcontainer USB bind mount. Keep the GitHub release updater as a separate Stage 6 feature. | requirements.md 9; architecture.md 4.2, 4.4, TD-11; implementation-plan.md |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points

@@ -61,7 +61,7 @@ and fails if an implemented requirement has no passing evidence, if any evidence
 | ELE | Inspection (BOM, wiring, modules); measurement (USB meter, multimeter); demonstration (8 h run) | All manual. ELE-03: the motor's stall current is measured on the bench (shaft held briefly at 5 V) and compared with the driver's continuous rating. |
 | FIG | Analysis (CI model checks: FIG-02 – FIG-04, FIG-17); inspection and demonstration (log) | Look, travel, noise, stability, endurance and service are judged on the printed assembly. |
 | DOC | Test where scriptable (DOC-06: release files present; links and referenced files exist); inspection (log); DOC-07 demonstration by a test builder (log) | The owner builds along the instructions for each milestone. |
-| TST | Host tests for firmware protocol/state logic and the bridge-backed panel API using fake serial; demonstration on the bench (log) | Motor ranges and fast/slow decay, NVS save/load/reset, tuning display and timestamps, sliders, LED/buzzer controls, state presets, panel timeout/state restoration and serial loss need hardware demonstration. |
+| TST | Host tests for firmware protocol/state logic, local firmware image validation/flashing and the bridge-backed panel API using fake serial/processes; demonstration on the bench (log) | Motor ranges and fast/slow decay, NVS save/load/reset, tuning display and timestamps, sliders, first-time and update image flashing, tuning restoration and device reconnection, LED/buzzer controls, state presets, panel timeout/state restoration and serial loss need hardware demonstration. |
 
 ## 5. Not yet implemented
 
@@ -75,7 +75,7 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 | ELE | ELE-01 – ELE-07 |
 | FIG | FIG-01 – FIG-17 |
 | DOC | DOC-01 – DOC-07 |
-| TST | TST-01 – TST-05, TST-07, TST-09 |
+| TST | TST-01 – TST-05, TST-07, TST-09 – TST-10 |
 
 ## 6. Manual verification
 
@@ -87,9 +87,11 @@ Verified manually because they need real hardware, real agents or the owner's ju
 - BRG-06, BRG-09, BRG-16 – BRG-18: replug, autostart, tray and installer with the Windows app and the device; BRG-20 – BRG-24: website status/configuration, sliders, restart behavior and firmware update flow; BRG-19: native Linux and macOS.
 - AGT-01 – AGT-04, AGT-12: real agent sessions in each environment; AGT-09: setup guide followed once.
 - ELE-01 – ELE-07: modules, soldering, current, stability, cost, documents.
-- TST-01 – TST-09: test mode and bridge-backed panel controls on the bench, including state presets, motor range/decay, NVS save/reset, displayed tuning and timestamp, sliders, LED and buzzer, browser close, timeout restoration and serial loss.
+- TST-01 – TST-10: test mode and bridge-backed panel controls on the bench, including state presets, motor range/decay, NVS save/reset, displayed tuning and timestamp, sliders, first-time flashing from ROM bootloader, local combined-image update with tuning restoration, reconnection, LED and buzzer, browser close, timeout restoration and serial loss.
 - FIG-01, FIG-05 – FIG-16: printed assembly, motion, endurance, noise, service.
 - DOC-01 – DOC-05: completeness and usability of the parts list and instructions, checked by building along them; DOC-07: a test build by someone else.
+
+The 2026-11-21 FW-09 log predates the percentage volume curve; it does not verify the revised behavior. Keep FW-09 on the "not yet implemented" list until the updated range is demonstrated.
 
 ## 7. Release checklist
 

@@ -56,14 +56,13 @@ Requirements: REL-02 – REL-06.
 
 **Before the stage starts:**
 - Electronics bought: ESP32-C3 SuperMini (two), WS2812 module, passive buzzer module, motor driver breakout, a small N20 geared motor for the bench, cables (models chosen with the owner, within ELE-06).
-- On WSL2: usbipd-win installed.
 - *Status at stage start (2026-11-06): parts ordered (docs/parts-list.md), not delivered yet; cables, breadboard and multimeter to be provided by the owner; usbipd-win to be installed before the bench checks. Steps 2a – 2c start without hardware; the bench work is step 2d.*
-- *Status after step 2c (2026-11-06): parts not delivered yet, usbipd-win not set up; step 2d waits for both. Decided for 2d: the devcontainer gets `/dev` for flashing (architecture.md 4.2), the wiring diagram is an SVG block diagram with named pins and nets, generated with schemdraw (architecture.md 3, 5.1), the stall current for ELE-03 is measured on the bench (verification.md 4).*
-- *Redesign of the bridge (2026-11-21, TD-06): the Windows host needs usbipd-win only for flashing from the devcontainer, no longer for the bridge; steps 2g – 2i added after 2d.*
+- *Status after step 2c (2026-11-06): parts not delivered yet, usbipd-win not set up; step 2d waits for both. Decided for 2d: the devcontainer gets `/dev` for initial bench flashing (architecture.md 4.2), the wiring diagram is an SVG block diagram with named pins and nets, generated with schemdraw (architecture.md 3, 5.1), the stall current for ELE-03 is measured on the bench (verification.md 4).*
+- *Redesign of the bridge (2026-11-21, TD-06): the Windows host uses the Windows app for serial access; usbipd-win is not needed for that workflow. Steps 2g – 2i were added after 2d. Local image flashing from the test panel, with no devcontainer USB access, was decided on 2026-11-22 (TD-11).*
 
 **Steps:**
 
-Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived. Order after 2d (decided 2026-11-21, TD-06, TD-08, TD-09): 2g, 2h, 2i, 2j, 2k, 2m, 2n, then 2e. Step 2l was moved to Stage 6 on 2026-11-22; the stage-2 documentation will cover the test panel but not the updater.
+Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived. Order after 2d (decided 2026-11-21, TD-06, TD-08, TD-09; updated 2026-11-22, TD-11): 2g, 2h, 2i, 2j, 2k, 2n, 2o, 2m, then 2e. Step 2l was moved to Stage 6 on 2026-11-22; Stage 2 adds local image flashing, while Stage 6 retains the GitHub release updater.
 
 **2a – Firmware logic — done.** Serial protocol, state machine, LED effects, sounds with volume and motor control as logic with host unit tests (defaults in architecture.md 4.3); firmware builds for the ESP32-C3.
 Requirements: FW-02, FW-03, FW-05, FW-10 – FW-12.
@@ -83,7 +82,7 @@ Requirements: BRG-15.
 **2g – Go bridge core — done.** Added 2026-11-21 (TD-06). Go toolchain and gotestsum in the devcontainer; gofmt and go vet in `tools/static-checks`; Go tests in `ci/check`. In `bridge-go/`: the bridge logic ported from Python (HTTP endpoints, session merging, Claude Code mapping tested with the shared recorded payloads, timeouts, heartbeat, serial connection with a fake device, config, log with rotation, version); builds for Windows and Linux without cgo, including the tray library. The Python bridge stays as is (frozen).
 Requirements: BRG-01 – BRG-05, BRG-10, BRG-13 – BRG-15.
 
-**2h – Windows app and installer — implementation done; manual verification pending.** Tray icon in the state colour with menu, "Start automatically" (Run key), single instance, COM port discovery and plug & play (first plug-in, replug, reset, `usbipd attach`/`detach`), config and log under `%APPDATA%`/`%LOCALAPPDATA%`; NSIS installer `cody-<version>-windows-setup.exe` as a release file; shown on Windows with the device. Autostart is enabled by the installer by default. The 2h installer contains `cody.exe`; step 2i adds `cody-linux` when the WSL relay is implemented, and step 6c adds the pinned firmware-flashing helper and its license notices.
+**2h – Windows app and installer — implementation done; manual verification pending.** Tray icon in the state colour with menu, "Start automatically" (Run key), single instance, COM port discovery and plug & play (first plug-in, replug and reset), config and log under `%APPDATA%`/`%LOCALAPPDATA%`; NSIS installer `cody-<version>-windows-setup.exe` as a release file; shown on Windows with the device. Autostart is enabled by the installer by default. The 2h installer contains `cody.exe`; step 2i adds `cody-linux` when the WSL relay is implemented, and step 2m adds the pinned firmware-flashing helper and its license notices.
 *Implementation status (2026-11-21): Linux CI, Windows cross-build and installer compilation pass; demonstration of the tray app and install/uninstall on Windows with the device remains.*
 Requirements: BRG-06, BRG-09, BRG-16 – BRG-18.
 
@@ -99,13 +98,17 @@ Requirements: BRG-20 – BRG-21.
 *Implementation status (2026-11-22): bridge-owned test commands, reply display, heartbeat timeout and state restoration are covered by Go tests; the Python panel, direct-serial tests and forwarded devcontainer port are removed. Manual Windows/bench verification of connection status, panel controls and replies/errors; agent-event merging during testing; and state restoration on panel close or heartbeat expiry remains.*
 Requirements: TST-06, TST-08.
 
-**2m – Device tuning and output settings.** Add per-device motor tuning in ESP32 NVS, including explicit save, bridge-supplied UTC timestamps, firmware defaults and factory reset. Add percent-based volume and brightness commands; volume maps slider value `x` with `V=(x/100)^2.5`, and brightness uses `b=(x/100)^2.2` on channels after the existing LED cap. The frozen Python bridge is not made compatible with this firmware change.
+**2n – Device tuning and output settings.** Add per-device motor tuning in ESP32 NVS, including explicit save, bridge-supplied UTC timestamps, firmware defaults and factory reset. Add percent-based volume and brightness commands; volume maps slider value `x` with `V=(x/100)^2.5`, and brightness uses `b=(x/100)^2.2` on channels after the existing LED cap. The frozen Python bridge is not made compatible with this firmware change.
 Requirements: FW-08 – FW-09, FW-13 – FW-15.
+Implementation status: Firmware protocol, NVS adapter, tuning save/load/reset and output curves are implemented; host tests and the ESP32-C3 build pass. Bench verification of volume/brightness and NVS persistence/reset remains.
 
-**2n – Tuning panel and user settings.** Extend the Windows Go bridge config and website with 1%-step volume and brightness sliders, and the bridge-backed panel with tuning readout, last-write time, explicit Save and Factory reset. Display local time and identify unsaved firmware defaults. Volume defaults to 50%; brightness defaults to 100%. Clearly identify the frozen Python Docker bridge as incompatible with the new firmware.
+**2o – Tuning panel and user settings.** Extend the Windows Go bridge config and website with 1%-step volume and brightness sliders, and the bridge-backed panel with tuning readout, last-write time, explicit Save and Factory reset. Display local time and identify unsaved firmware defaults. Volume defaults to 50%; brightness defaults to 100%. Clearly identify the frozen Python Docker bridge as incompatible with the new firmware.
 Requirements: BRG-22, TST-05, TST-07, TST-09.
 
-**2e – Build documentation for the status light.** Done after 2n. Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, Windows bridge app and website, legacy Docker bridge on Linux with its firmware compatibility limitation, hooks and test panel, motor tuning persistence, user volume/brightness settings and sliders, Git for Windows on a Windows host) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
+**2m – Local firmware flashing.** Support first-time flashing of an unprogrammed ESP32-C3 by selecting its Espressif serial port and guiding manual ROM-bootloader entry without requiring a Cody handshake; updates require a recognized Cody device. Accept local non-empty `.bin` images up to 4 MiB and explain that the user must choose a combined Cody image. Confirm in the browser with the selected filename, target port and firmware-replacement warning. For updates, snapshot saved motor tuning and timestamp through the Cody protocol and restore them after reconnect; leave `UNSAVED` unchanged. Bundle the pinned `espflash` helper and its license notices in the Windows installer. Stop active test mode, suspend device writes, release the COM port, flash at `0x0`, report the current phase and captured output/errors, reacquire the port and leave test mode while restoring current preferences and merged state on success or failure when the device reconnects. Report disconnection and allow retry. No USB device access or bind mount in the devcontainer.
+Requirements: TST-10.
+
+**2e – Build documentation for the status light.** Done after 2m. Parts list; assembly instructions for the electronics and the setup (soldering, wiring, building and selecting a combined firmware image in the bridge test panel, Windows bridge app and website, legacy Docker bridge on Linux with its firmware compatibility limitation, hooks and test panel, motor tuning persistence, user volume/brightness settings and sliders, Git for Windows on a Windows host) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
 Requirements: DOC-01, DOC-02, DOC-05, DOC-06.
 
 ### Stage 3 – Copilot integration
@@ -160,7 +163,7 @@ Requirements: DOC-04, DOC-07.
 ### Stage 6 – Native bridge for Linux and macOS, firmware updater
 
 Added 2026-11-21 (TD-06).
-Step 6c was added on 2026-11-22 by moving the firmware updater from Stage 2. The updater remains Windows-first; its setup instructions are added to the build documentation here.
+Step 6c was added on 2026-11-22 by moving GitHub release checking from Stage 2. Local image flashing is delivered in Stage 2 (TD-11); the release updater remains Windows-first and its setup instructions are added to the build documentation here.
 
 **Before the stage starts:**
 - A Mac (or a macOS CI runner) for building the tray with cgo and for the demonstrations.
@@ -174,7 +177,7 @@ Requirements: BRG-19.
 **6b – Retire the Python bridge.** `bridge/`, the Docker image, the compose file, `ci/publish` and `ci/promote` removed; TD-03 and TD-04 marked superseded; setup guide and delivery.md updated.
 Requirements: none (part of BRG-19).
 
-**6c – Firmware updater.** Add a user-initiated check of the latest stable Cody release to the Windows bridge website, with explicit confirmation, SHA-256 verification, serial handoff, pinned espflash helper, progress, automatic bootloader entry and manual recovery/retry on failure; reconnect the bridge and report the result. Unknown current firmware can be updated only after explicit confirmation; same/newer versions do not offer an update. Add the updater setup instructions to the build documentation.
+**6c – GitHub release updater.** Add a user-initiated check of the latest stable Cody release to the Windows bridge website, with explicit confirmation, SHA-256 verification, serial handoff, the pinned espflash helper bundled in step 2m, progress, automatic bootloader entry and manual recovery/retry on failure; reconnect the bridge and report the result. Unknown current firmware can be updated only after explicit confirmation; same/newer versions do not offer an update. Add the updater setup instructions to the build documentation.
 Requirements: BRG-23, BRG-24.
 
 ## 4. Status report template
@@ -235,18 +238,17 @@ After each completed stage, Claude appends a report with this structure to secti
 | Stage | Content | Status |
 |---|---|---|
 | 1 | Walking skeleton | done |
-| 2 | Status light on the bench with Claude Code | next |
+| 2 | Status light on the bench with Claude Code | in progress |
 | 3 | Copilot integration | open |
 | 4 | Mechanism prototype | open |
 | 5 | Character and assembly | open |
 
-**Remaining requirements by stage:** 2 → 37, 3 → 6, 4 → 10, 5 → 13.
+**Remaining requirements by stage:** 2 → 38, 3 → 6, 4 → 10, 5 → 13.
 
 **Waiting on the project owner:**
-- Branch `feature/stage-2`, then `/stage-start 2`.
-- Parts delivered (ordered 2026-11-06: ESP32-C3 ×2, DRV8833 ×2, N20 6 V 300 and 500 rpm, WS2812, KY-006); usbipd-win installed on Windows.
-- Decide at stage start: how the CHF 25 budget is counted (risk R6); release format of the build documentation (open point).
-- Open the project once with "Reopen in Container" in VS Code (needed for flashing).
+- Parts delivered (ordered 2026-11-06: ESP32-C3 ×2, DRV8833 ×2, N20 6 V 300 and 500 rpm, WS2812, KY-006).
+- The Windows host needs the device available for serial and first-flash verification; no devcontainer USB access or bind mount is needed.
+- Open the project with "Reopen in Container" in VS Code for the pinned build and verification tools.
 
 **Risks and notes:**
 - Plug & play of the serial device inside the bridge container (TD-04) is unproven; step 2b must show it, otherwise a native service.

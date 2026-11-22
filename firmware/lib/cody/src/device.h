@@ -29,12 +29,30 @@ constexpr uint32_t kTimeoutMs = 30000;       // FW-06
 constexpr uint32_t kDefaultKickStartMs = 1;  // brief motor kick
 constexpr uint32_t kDefaultMotorFrequencyHz = 10000;
 constexpr uint8_t kDefaultMotorSpeed = 224;
-constexpr uint8_t kLedCap = 127;                       // 50 % of full scale (ELE-04)
-constexpr uint16_t kVolumeDuty[] = {0, 30, 120, 512};  // VOLUME 0-3
+constexpr uint8_t kLedCap = 127;  // 50 % of full scale (ELE-04)
+constexpr uint8_t kDefaultBrightness = 100;
+constexpr uint8_t kDefaultVolume = 50;
+
+struct MotorTuning {
+  uint8_t speed = kDefaultMotorSpeed;
+  uint32_t frequencyHz = kDefaultMotorFrequencyHz;
+  uint8_t kickStartMs = kDefaultKickStartMs;
+  MotorDecay decay = MotorDecay::Fast;
+};
+
+enum class TuningLoadResult : uint8_t { Missing, Loaded, Error };
+
+class TuningStore {
+ public:
+  virtual ~TuningStore() = default;
+  virtual TuningLoadResult load(MotorTuning& tuning, std::string& timestamp) = 0;
+  virtual bool save(const MotorTuning& tuning, const std::string& timestamp) = 0;
+};
 
 class Device {
  public:
   Device(const char* version, const char* commit) : version_(version), commit_(commit) {}
+  void loadTuning(TuningStore& store);
 
   // Handles one received line; returns the response (one or more lines, each
   // ending with '\n'). Errors never change the state (FW-10).
@@ -48,10 +66,15 @@ class Device {
   State state() const { return state_; }
   bool connected(uint32_t nowMs) const;
   bool testMode() const { return testMode_; }
-  int speed() const { return speed_; }
+  int speed() const { return tuning_.speed; }
   int volume() const { return volume_; }
+  int brightness() const { return brightness_; }
+  const MotorTuning& tuning() const { return tuning_; }
+  const std::string& tuningTimestamp() const { return tuningTimestamp_; }
 
  private:
+  bool validTuning(const MotorTuning& tuning) const;
+  std::string tuningReply() const;
   void enterState(State next, uint32_t nowMs);
   void clearTestOverrides();
   void startSound(Sound sound, uint32_t nowMs);
@@ -68,11 +91,12 @@ class Device {
   bool testMode_ = false;
   bool testMotorOverride_ = false;
   bool testMotorEnabled_ = false;
-  int speed_ = kDefaultMotorSpeed;
-  int volume_ = 2;
-  uint32_t motorFrequencyHz_ = kDefaultMotorFrequencyHz;
-  uint32_t kickStartMs_ = kDefaultKickStartMs;
-  MotorDecay motorDecay_ = MotorDecay::Fast;
+  MotorTuning tuning_;
+  TuningStore* tuningStore_ = nullptr;
+  bool tuningStoreReady_ = false;
+  std::string tuningTimestamp_;
+  int volume_ = kDefaultVolume;
+  int brightness_ = kDefaultBrightness;
   bool ledOverride_ = false;
   Rgb ledOverrideColour_;
   Sound sound_ = Sound::None;

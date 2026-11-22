@@ -14,6 +14,7 @@ enum class MotorDecay : uint8_t { Fast, Slow };
 const char* stateName(State state);
 bool parseState(const char* text, State& out);
 bool parseSound(const char* text, Sound& out);
+bool isUtcTimestamp(const char* text);
 
 struct Command {
   enum class Kind : uint8_t {
@@ -21,7 +22,9 @@ struct Command {
     Ping,
     Speed,
     Volume,
+    Brightness,
     VersionQuery,
+    TuningQuery,
     Led,
     Beep,
     TestStart,
@@ -34,15 +37,18 @@ struct Command {
     TestKick,
     TestDecay,
     TestVolume,
+    TestTuningSave,
+    TestTuningReset,
     TestLed,
     TestBeep
   };
   Kind kind = Kind::Ping;
   State state = State::Idle;
-  int value = 0;  // SPEED 0-255, VOLUME 0-3
+  int value = 0;  // command-specific integer value
   uint8_t r = 0, g = 0, b = 0;
   Sound sound = Sound::None;
   MotorDecay decay = MotorDecay::Fast;
+  char timestamp[40] = {};
 };
 
 // Parses one line (without the line ending). Returns nullptr on success, or
