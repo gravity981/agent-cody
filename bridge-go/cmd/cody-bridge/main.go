@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/gravity981/agent-cody/bridge-go/internal/bridge"
@@ -123,12 +124,25 @@ func runBridge(
 	link := device.NewLink(device.SerialSystem{}, logger, cfg.Volume, cfg.Brightness, serialPort)
 	activeSessions := sessions.New(time.Duration(cfg.SessionTimeoutMin * float64(time.Minute)))
 	app := bridge.New(activeSessions, link, logger, version, commit)
+	var firmwareFlash *httpapi.FirmwareFlashService
+	if runtime.GOOS == "windows" {
+		executable, err := os.Executable()
+		if err != nil {
+			return fmt.Errorf("locate Cody executable for firmware flashing: %w", err)
+		}
+		firmwareFlash = httpapi.NewFirmwareFlashService(
+			runCtx, app,
+			httpapi.EspflashRunner{Executable: filepath.Join(filepath.Dir(executable), "espflash.exe")},
+			time.Now,
+		)
+	}
 	server := &http.Server{
 		Addr: httpapi.SiteAddress,
 		Handler: httpapi.NewHandler(app, time.Now, httpapi.WebsiteOptions{
 			ConfigPath:    configPath,
 			RelayStatuses: relayStatuses.Snapshot,
 			Restart:       restart,
+			FirmwareFlash: firmwareFlash,
 		}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}

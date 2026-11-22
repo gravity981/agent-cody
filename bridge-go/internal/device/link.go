@@ -42,24 +42,26 @@ type System interface {
 }
 
 type Link struct {
-	system      System
-	logger      *logging.Logger
-	configured  string
-	volume      int
-	brightness  int
-	state       sessions.State
-	port        Port
-	device      string
-	firmware    string
-	buffer      []byte
-	handshakeAt time.Time
-	nextTry     time.Time
-	lastSent    time.Time
-	rejected    map[string]struct{}
-	testMode    bool
-	replies     []string
-	tuning      TuningStatus
-	tuningQuery bool
+	system        System
+	logger        *logging.Logger
+	configured    string
+	volume        int
+	brightness    int
+	state         sessions.State
+	port          Port
+	device        string
+	firmware      string
+	buffer        []byte
+	handshakeAt   time.Time
+	nextTry       time.Time
+	lastSent      time.Time
+	rejected      map[string]struct{}
+	testMode      bool
+	suspended     bool
+	replies       []string
+	tuning        TuningStatus
+	tuningRestore *TuningStatus
+	tuningQuery   bool
 }
 
 func NewLink(system System, logger *logging.Logger, volume, brightness int, configured string) *Link {
@@ -189,9 +191,10 @@ func (l *Link) Tuning() TuningStatus {
 }
 
 func (l *Link) QueryTuning(now time.Time) error {
-	if !l.Status().Connected {
+	if l.suspended || !l.Status().Connected {
 		return ErrNotConnected
 	}
+	l.tuning = TuningStatus{}
 	l.tuningQuery = true
 	if err := l.send("TUNING?", now); err != nil {
 		l.tuningQuery = false
@@ -201,7 +204,54 @@ func (l *Link) QueryTuning(now time.Time) error {
 	return nil
 }
 
+func (l *Link) Ports() ([]PortInfo, error) {
+	return l.system.ListPorts()
+}
+
+func (l *Link) EspressifPorts() ([]PortInfo, error) {
+	ports, err := l.system.ListPorts()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]PortInfo, 0, len(ports))
+	for _, port := range ports {
+		vid, err := strconv.ParseUint(port.VID, 16, 16)
+		if err == nil && vid == EspressifVID {
+			result = append(result, port)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Device < result[j].Device })
+	return result, nil
+}
+
+func (l *Link) Suspend(now time.Time) {
+	l.suspended = true
+	l.close(now)
+}
+
+func (l *Link) Resume(now time.Time) {
+	l.suspended = false
+	l.nextTry = now
+}
+
+func (l *Link) RestoreTuningAfterReconnect(tuning TuningStatus) error {
+	if !tuning.Known {
+		return errors.New("motor tuning snapshot is unknown")
+	}
+	if _, err := parseTuningReply(fmt.Sprintf(
+		"TUNING:%d,%d,%d,%s,%s",
+		tuning.Speed, tuning.FrequencyHz, tuning.KickStartMs, tuning.Decay, tuning.Timestamp,
+	)); err != nil {
+		return fmt.Errorf("invalid motor tuning snapshot: %w", err)
+	}
+	l.tuningRestore = &tuning
+	return nil
+}
+
 func (l *Link) Step(now time.Time) {
+	if l.suspended {
+		return
+	}
 	if l.port == nil {
 		if !now.Before(l.nextTry) {
 			l.nextTry = now.Add(RetryInterval)
@@ -264,7 +314,7 @@ func (l *Link) candidates() []string {
 	if l.configured != "" {
 		return []string{l.configured}
 	}
-	ports, err := l.system.ListPorts()
+	ports, err := l.EspressifPorts()
 	if err != nil {
 		l.logger.Debugf("can't enumerate serial ports: %v", err)
 		return nil
@@ -272,10 +322,6 @@ func (l *Link) candidates() []string {
 	found := make(map[string]struct{}, len(ports))
 	candidates := make([]string, 0, len(ports))
 	for _, port := range ports {
-		vid, err := strconv.ParseUint(port.VID, 16, 16)
-		if err != nil || vid != EspressifVID {
-			continue
-		}
 		found[port.Device] = struct{}{}
 		if _, rejected := l.rejected[port.Device]; rejected {
 			continue
@@ -287,7 +333,6 @@ func (l *Link) candidates() []string {
 			delete(l.rejected, rejected)
 		}
 	}
-	sort.Strings(candidates)
 	return candidates
 }
 
@@ -327,6 +372,14 @@ func (l *Link) read(now time.Time) error {
 				l.logger.Warningf("invalid motor tuning response: %v", err)
 			} else {
 				l.tuning = tuning
+				if l.tuningRestore != nil {
+					if sameTuning(tuning, *l.tuningRestore) {
+						l.tuningRestore = nil
+					} else {
+						l.tuning.Error = "restored motor tuning does not match the saved snapshot"
+						l.logger.Warningf("%s", l.tuning.Error)
+					}
+				}
 			}
 		case strings.HasPrefix(line, "ERR"):
 			l.logger.Warningf("device: %s", line)
@@ -340,13 +393,33 @@ func (l *Link) read(now time.Time) error {
 
 func (l *Link) connected(now time.Time) {
 	l.logger.Infof("connected to %s (firmware %s)", l.device, l.firmware)
-	commands := make([]string, 0, 4)
+	commands := make([]string, 0, 12)
 	if l.testMode {
 		commands = append(commands,
 			fmt.Sprintf("BRIGHTNESS:%d", l.brightness),
 			"TEST:START",
 			fmt.Sprintf("TEST:VOLUME:%d", l.volume),
 		)
+	} else if l.tuningRestore != nil {
+		tuning := l.tuningRestore
+		commands = append(commands,
+			"TEST:START",
+			fmt.Sprintf("TEST:SPEED:%d", tuning.Speed),
+			fmt.Sprintf("TEST:FREQ:%d", tuning.FrequencyHz),
+			fmt.Sprintf("TEST:KICK:%d", tuning.KickStartMs),
+			"TEST:DECAY:"+tuning.Decay,
+		)
+		if tuning.Timestamp != "UNSAVED" {
+			commands = append(commands, "TEST:TUNING:SAVE:"+tuning.Timestamp)
+		}
+		commands = append(commands, "TEST:STOP")
+		commands = append(commands,
+			fmt.Sprintf("VOLUME:%d", l.volume),
+			fmt.Sprintf("BRIGHTNESS:%d", l.brightness),
+			"STATE:"+string(l.state),
+			"TUNING?",
+		)
+		l.tuningQuery = true
 	} else {
 		commands = append(commands,
 			fmt.Sprintf("VOLUME:%d", l.volume),
@@ -360,6 +433,14 @@ func (l *Link) connected(now time.Time) {
 			return
 		}
 	}
+}
+
+func sameTuning(left, right TuningStatus) bool {
+	return left.Speed == right.Speed &&
+		left.FrequencyHz == right.FrequencyHz &&
+		left.KickStartMs == right.KickStartMs &&
+		left.Decay == right.Decay &&
+		left.Timestamp == right.Timestamp
 }
 
 func (l *Link) send(command string, now time.Time) error {

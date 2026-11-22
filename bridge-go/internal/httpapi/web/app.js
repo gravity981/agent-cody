@@ -14,8 +14,12 @@ const testError = byId("test-error");
 const testReplies = byId("test-replies");
 const testStates = byId("test-states");
 let deviceConnected = false;
+let devicePort = "";
+let flashTargetPort = "";
 let testActive = false;
 let testBusy = false;
+let flashBusy = false;
+let flashPortsLoaded = false;
 let tuningDirty = false;
 let displayedTuning = "";
 let tuningQuerySent = false;
@@ -57,9 +61,14 @@ function renderStatus(status) {
   addDetail("Merged state", status.state);
   addDetail("Sessions", String(status.sessions.length));
   statusMessage.textContent = "Connected to the local Cody bridge.";
+  const wasConnected = deviceConnected;
   deviceConnected = status.device.connected;
+  devicePort = status.device.port || "";
   if (!deviceConnected) {
     tuningQuerySent = false;
+    if (wasConnected || !flashPortsLoaded) {
+      void refreshFlashPorts();
+    }
   } else if (!tuningQuerySent) {
     tuningQuerySent = true;
     postTest("/api/test/tuning", { action: "query" }).catch((error) => {
@@ -68,6 +77,7 @@ function renderStatus(status) {
     });
   }
   renderTestControls();
+  renderFlashControls();
 
   relayList.replaceChildren();
   if (status.relays.length === 0) {
@@ -126,14 +136,18 @@ async function refreshStatus() {
   } catch (error) {
     statusMessage.textContent = `Could not load bridge status: ${error.message}`;
     deviceConnected = false;
+    devicePort = "";
     renderTestControls();
+    renderFlashControls();
   }
 }
 
 function renderTestControls() {
-  byId("test-start").disabled = !deviceConnected || testActive || testBusy;
-  byId("test-stop").disabled = !testActive || testBusy;
-  testStatusMessage.textContent = !deviceConnected
+  byId("test-start").disabled = !deviceConnected || testActive || testBusy || flashBusy;
+  byId("test-stop").disabled = !testActive || testBusy || flashBusy;
+  testStatusMessage.textContent = flashBusy
+    ? "Firmware flashing is in progress."
+    : !deviceConnected
     ? "Device not connected. Connect a Cody device to use the test panel."
     : testActive
       ? "Test mode is active. Exit, close this page, or let its 10-second heartbeat expire to restore agent state."
@@ -144,7 +158,123 @@ function renderTestControls() {
     "#test-motor-stop, #test-red, #test-green, #test-blue, #test-show-led, #test-volume, " +
     "#test-sound, #test-apply-volume, #test-play-sound"
   )) {
-    control.disabled = !deviceConnected || !testActive || testBusy;
+    control.disabled = !deviceConnected || !testActive || testBusy || flashBusy;
+  }
+}
+
+function renderFlashControls() {
+  const mode = byId("flash-mode");
+  const firstOption = mode.querySelector('option[value="first"]');
+  const updateOption = mode.querySelector('option[value="update"]');
+  firstOption.disabled = deviceConnected;
+  updateOption.disabled = !deviceConnected;
+  mode.disabled = flashBusy;
+  if (!flashBusy && deviceConnected && mode.value !== "update") mode.value = "update";
+  if (!flashBusy && !deviceConnected && mode.value !== "first") mode.value = "first";
+
+  const firstMode = mode.value === "first";
+  byId("flash-first-controls").hidden = !firstMode;
+  byId("flash-update-target").hidden = firstMode;
+  const targetPort = flashBusy ? flashTargetPort : devicePort;
+  byId("flash-update-target").textContent = targetPort
+    ? `Connected Cody target: ${targetPort}`
+    : "Connect a Cody device to update its firmware.";
+  byId("flash-port").disabled = flashBusy;
+  byId("flash-refresh-ports").disabled = flashBusy;
+  byId("flash-image").disabled = flashBusy;
+  const image = byId("flash-image").files[0];
+  byId("flash-submit").disabled = flashBusy || testBusy ||
+    !image ||
+    (firstMode && !byId("flash-port").value) ||
+    (!firstMode && !deviceConnected);
+}
+
+async function refreshFlashPorts() {
+  const select = byId("flash-port");
+  const previous = select.value;
+  try {
+    const response = await request("/api/test/flash/ports");
+    const { ports } = await response.json();
+    select.replaceChildren();
+    for (const port of ports) {
+      const option = document.createElement("option");
+      option.value = port;
+      option.textContent = port;
+      select.append(option);
+    }
+    if (ports.includes(previous)) select.value = previous;
+    flashPortsLoaded = true;
+    if (ports.length === 0) {
+      byId("flash-status").textContent = "No Espressif serial ports found. Connect the board and refresh.";
+    } else if (byId("flash-status").textContent.startsWith("No Espressif serial ports")) {
+      byId("flash-status").textContent = "";
+    }
+  } catch (error) {
+    byId("flash-status").textContent = `Could not list Espressif serial ports: ${error.message}`;
+  }
+  renderFlashControls();
+}
+
+async function flashFirmware() {
+  if (flashBusy) return;
+  const image = byId("flash-image").files[0];
+  if (!image) {
+    byId("flash-status").textContent = "Choose a firmware image first.";
+    return;
+  }
+  const mode = byId("flash-mode").value;
+  const port = mode === "update" ? devicePort : byId("flash-port").value;
+  if (!port) {
+    byId("flash-status").textContent = "Select an Espressif serial port.";
+    return;
+  }
+  if (!image.name.toLowerCase().endsWith(".bin") || image.size === 0 || image.size > 4 * 1024 * 1024) {
+    byId("flash-status").textContent = "Choose a non-empty .bin file no larger than 4 MiB.";
+    return;
+  }
+  const operation = mode === "first" ? "first flash" : "update";
+  if (!window.confirm(
+    `This ${operation} will replace the device firmware.\n\nImage: ${image.name}\nTarget port: ${port}\n\nContinue?`
+  )) {
+    return;
+  }
+
+  flashBusy = true;
+  flashTargetPort = port;
+  byId("flash-status").textContent = "Uploading firmware image...";
+  byId("flash-output").textContent = "";
+  renderFlashControls();
+  renderTestControls();
+  try {
+    const form = new FormData();
+    form.set("mode", mode);
+    form.set("port", port);
+    form.set("image", image, image.name);
+    const response = await request("/api/test/flash", { method: "POST", body: form });
+    const { id } = await response.json();
+    while (true) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      const statusResponse = await request(`/api/test/flash?id=${encodeURIComponent(id)}`);
+      const status = await statusResponse.json();
+      byId("flash-status").textContent = status.done
+        ? status.success
+          ? "Firmware flash completed and the device reconnected."
+          : `Firmware flash failed during ${status.phase.toLowerCase()}.`
+        : status.phase;
+      byId("flash-output").textContent = status.output;
+      if (status.done) {
+        if (!status.success) throw new Error(status.error || "Firmware flashing failed");
+        break;
+      }
+    }
+  } catch (error) {
+    byId("flash-status").textContent = error.message;
+  } finally {
+    flashBusy = false;
+    await refreshStatus();
+    await refreshTestStatus();
+    renderFlashControls();
+    renderTestControls();
   }
 }
 
@@ -230,6 +360,7 @@ async function runTestAction(action) {
   testBusy = true;
   testError.textContent = "";
   renderTestControls();
+  renderFlashControls();
   try {
     await action();
   } catch (error) {
@@ -238,6 +369,7 @@ async function runTestAction(action) {
     await refreshTestStatus();
     testBusy = false;
     renderTestControls();
+    renderFlashControls();
   }
 }
 
@@ -402,6 +534,11 @@ byId("test-reset-tuning").addEventListener("click", () => {
     tuningDirty = false;
   });
 });
+byId("flash-mode").addEventListener("change", renderFlashControls);
+byId("flash-port").addEventListener("change", renderFlashControls);
+byId("flash-image").addEventListener("change", renderFlashControls);
+byId("flash-refresh-ports").addEventListener("click", () => void refreshFlashPorts());
+byId("flash-submit").addEventListener("click", () => void flashFirmware());
 for (const [id, outputId] of [
   ["volume", "volume-value"],
   ["brightness", "brightness-value"],
@@ -419,6 +556,7 @@ window.addEventListener("pagehide", () => {
 });
 
 renderTestControls();
+renderFlashControls();
 void refreshStatus();
 void loadConfig();
 void refreshTestStatus();

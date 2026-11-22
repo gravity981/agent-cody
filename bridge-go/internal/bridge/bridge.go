@@ -20,6 +20,7 @@ const TestHeartbeatTimeout = 10 * time.Second
 var (
 	ErrTestModeActive   = errors.New("hardware test mode is already active")
 	ErrTestModeInactive = errors.New("hardware test mode is not active")
+	ErrFlashInProgress  = errors.New("firmware flashing is already in progress")
 )
 
 type DeviceLink interface {
@@ -28,6 +29,10 @@ type DeviceLink interface {
 	StartTest(time.Time) error
 	SendTestCommand(string, time.Time) error
 	QueryTuning(time.Time) error
+	EspressifPorts() ([]device.PortInfo, error)
+	Suspend(time.Time)
+	Resume(time.Time)
+	RestoreTuningAfterReconnect(device.TuningStatus) error
 	StopTest(sessions.State, time.Time) error
 	Replies() []string
 	Tuning() device.TuningStatus
@@ -44,6 +49,7 @@ type Bridge struct {
 	commit             string
 	lastState          sessions.State
 	testMode           bool
+	flashInProgress    bool
 	lastPanelHeartbeat time.Time
 }
 
@@ -143,6 +149,9 @@ func (b *Bridge) apply(now time.Time, cause string) {
 func (b *Bridge) StartTest(now time.Time) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if b.flashInProgress {
+		return ErrFlashInProgress
+	}
 	if b.testMode {
 		return ErrTestModeActive
 	}
@@ -168,6 +177,9 @@ func (b *Bridge) TestHeartbeat(now time.Time) error {
 func (b *Bridge) SendTestCommand(command string, now time.Time) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if b.flashInProgress {
+		return ErrFlashInProgress
+	}
 	if !b.testMode {
 		return ErrTestModeInactive
 	}
@@ -177,7 +189,87 @@ func (b *Bridge) SendTestCommand(command string, now time.Time) error {
 func (b *Bridge) QueryTuning(now time.Time) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if b.flashInProgress {
+		return ErrFlashInProgress
+	}
 	return b.link.QueryTuning(now)
+}
+
+func (b *Bridge) EspressifPorts() ([]device.PortInfo, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.link.EspressifPorts()
+}
+
+func (b *Bridge) BeginFirmwareFlash(
+	mode, port string,
+	tuning *device.TuningStatus,
+	now time.Time,
+) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.flashInProgress {
+		return ErrFlashInProgress
+	}
+
+	status := b.link.Status()
+	switch mode {
+	case "first":
+		if status.Connected {
+			return errors.New("first flash is only available when no Cody device is connected")
+		}
+		ports, err := b.link.EspressifPorts()
+		if err != nil {
+			return fmt.Errorf("list Espressif serial ports: %w", err)
+		}
+		if !containsPort(ports, port) {
+			return errors.New("selected port is not an available Espressif device")
+		}
+	case "update":
+		if !status.Connected || status.Port == nil || *status.Port != port {
+			return errors.New("update requires the selected, connected Cody device")
+		}
+		if tuning == nil || !tuning.Known {
+			return errors.New("update requires a motor tuning snapshot")
+		}
+	default:
+		return errors.New("flash mode must be first or update")
+	}
+
+	if b.testMode {
+		if err := b.stopTest(now, "firmware flashing"); err != nil &&
+			!(mode == "first" && errors.Is(err, device.ErrNotConnected)) {
+			return fmt.Errorf("stop hardware test before firmware flashing: %w", err)
+		}
+	}
+	if mode == "update" {
+		if err := b.link.RestoreTuningAfterReconnect(*tuning); err != nil {
+			return err
+		}
+	}
+	b.link.Suspend(now)
+	b.flashInProgress = true
+	return nil
+}
+
+func containsPort(ports []device.PortInfo, name string) bool {
+	for _, port := range ports {
+		if port.Device == name {
+			return true
+		}
+	}
+	return false
+}
+
+func (b *Bridge) EndFirmwareFlash(now time.Time) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if !b.flashInProgress {
+		return errors.New("firmware flashing is not in progress")
+	}
+	b.flashInProgress = false
+	b.link.Resume(now)
+	return nil
 }
 
 func (b *Bridge) StopTest(now time.Time) error {

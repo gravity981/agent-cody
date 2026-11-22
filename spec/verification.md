@@ -75,7 +75,7 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 | ELE | ELE-01 – ELE-07 |
 | FIG | FIG-01 – FIG-17 |
 | DOC | DOC-01 – DOC-07 |
-| TST | TST-01 – TST-04, TST-10 |
+| TST | TST-01 – TST-04 |
 
 ## 6. Manual verification
 

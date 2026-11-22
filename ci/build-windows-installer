@@ -23,6 +23,23 @@ fi
 mkdir -p "$RELEASE_DIR"
 
 tmp_dir=$(mktemp -d)
+espflash_archive="$tmp_dir/espflash-x86_64-pc-windows-msvc.zip"
+curl --fail --location --retry 3 --silent --show-error \
+  --output "$espflash_archive" \
+  https://github.com/esp-rs/espflash/releases/download/v4.7.0/espflash-x86_64-pc-windows-msvc.zip
+printf '%s  %s\n' \
+  2b10333e4f4f1a26024259b0cc1942ba17f27b3c530621c6111f4c10ac70213e \
+  "$espflash_archive" | sha256sum --check --status
+unzip -p "$espflash_archive" espflash.exe > "$tmp_dir/espflash.exe"
+test -s "$tmp_dir/espflash.exe"
+curl --fail --location --retry 3 --silent --show-error \
+  --output "$tmp_dir/LICENSE-espflash-MIT.txt" \
+  https://raw.githubusercontent.com/esp-rs/espflash/v4.7.0/LICENSE-MIT
+curl --fail --location --retry 3 --silent --show-error \
+  --output "$tmp_dir/LICENSE-espflash-APACHE.txt" \
+  https://raw.githubusercontent.com/esp-rs/espflash/v4.7.0/LICENSE-APACHE
+test -s "$tmp_dir/LICENSE-espflash-MIT.txt"
+test -s "$tmp_dir/LICENSE-espflash-APACHE.txt"
 (
   cd bridge-go
   GOOS=windows CGO_ENABLED=0 go build \
@@ -38,6 +55,9 @@ makensis -V2 \
   -DVERSION="$VERSION" \
   -DAPP_EXE="$tmp_dir/cody.exe" \
   -DRELAY_EXE="$tmp_dir/cody-linux" \
+  -DESPFLASH_EXE="$tmp_dir/espflash.exe" \
+  -DESPFLASH_MIT_LICENSE="$tmp_dir/LICENSE-espflash-MIT.txt" \
+  -DESPFLASH_APACHE_LICENSE="$tmp_dir/LICENSE-espflash-APACHE.txt" \
   -DOUTFILE="$installer" \
   bridge-go/installer/cody.nsi
 test -s "$installer"

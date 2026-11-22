@@ -2,11 +2,14 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -19,15 +22,40 @@ import (
 	"github.com/gravity981/agent-cody/bridge-go/internal/sessions"
 )
 
+type fakeFirmwareFlashRunner struct {
+	mode     string
+	port     string
+	image    []byte
+	runError error
+}
+
+func (*fakeFirmwareFlashRunner) Available() error {
+	return nil
+}
+
+func (r *fakeFirmwareFlashRunner) Run(
+	_ context.Context,
+	mode, port, imagePath string,
+	onOutput func(string),
+) error {
+	r.mode = mode
+	r.port = port
+	r.image, _ = os.ReadFile(imagePath)
+	onOutput("writing image at 0x0\n")
+	return r.runError
+}
+
 type fakeLink struct {
 	status        device.Status
 	states        []sessions.State
 	testActive    bool
+	suspended     bool
 	testCommands  []string
 	stopped       []sessions.State
 	replies       []string
 	tuning        device.TuningStatus
 	tuningQueries int
+	ports         []device.PortInfo
 }
 
 func (l *fakeLink) Status() device.Status {
@@ -59,6 +87,25 @@ func (l *fakeLink) QueryTuning(time.Time) error {
 		return device.ErrNotConnected
 	}
 	l.tuningQueries++
+	return nil
+}
+
+func (l *fakeLink) EspressifPorts() ([]device.PortInfo, error) {
+	return append([]device.PortInfo{}, l.ports...), nil
+}
+
+func (l *fakeLink) Suspend(time.Time) {
+	l.suspended = true
+	l.status.Connected = false
+}
+
+func (l *fakeLink) Resume(time.Time) {
+	l.suspended = false
+	l.status.Connected = true
+}
+
+func (l *fakeLink) RestoreTuningAfterReconnect(tuning device.TuningStatus) error {
+	l.tuning = tuning
 	return nil
 }
 
@@ -151,6 +198,29 @@ func requestWithHeaders(
 		t.Fatal(err)
 	}
 	return response, data
+}
+
+func makeFirmwareUpload(t *testing.T, mode, port, filename string, image []byte) ([]byte, string) {
+	t.Helper()
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	if err := writer.WriteField("mode", mode); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.WriteField("port", port); err != nil {
+		t.Fatal(err)
+	}
+	file, err := writer.CreateFormFile("image", filename)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.Write(image); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return body.Bytes(), writer.FormDataContentType()
 }
 
 func Test_req_BRG_01_ReceivesClaudeEventsAndRejectsBadRequests(t *testing.T) {
@@ -540,6 +610,170 @@ func Test_req_TST_09_WebsiteQueriesSavesAndResetsDeviceTuning(t *testing.T) {
 		!bytes.Contains(data, []byte(`"frequency_hz":24000`)) ||
 		!bytes.Contains(data, []byte(`"timestamp":"2026-11-22T11:45:00Z"`)) {
 		t.Fatalf("tuning status=%d body=%s", response.StatusCode, data)
+	}
+}
+
+func Test_req_TST_10_UpdateFlashPreservesTuningAndRestoresBridgeOperation(t *testing.T) {
+	runner := &fakeFirmwareFlashRunner{}
+	server, link, _ := newTestServer(t, WebsiteOptions{FlashRunner: runner})
+	link.tuning = device.TuningStatus{
+		Known: true, Speed: 155, FrequencyHz: 18000, KickStartMs: 8,
+		Decay: "SLOW", Timestamp: "2026-11-22T12:00:00Z",
+	}
+	headers := make(http.Header)
+	headers.Set("Origin", SiteOrigin)
+	response, _ := requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/start", []byte(`{}`), headers,
+	)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("test start status=%d", response.StatusCode)
+	}
+
+	body, contentType := makeFirmwareUpload(t, "update", "/dev/ttyACM0", "cody.bin", []byte("image"))
+	headers.Set("Content-Type", contentType)
+	response, data := requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/flash", body, headers,
+	)
+	if response.StatusCode != http.StatusAccepted {
+		t.Fatalf("flash start status=%d body=%s", response.StatusCode, data)
+	}
+	var accepted struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(data, &accepted); err != nil || accepted.ID == "" {
+		t.Fatalf("flash job response=%s err=%v", data, err)
+	}
+
+	deadline := time.Now().Add(time.Second)
+	var status FirmwareFlashStatus
+	for time.Now().Before(deadline) {
+		response, data = request(
+			t, server.Client(), http.MethodGet,
+			server.URL+"/api/test/flash?id="+accepted.ID, nil,
+		)
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("flash status=%d body=%s", response.StatusCode, data)
+		}
+		if err := json.Unmarshal(data, &status); err != nil {
+			t.Fatal(err)
+		}
+		if status.Done {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if !status.Success || status.Filename != "cody.bin" || status.Phase != "Complete" ||
+		!strings.Contains(status.Output, "writing image at 0x0") {
+		t.Fatalf("flash result = %+v", status)
+	}
+	if runner.mode != "update" || runner.port != "/dev/ttyACM0" ||
+		string(runner.image) != "image" || link.suspended || link.testActive ||
+		link.tuningQueries != 1 {
+		t.Fatalf("flash operation: runner=%+v link=%+v", runner, link)
+	}
+}
+
+func Test_req_TST_10_FirstFlashEnumeratesEspressifPortsAndValidatesImage(t *testing.T) {
+	runner := &fakeFirmwareFlashRunner{}
+	server, link, _ := newTestServer(t, WebsiteOptions{FlashRunner: runner})
+	port := "COM4"
+	link.status = device.Status{Port: &port}
+	link.ports = []device.PortInfo{{Device: port, VID: "303A"}}
+	response, data := request(
+		t, server.Client(), http.MethodGet, server.URL+"/api/test/flash/ports", nil,
+	)
+	if response.StatusCode != http.StatusOK || !bytes.Contains(data, []byte(`"ports":["COM4"]`)) {
+		t.Fatalf("port list status=%d body=%s", response.StatusCode, data)
+	}
+
+	headers := make(http.Header)
+	headers.Set("Origin", SiteOrigin)
+	body, contentType := makeFirmwareUpload(t, "first", port, "firmware.bin", []byte("combined"))
+	headers.Set("Content-Type", contentType)
+	response, data = requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/flash", body, headers,
+	)
+	if response.StatusCode != http.StatusAccepted {
+		t.Fatalf("first flash start status=%d body=%s", response.StatusCode, data)
+	}
+	var accepted struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(data, &accepted); err != nil {
+		t.Fatal(err)
+	}
+
+	deadline := time.Now().Add(time.Second)
+	var status FirmwareFlashStatus
+	for time.Now().Before(deadline) {
+		response, data = request(
+			t, server.Client(), http.MethodGet,
+			server.URL+"/api/test/flash?id="+accepted.ID, nil,
+		)
+		if err := json.Unmarshal(data, &status); err != nil {
+			t.Fatal(err)
+		}
+		if status.Done {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if !status.Success || runner.mode != "first" || runner.port != port ||
+		string(runner.image) != "combined" {
+		t.Fatalf("first flash result = %+v runner=%+v", status, runner)
+	}
+
+	body, contentType = makeFirmwareUpload(t, "first", port, "firmware.txt", []byte("image"))
+	headers.Set("Content-Type", contentType)
+	response, data = requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/flash", body, headers,
+	)
+	if response.StatusCode != http.StatusBadRequest || !bytes.Contains(data, []byte(".bin")) {
+		t.Fatalf("invalid image status=%d body=%s", response.StatusCode, data)
+	}
+}
+
+func Test_req_TST_10_FlashServiceRejectsInvalidImages(t *testing.T) {
+	service := NewFirmwareFlashService(
+		context.Background(), nil, &fakeFirmwareFlashRunner{}, time.Now,
+	)
+	tests := []struct {
+		name     string
+		filename string
+		image    []byte
+	}{
+		{name: "wrong extension", filename: "firmware.hex", image: []byte("image")},
+		{name: "empty", filename: "firmware.bin"},
+		{
+			name: "over 4 MiB", filename: "firmware.bin",
+			image: make([]byte, maximumFirmwareImageSize+1),
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := service.Start("first", "COM4", test.filename, test.image)
+			if !errors.Is(err, ErrInvalidFirmwareImage) {
+				t.Fatalf("Start error = %v, want invalid image", err)
+			}
+		})
+	}
+}
+
+func Test_req_TST_10_WebsiteGuidesFirstFlashAndConfirmsReplacement(t *testing.T) {
+	server, _, _ := newTestServer(t)
+	response, page := request(t, server.Client(), http.MethodGet, server.URL+"/", nil)
+	if response.StatusCode != http.StatusOK ||
+		!bytes.Contains(page, []byte(`id="flash-mode"`)) ||
+		!bytes.Contains(page, []byte(`id="flash-port"`)) ||
+		!bytes.Contains(page, []byte("Hold BOOT, tap and release RESET")) ||
+		!bytes.Contains(page, []byte("combined Cody firmware image")) {
+		t.Fatalf("firmware panel page status=%d body=%s", response.StatusCode, page)
+	}
+	response, script := request(t, server.Client(), http.MethodGet, server.URL+"/app.js", nil)
+	if response.StatusCode != http.StatusOK ||
+		!bytes.Contains(script, []byte("window.confirm")) ||
+		!bytes.Contains(script, []byte("/api/test/flash")) {
+		t.Fatalf("firmware panel script status=%d", response.StatusCode)
 	}
 }
 

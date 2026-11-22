@@ -147,6 +147,79 @@ func Test_req_BRG_07_SendsSettingsOnConnect(t *testing.T) {
 	}
 }
 
+func Test_req_TST_10_SuspendsSerialWritesAndRestoresLatestStateOnReconnect(t *testing.T) {
+	system := newFakeSystem()
+	firstPort := newFakePort()
+	system.plug("COM4", firstPort, "303A")
+	link := makeLink(system, "")
+	connectedAt := connect(link, time.Unix(0, 0))
+
+	link.Suspend(connectedAt)
+	link.SetState(sessions.THINKING, connectedAt.Add(time.Second))
+	link.Step(connectedAt.Add(2 * time.Second))
+	if !firstPort.closed || len(system.opened) != 1 {
+		t.Fatalf("suspended link closed=%v opened=%v", firstPort.closed, system.opened)
+	}
+
+	secondPort := newFakePort()
+	system.plug("COM4", secondPort, "303A")
+	link.Resume(connectedAt.Add(3 * time.Second))
+	link.Step(connectedAt.Add(3 * time.Second))
+	link.Step(connectedAt.Add(3100 * time.Millisecond))
+	if got, want := secondPort.commands, []string{
+		"VERSION?", "VOLUME:50", "BRIGHTNESS:100", "STATE:THINKING",
+	}; !equal(got, want) {
+		t.Fatalf("commands after resume = %v, want %v", got, want)
+	}
+}
+
+func Test_req_TST_10_ReconnectRestoresDeviceTuningSnapshot(t *testing.T) {
+	system := newFakeSystem()
+	port := newFakePort()
+	system.plug("COM4", port, "303A")
+	link := makeLink(system, "")
+	tuning := TuningStatus{
+		Known: true, Speed: 155, FrequencyHz: 18000, KickStartMs: 8,
+		Decay: "SLOW", Timestamp: "2026-11-22T12:00:00Z",
+	}
+	if err := link.RestoreTuningAfterReconnect(tuning); err != nil {
+		t.Fatal(err)
+	}
+	connect(link, time.Unix(0, 0))
+
+	if got, want := port.commands, []string{
+		"VERSION?", "TEST:START", "TEST:SPEED:155", "TEST:FREQ:18000",
+		"TEST:KICK:8", "TEST:DECAY:SLOW", "TEST:TUNING:SAVE:2026-11-22T12:00:00Z",
+		"TEST:STOP", "VOLUME:50", "BRIGHTNESS:100", "STATE:IDLE", "TUNING?",
+	}; !equal(got, want) {
+		t.Fatalf("commands for tuning restoration = %v, want %v", got, want)
+	}
+}
+
+func Test_req_TST_10_UnsavedTuningRemainsUnsavedOnReconnect(t *testing.T) {
+	system := newFakeSystem()
+	port := newFakePort()
+	system.plug("COM4", port, "303A")
+	link := makeLink(system, "")
+	tuning := TuningStatus{
+		Known: true, Speed: 155, FrequencyHz: 18000, KickStartMs: 8,
+		Decay: "SLOW", Timestamp: "UNSAVED",
+	}
+	if err := link.RestoreTuningAfterReconnect(tuning); err != nil {
+		t.Fatal(err)
+	}
+	connect(link, time.Unix(0, 0))
+
+	for _, command := range port.commands {
+		if strings.HasPrefix(command, "TEST:TUNING:SAVE:") {
+			t.Fatalf("unsaved snapshot was persisted with command %q", command)
+		}
+	}
+	if port.commands[len(port.commands)-1] != "TUNING?" {
+		t.Fatalf("restoration did not query result: %v", port.commands)
+	}
+}
+
 func Test_req_BRG_05_SendsHeartbeatsAtLeastEveryTenSeconds(t *testing.T) {
 	system := newFakeSystem()
 	port := newFakePort()
@@ -316,6 +389,44 @@ func Test_req_TST_09_QueriesAndParsesSavedTuning(t *testing.T) {
 	}
 	if !contains(port.commands, "TUNING?") {
 		t.Fatalf("commands = %v, want TUNING? query", port.commands)
+	}
+}
+
+func Test_req_TST_10_EspressifPortListFiltersAndSorts(t *testing.T) {
+	system := newFakeSystem()
+	system.plug("COM9", newFakePort(), "10C4")
+	system.plug("COM4", newFakePort(), "303A")
+	system.plug("COM2", newFakePort(), "303a")
+	link := makeLink(system, "")
+
+	ports, err := link.EspressifPorts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ports) != 2 || ports[0].Device != "COM2" || ports[1].Device != "COM4" {
+		t.Fatalf("Espressif ports = %+v", ports)
+	}
+}
+
+func Test_req_TST_10_TuningQueryClearsStaleSnapshot(t *testing.T) {
+	system := newFakeSystem()
+	port := newFakePort()
+	system.plug("/dev/ttyACM0", port, "303A")
+	link := makeLink(system, "")
+	now := connect(link, time.Unix(0, 0))
+	if err := link.QueryTuning(now); err != nil {
+		t.Fatal(err)
+	}
+	link.Step(now.Add(time.Millisecond))
+	if !link.Tuning().Known {
+		t.Fatal("initial tuning query did not produce status")
+	}
+
+	if err := link.QueryTuning(now.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if link.Tuning().Known {
+		t.Fatalf("new query retained a stale snapshot: %+v", link.Tuning())
 	}
 }
 

@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"embed"
 	"encoding/json"
 	"errors"
@@ -27,6 +28,8 @@ type WebsiteOptions struct {
 	ConfigPath    string
 	RelayStatuses func() []RelayStatus
 	Restart       func()
+	FirmwareFlash *FirmwareFlashService
+	FlashRunner   FirmwareFlashRunner
 }
 
 type RelayStatus struct {
@@ -56,6 +59,10 @@ func registerWebsiteRoutes(
 	clock func() time.Time,
 	options WebsiteOptions,
 ) {
+	firmwareFlash := options.FirmwareFlash
+	if firmwareFlash == nil && options.FlashRunner != nil {
+		firmwareFlash = NewFirmwareFlashService(context.Background(), b, options.FlashRunner, clock)
+	}
 	mux.Handle("/", newWebsiteHandler())
 	mux.HandleFunc("/api/status", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
@@ -168,6 +175,84 @@ func registerWebsiteRoutes(
 			return
 		}
 		writeJSON(w, http.StatusAccepted, map[string]bool{"requested": true})
+	})
+	mux.HandleFunc("/api/test/flash/ports", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			methodNotAllowed(w, http.MethodGet)
+			return
+		}
+		ports, err := b.EspressifPorts()
+		if err != nil {
+			writeAPIError(w, http.StatusServiceUnavailable, err.Error())
+			return
+		}
+		names := make([]string, 0, len(ports))
+		for _, port := range ports {
+			names = append(names, port.Device)
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		writeJSON(w, http.StatusOK, map[string][]string{"ports": names})
+	})
+	mux.HandleFunc("/api/test/flash", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			if firmwareFlash == nil {
+				writeAPIError(w, http.StatusServiceUnavailable, ErrFlashUnavailable.Error())
+				return
+			}
+			status, found := firmwareFlash.Status(r.URL.Query().Get("id"))
+			if !found {
+				writeAPIError(w, http.StatusNotFound, "flash job not found")
+				return
+			}
+			w.Header().Set("Cache-Control", "no-store")
+			writeJSON(w, http.StatusOK, status)
+			return
+		}
+		if !testMutationAllowed(w, r) {
+			return
+		}
+		if firmwareFlash == nil {
+			writeAPIError(w, http.StatusServiceUnavailable, ErrFlashUnavailable.Error())
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, maximumFirmwareImageSize+(64<<10))
+		if err := r.ParseMultipartForm(1 << 20); err != nil {
+			writeAPIError(w, http.StatusBadRequest, "invalid firmware upload: "+err.Error())
+			return
+		}
+		if r.MultipartForm != nil {
+			defer r.MultipartForm.RemoveAll()
+		}
+		imageFile, fileHeader, err := r.FormFile("image")
+		if err != nil {
+			writeAPIError(w, http.StatusBadRequest, "firmware image is required")
+			return
+		}
+		image, err := io.ReadAll(io.LimitReader(imageFile, maximumFirmwareImageSize+1))
+		if closeErr := imageFile.Close(); err == nil && closeErr != nil {
+			err = closeErr
+		}
+		if err != nil {
+			writeAPIError(w, http.StatusBadRequest, "could not read firmware image: "+err.Error())
+			return
+		}
+		id, err := firmwareFlash.Start(
+			r.FormValue("mode"), r.FormValue("port"), fileHeader.Filename, image,
+		)
+		if err != nil {
+			switch {
+			case errors.Is(err, ErrFlashBusy):
+				writeAPIError(w, http.StatusConflict, err.Error())
+			case errors.Is(err, ErrInvalidFirmwareImage):
+				writeAPIError(w, http.StatusBadRequest, err.Error())
+			case errors.Is(err, ErrFlashUnavailable):
+				writeAPIError(w, http.StatusServiceUnavailable, err.Error())
+			default:
+				writeAPIError(w, http.StatusInternalServerError, err.Error())
+			}
+			return
+		}
+		writeJSON(w, http.StatusAccepted, map[string]string{"id": id})
 	})
 	mux.HandleFunc("/api/test/start", func(w http.ResponseWriter, r *http.Request) {
 		if !testMutationAllowed(w, r) {

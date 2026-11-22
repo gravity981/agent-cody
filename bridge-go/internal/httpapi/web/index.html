@@ -106,6 +106,30 @@
           </div>
         </fieldset>
 
+        <fieldset>
+          <legend>Firmware</legend>
+          <p>Firmware flashing runs from the Windows Cody app, which owns the device's serial port.</p>
+          <p>Choose the combined Cody firmware image (.bin, up to 4 MiB). A .bin extension does not prove that the file contains the bootloader, partition table and app.</p>
+          <label for="flash-mode">Operation</label>
+          <select id="flash-mode">
+            <option value="first">First flash (unprogrammed board)</option>
+            <option value="update">Update connected Cody device</option>
+          </select>
+          <div id="flash-first-controls">
+            <label for="flash-port">Espressif serial port</label>
+            <select id="flash-port"></select>
+            <button id="flash-refresh-ports" type="button">Refresh ports</button>
+            <p>Connect the board by USB. Hold BOOT, tap and release RESET, then release BOOT to enter ROM bootloader mode.</p>
+          </div>
+          <p id="flash-update-target" hidden></p>
+          <label for="flash-image">Firmware image</label>
+          <input id="flash-image" type="file" accept=".bin,application/octet-stream">
+          <p>Flashing replaces the device firmware. Confirm the selected filename and target port when prompted.</p>
+          <button id="flash-submit" type="button">Flash image / retry</button>
+          <p id="flash-status" role="status"></p>
+          <pre id="flash-output" aria-live="polite"></pre>
+        </fieldset>
+
         <h3>Device replies</h3>
         <pre id="test-replies" aria-live="polite"></pre>
       </section>

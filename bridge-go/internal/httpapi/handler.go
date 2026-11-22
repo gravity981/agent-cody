@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gravity981/agent-cody/bridge-go/internal/bridge"
+	"github.com/gravity981/agent-cody/bridge-go/internal/device"
 	"github.com/gravity981/agent-cody/bridge-go/internal/mapping"
 	"github.com/gravity981/agent-cody/bridge-go/internal/sessions"
 )
@@ -28,6 +29,9 @@ type Bridge interface {
 	TestHeartbeat(time.Time) error
 	SendTestCommand(string, time.Time) error
 	QueryTuning(time.Time) error
+	EspressifPorts() ([]device.PortInfo, error)
+	BeginFirmwareFlash(string, string, *device.TuningStatus, time.Time) error
+	EndFirmwareFlash(time.Time) error
 	StopTest(time.Time) error
 	TestStatus() bridge.TestStatus
 }

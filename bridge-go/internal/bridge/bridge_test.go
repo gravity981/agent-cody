@@ -24,6 +24,9 @@ type fakeLink struct {
 	tuningQueries int
 	steps         int
 	closed        bool
+	ports         []device.PortInfo
+	suspended     bool
+	restored      *device.TuningStatus
 }
 
 func (l *fakeLink) Status() device.Status {
@@ -48,6 +51,25 @@ func (l *fakeLink) SendTestCommand(command string, _ time.Time) error {
 
 func (l *fakeLink) QueryTuning(time.Time) error {
 	l.tuningQueries++
+	return nil
+}
+
+func (l *fakeLink) EspressifPorts() ([]device.PortInfo, error) {
+	return append([]device.PortInfo{}, l.ports...), nil
+}
+
+func (l *fakeLink) Suspend(time.Time) {
+	l.suspended = true
+	l.status.Connected = false
+}
+
+func (l *fakeLink) Resume(time.Time) {
+	l.suspended = false
+	l.status.Connected = true
+}
+
+func (l *fakeLink) RestoreTuningAfterReconnect(tuning device.TuningStatus) error {
+	l.restored = &tuning
 	return nil
 }
 
@@ -263,6 +285,63 @@ func Test_req_TST_09_BridgeQueriesAndExposesDeviceTuning(t *testing.T) {
 	}
 	if got := app.TestStatus().Tuning; got != tuning {
 		t.Fatalf("reported tuning = %+v, want %+v", got, tuning)
+	}
+}
+
+func Test_req_TST_10_FirmwareFlashReleasesDeviceAndRestoresLatestState(t *testing.T) {
+	now := time.Unix(100, 0)
+	portName := "COM4"
+	firmware := "1.2.3 abc"
+	tuning := device.TuningStatus{
+		Known: true, Speed: 155, FrequencyHz: 18000, KickStartMs: 8,
+		Decay: "SLOW", Timestamp: "2026-11-22T12:00:00Z",
+	}
+	link := &fakeLink{
+		status: device.Status{Connected: true, Port: &portName, Firmware: &firmware},
+		tuning: tuning,
+	}
+	app := New(sessions.New(time.Minute), link, logging.New(io.Discard, "info"), "v", "c")
+	if err := app.StartTest(now); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.BeginFirmwareFlash("update", portName, &tuning, now.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if !link.suspended || link.testActive || link.restored == nil {
+		t.Fatalf("flash did not stop test, suspend link and preserve tuning: %+v", link)
+	}
+
+	app.Event(mapping.Event{
+		Agent: "claude-code", Session: "new", Name: "PermissionRequest", State: sessions.APPROVAL,
+	}, now.Add(2*time.Second))
+	if err := app.EndFirmwareFlash(now.Add(3 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if link.suspended || !link.status.Connected {
+		t.Fatalf("link did not resume after flash: %+v", link)
+	}
+	if got := app.Status(now.Add(3 * time.Second)).State; got != sessions.APPROVAL {
+		t.Fatalf("merged state after flash = %s, want APPROVAL", got)
+	}
+}
+
+func Test_req_TST_10_FirstFlashRequiresAvailableEspressifPort(t *testing.T) {
+	link := &fakeLink{
+		ports: []device.PortInfo{{Device: "COM4", VID: "303A"}},
+	}
+	app := New(sessions.New(time.Minute), link, logging.New(io.Discard, "info"), "v", "c")
+
+	if err := app.BeginFirmwareFlash("first", "COM5", nil, time.Unix(100, 0)); err == nil {
+		t.Fatal("first flash accepted an unavailable port")
+	}
+	if err := app.BeginFirmwareFlash("first", "COM4", nil, time.Unix(101, 0)); err != nil {
+		t.Fatal(err)
+	}
+	if !link.suspended {
+		t.Fatal("first flash did not suspend serial discovery")
+	}
+	if err := app.EndFirmwareFlash(time.Unix(102, 0)); err != nil {
+		t.Fatal(err)
 	}
 }
 
