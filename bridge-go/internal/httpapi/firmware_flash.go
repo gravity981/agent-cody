@@ -87,8 +87,8 @@ func NewFirmwareFlashService(
 }
 
 func (s *FirmwareFlashService) Start(mode, port, filename string, image []byte) (string, error) {
-	if mode != "first" && mode != "update" {
-		return "", fmt.Errorf("%w: mode must be first or update", ErrInvalidFirmwareImage)
+	if mode != "manual" && mode != "update" {
+		return "", fmt.Errorf("%w: mode must be manual or update", ErrInvalidFirmwareImage)
 	}
 	if strings.TrimSpace(port) == "" {
 		return "", fmt.Errorf("%w: a serial port must be selected", ErrInvalidFirmwareImage)

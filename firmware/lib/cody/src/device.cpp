@@ -133,8 +133,9 @@ std::string Device::handleLine(const char* line, uint32_t nowMs) {
       cmd.kind == Command::Kind::TestMotorStop || cmd.kind == Command::Kind::TestSpeed ||
       cmd.kind == Command::Kind::TestFrequency || cmd.kind == Command::Kind::TestKick ||
       cmd.kind == Command::Kind::TestDecay || cmd.kind == Command::Kind::TestVolume ||
-      cmd.kind == Command::Kind::TestTuningSave || cmd.kind == Command::Kind::TestTuningReset ||
-      cmd.kind == Command::Kind::TestLed || cmd.kind == Command::Kind::TestBeep;
+      cmd.kind == Command::Kind::TestBrightness || cmd.kind == Command::Kind::TestTuningSave ||
+      cmd.kind == Command::Kind::TestTuningReset || cmd.kind == Command::Kind::TestLed ||
+      cmd.kind == Command::Kind::TestBeep;
   if (testMode_ && normalControl) return "ERR test mode active\n";
   if (!testMode_ && testControl) return "ERR test mode inactive\n";
 
@@ -173,6 +174,7 @@ std::string Device::handleLine(const char* line, uint32_t nowMs) {
       if (!testMode_) {
         testMode_ = true;
         clearTestOverrides();
+        testLedBrightnessOverride_ = false;
         enterState(State::Idle, nowMs);
         sound_ = Sound::None;
         motorRunning_ = false;
@@ -181,6 +183,7 @@ std::string Device::handleLine(const char* line, uint32_t nowMs) {
     case Command::Kind::TestStop:
       testMode_ = false;
       clearTestOverrides();
+      testLedBrightnessOverride_ = false;
       enterState(State::Idle, nowMs);
       sound_ = Sound::None;
       motorRunning_ = false;
@@ -211,6 +214,10 @@ std::string Device::handleLine(const char* line, uint32_t nowMs) {
       break;
     case Command::Kind::TestVolume:
       volume_ = cmd.value;
+      break;
+    case Command::Kind::TestBrightness:
+      testLedBrightness_ = cmd.value;
+      testLedBrightnessOverride_ = true;
       break;
     case Command::Kind::TestTuningSave: {
       const std::string timestamp(cmd.timestamp);
@@ -306,6 +313,7 @@ Outputs Device::update(uint32_t nowMs) {
     // FW-06, FW-07: motor stopped, slow dim white pulse
     if (wasConnected_ || testMode_) {
       clearTestOverrides();
+      testLedBrightnessOverride_ = false;
       testMode_ = false;
     }
     wasConnected_ = false;
@@ -316,8 +324,9 @@ Outputs Device::update(uint32_t nowMs) {
   }
   wasConnected_ = true;
 
+  const int ledBrightness = testLedBrightnessOverride_ ? testLedBrightness_ : brightness_;
   out.led = ledOverride_ ? scaled(ledOverrideColour_.r, ledOverrideColour_.g, ledOverrideColour_.b,
-                                  100, brightness_)
+                                  100, ledBrightness)
                          : stateLed(nowMs);
   soundAt(nowMs, out);
 

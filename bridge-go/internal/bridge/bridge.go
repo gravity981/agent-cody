@@ -214,16 +214,16 @@ func (b *Bridge) BeginFirmwareFlash(
 
 	status := b.link.Status()
 	switch mode {
-	case "first":
-		if status.Connected {
-			return errors.New("first flash is only available when no Cody device is connected")
-		}
+	case "manual":
 		ports, err := b.link.EspressifPorts()
 		if err != nil {
 			return fmt.Errorf("list Espressif serial ports: %w", err)
 		}
 		if !containsPort(ports, port) {
 			return errors.New("selected port is not an available Espressif device")
+		}
+		if status.Connected && (status.Port == nil || *status.Port != port) {
+			return errors.New("manual flash port must match the connected Cody device")
 		}
 	case "update":
 		if !status.Connected || status.Port == nil || *status.Port != port {
@@ -233,12 +233,12 @@ func (b *Bridge) BeginFirmwareFlash(
 			return errors.New("update requires a motor tuning snapshot")
 		}
 	default:
-		return errors.New("flash mode must be first or update")
+		return errors.New("flash mode must be manual or update")
 	}
 
 	if b.testMode {
 		if err := b.stopTest(now, "firmware flashing"); err != nil &&
-			!(mode == "first" && errors.Is(err, device.ErrNotConnected)) {
+			!(mode == "manual" && errors.Is(err, device.ErrNotConnected)) {
 			return fmt.Errorf("stop hardware test before firmware flashing: %w", err)
 		}
 	}

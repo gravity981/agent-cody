@@ -87,7 +87,7 @@ Verified manually because they need real hardware, real agents or the owner's ju
 - BRG-06, BRG-09, BRG-16 – BRG-18: replug, autostart, tray and installer with the Windows app and the device; BRG-20 – BRG-24: website status/configuration, sliders, restart behavior and firmware update flow; BRG-19: native Linux and macOS.
 - AGT-01 – AGT-04, AGT-12: real agent sessions in each environment; AGT-09: setup guide followed once.
 - ELE-01 – ELE-07: modules, soldering, current, stability, cost, documents.
-- TST-01 – TST-10: test mode and bridge-backed panel controls on the bench, including state presets, motor range/decay, NVS save/reset, displayed tuning and timestamp, sliders, first-time flashing from ROM bootloader, local combined-image update with tuning restoration, reconnection, LED and buzzer, browser close, timeout restoration and serial loss.
+- TST-01 – TST-11: test mode and bridge-backed panel controls on the bench, including state presets, motor range/decay, NVS save/reset, displayed tuning and timestamp, sliders, temporary LED test brightness and preference restoration, first-time and legacy-firmware flashing from ROM bootloader, tuning-preserving update, reconnection, LED and buzzer, browser close, timeout restoration and serial loss.
 - FIG-01, FIG-05 – FIG-16: printed assembly, motion, endurance, noise, service.
 - DOC-01 – DOC-05: completeness and usability of the parts list and instructions, checked by building along them; DOC-07: a test build by someone else.
 

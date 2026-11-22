@@ -330,7 +330,7 @@ func (c testCommandRequest) command() (string, error) {
 			return "TEST:MOTOR:" + c.Value, nil
 		}
 		return "", errors.New("motor action must be START or STOP")
-	case "speed", "frequency", "kick", "volume":
+	case "speed", "frequency", "kick", "volume", "led-brightness":
 		value, err := strconv.Atoi(c.Value)
 		if err != nil {
 			return "", fmt.Errorf("%s must be an integer", c.Action)
@@ -344,6 +344,8 @@ func (c testCommandRequest) command() (string, error) {
 			maximum, command = 100, "TEST:KICK"
 		case "volume":
 			maximum, command = 100, "TEST:VOLUME"
+		case "led-brightness":
+			maximum, command = 100, "TEST:BRIGHTNESS"
 		}
 		if value < minimum || value > maximum {
 			return "", fmt.Errorf("%s must be between %d and %d", c.Action, minimum, maximum)

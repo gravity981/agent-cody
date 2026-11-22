@@ -673,28 +673,20 @@ func Test_req_TST_10_UpdateFlashPreservesTuningAndRestoresBridgeOperation(t *tes
 	}
 }
 
-func Test_req_TST_10_FirstFlashEnumeratesEspressifPortsAndValidatesImage(t *testing.T) {
+func Test_req_TST_10_UpdateStopsBeforeFlashingWhenTuningQueryIsUnsupported(t *testing.T) {
 	runner := &fakeFirmwareFlashRunner{}
 	server, link, _ := newTestServer(t, WebsiteOptions{FlashRunner: runner})
-	port := "COM4"
-	link.status = device.Status{Port: &port}
-	link.ports = []device.PortInfo{{Device: port, VID: "303A"}}
-	response, data := request(
-		t, server.Client(), http.MethodGet, server.URL+"/api/test/flash/ports", nil,
-	)
-	if response.StatusCode != http.StatusOK || !bytes.Contains(data, []byte(`"ports":["COM4"]`)) {
-		t.Fatalf("port list status=%d body=%s", response.StatusCode, data)
-	}
+	link.tuning.Error = "ERR unknown command"
 
 	headers := make(http.Header)
 	headers.Set("Origin", SiteOrigin)
-	body, contentType := makeFirmwareUpload(t, "first", port, "firmware.bin", []byte("combined"))
+	body, contentType := makeFirmwareUpload(t, "update", "/dev/ttyACM0", "cody.bin", []byte("image"))
 	headers.Set("Content-Type", contentType)
-	response, data = requestWithHeaders(
+	response, data := requestWithHeaders(
 		t, server.Client(), http.MethodPost, server.URL+"/api/test/flash", body, headers,
 	)
 	if response.StatusCode != http.StatusAccepted {
-		t.Fatalf("first flash start status=%d body=%s", response.StatusCode, data)
+		t.Fatalf("flash start status=%d body=%s", response.StatusCode, data)
 	}
 	var accepted struct {
 		ID string `json:"id"`
@@ -718,12 +710,65 @@ func Test_req_TST_10_FirstFlashEnumeratesEspressifPortsAndValidatesImage(t *test
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
-	if !status.Success || runner.mode != "first" || runner.port != port ||
-		string(runner.image) != "combined" {
-		t.Fatalf("first flash result = %+v runner=%+v", status, runner)
+	if !status.Done || status.Success || !strings.Contains(status.Error, "ERR unknown command") ||
+		runner.mode != "" || link.suspended || link.tuningQueries != 1 {
+		t.Fatalf("unsupported tuning query did not fail before flashing: status=%+v runner=%+v link=%+v",
+			status, runner, link)
+	}
+}
+
+func Test_req_TST_10_ManualFlashSupportsRecognizedDeviceWithoutTuningQuery(t *testing.T) {
+	runner := &fakeFirmwareFlashRunner{}
+	server, link, _ := newTestServer(t, WebsiteOptions{FlashRunner: runner})
+	port := "COM4"
+	firmware := "legacy"
+	link.status = device.Status{Connected: true, Port: &port, Firmware: &firmware}
+	link.ports = []device.PortInfo{{Device: port, VID: "303A"}}
+	response, data := request(
+		t, server.Client(), http.MethodGet, server.URL+"/api/test/flash/ports", nil,
+	)
+	if response.StatusCode != http.StatusOK || !bytes.Contains(data, []byte(`"ports":["COM4"]`)) {
+		t.Fatalf("port list status=%d body=%s", response.StatusCode, data)
 	}
 
-	body, contentType = makeFirmwareUpload(t, "first", port, "firmware.txt", []byte("image"))
+	headers := make(http.Header)
+	headers.Set("Origin", SiteOrigin)
+	body, contentType := makeFirmwareUpload(t, "manual", port, "firmware.bin", []byte("combined"))
+	headers.Set("Content-Type", contentType)
+	response, data = requestWithHeaders(
+		t, server.Client(), http.MethodPost, server.URL+"/api/test/flash", body, headers,
+	)
+	if response.StatusCode != http.StatusAccepted {
+		t.Fatalf("manual flash start status=%d body=%s", response.StatusCode, data)
+	}
+	var accepted struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(data, &accepted); err != nil {
+		t.Fatal(err)
+	}
+
+	deadline := time.Now().Add(time.Second)
+	var status FirmwareFlashStatus
+	for time.Now().Before(deadline) {
+		response, data = request(
+			t, server.Client(), http.MethodGet,
+			server.URL+"/api/test/flash?id="+accepted.ID, nil,
+		)
+		if err := json.Unmarshal(data, &status); err != nil {
+			t.Fatal(err)
+		}
+		if status.Done {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if !status.Success || runner.mode != "manual" || runner.port != port ||
+		string(runner.image) != "combined" || link.tuningQueries != 0 {
+		t.Fatalf("manual flash result = %+v runner=%+v tuning queries=%d", status, runner, link.tuningQueries)
+	}
+
+	body, contentType = makeFirmwareUpload(t, "manual", port, "firmware.txt", []byte("image"))
 	headers.Set("Content-Type", contentType)
 	response, data = requestWithHeaders(
 		t, server.Client(), http.MethodPost, server.URL+"/api/test/flash", body, headers,
@@ -751,7 +796,7 @@ func Test_req_TST_10_FlashServiceRejectsInvalidImages(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := service.Start("first", "COM4", test.filename, test.image)
+			_, err := service.Start("manual", "COM4", test.filename, test.image)
 			if !errors.Is(err, ErrInvalidFirmwareImage) {
 				t.Fatalf("Start error = %v, want invalid image", err)
 			}
@@ -759,19 +804,22 @@ func Test_req_TST_10_FlashServiceRejectsInvalidImages(t *testing.T) {
 	}
 }
 
-func Test_req_TST_10_WebsiteGuidesFirstFlashAndConfirmsReplacement(t *testing.T) {
+func Test_req_TST_10_WebsiteGuidesManualFlashAndWarnsAboutTuning(t *testing.T) {
 	server, _, _ := newTestServer(t)
 	response, page := request(t, server.Client(), http.MethodGet, server.URL+"/", nil)
 	if response.StatusCode != http.StatusOK ||
 		!bytes.Contains(page, []byte(`id="flash-mode"`)) ||
 		!bytes.Contains(page, []byte(`id="flash-port"`)) ||
+		!bytes.Contains(page, []byte("Manual ROM bootloader flash")) ||
 		!bytes.Contains(page, []byte("Hold BOOT, tap and release RESET")) ||
+		!bytes.Contains(page, []byte("Saved motor tuning and its timestamp may be lost")) ||
 		!bytes.Contains(page, []byte("combined Cody firmware image")) {
 		t.Fatalf("firmware panel page status=%d body=%s", response.StatusCode, page)
 	}
 	response, script := request(t, server.Client(), http.MethodGet, server.URL+"/app.js", nil)
 	if response.StatusCode != http.StatusOK ||
 		!bytes.Contains(script, []byte("window.confirm")) ||
+		!bytes.Contains(script, []byte("Select Manual ROM bootloader flash")) ||
 		!bytes.Contains(script, []byte("/api/test/flash")) {
 		t.Fatalf("firmware panel script status=%d", response.StatusCode)
 	}
@@ -860,6 +908,36 @@ func Test_req_TST_06_TestCommandRequestMapsPanelControlsToFirmwareProtocol(t *te
 	}
 	if _, err := (testCommandRequest{Action: "volume", Value: "101"}).command(); err == nil {
 		t.Fatal("volume above 100 was accepted")
+	}
+}
+
+func Test_req_TST_11_TemporaryLEDBrightnessControlAndCommandOrder(t *testing.T) {
+	for _, value := range []string{"0", "50", "100"} {
+		command, err := (testCommandRequest{Action: "led-brightness", Value: value}).command()
+		expected := "TEST:BRIGHTNESS:" + value
+		if err != nil || command != expected {
+			t.Fatalf("brightness %q maps to %q, %v; want %q", value, command, err, expected)
+		}
+	}
+	for _, value := range []string{"-1", "101", "not-a-number"} {
+		if _, err := (testCommandRequest{Action: "led-brightness", Value: value}).command(); err == nil {
+			t.Fatalf("invalid brightness %q was accepted", value)
+		}
+	}
+
+	server, _, _ := newTestServer(t)
+	response, page := request(t, server.Client(), http.MethodGet, server.URL+"/", nil)
+	if response.StatusCode != http.StatusOK ||
+		!bytes.Contains(page, []byte(`id="test-led-brightness" type="range" min="0" max="100" step="1"`)) ||
+		!bytes.Contains(page, []byte(`id="test-apply-led-brightness" type="button">Apply brightness</button>`)) {
+		t.Fatalf("LED test brightness controls status=%d body=%s", response.StatusCode, page)
+	}
+	response, script := request(t, server.Client(), http.MethodGet, server.URL+"/app.js", nil)
+	start := bytes.Index(script, []byte("async function applyLedBrightness()"))
+	color := bytes.Index(script, []byte("await sendLedColour();"))
+	brightness := bytes.Index(script, []byte(`await sendTestCommand("led-brightness", byId("test-led-brightness").value);`))
+	if response.StatusCode != http.StatusOK || start < 0 || color <= start || brightness <= color {
+		t.Fatalf("LED brightness must send the RGB colour before brightness; script status=%d", response.StatusCode)
 	}
 }
 

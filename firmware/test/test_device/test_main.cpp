@@ -318,6 +318,27 @@ void test_req_TST_04_raw_led_test_is_capped_and_cleared_by_state_preset() {
   TEST_ASSERT_TRUE(d.testMode());
 }
 
+void test_req_TST_11_led_test_brightness_is_temporary_and_applies_to_raw_colour() {
+  Device d("1.2.3", "abc");
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "BRIGHTNESS:40", 0).c_str());
+  send(d, "TEST:START", 1);
+  send(d, "TEST:LED:255,0,0", 2);
+  assertLed({17, 0, 0}, d.update(2).led);
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:BRIGHTNESS:25", 3).c_str());
+  TEST_ASSERT_EQUAL_INT(40, d.brightness());
+  assertLed({6, 0, 0}, d.update(3).led);
+  send(d, "TEST:STATE:THINKING", 4);
+  send(d, "TEST:LED:255,0,0", 5);
+  assertLed({6, 0, 0}, d.update(5).led);
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "TEST:BRIGHTNESS:0", 6).c_str());
+  assertLed({}, d.update(6).led);
+  TEST_ASSERT_EQUAL_STRING("ERR bad value\n", send(d, "TEST:BRIGHTNESS:101", 7).c_str());
+  send(d, "TEST:STOP", 8);
+  TEST_ASSERT_EQUAL_STRING("OK\n", send(d, "LED:255,0,0", 9).c_str());
+  assertLed({17, 0, 0}, d.update(9).led);
+  TEST_ASSERT_EQUAL_STRING("ERR test mode inactive\n", send(d, "TEST:BRIGHTNESS:50", 10).c_str());
+}
+
 void test_req_TST_05_test_volume_applies_to_normal_state_sounds() {
   Device d("1.2.3", "abc");
   send(d, "TEST:START", 0);
@@ -519,6 +540,7 @@ int main() {
   RUN_TEST(test_req_TST_03_motor_tunings_apply_to_test_and_normal_working);
   RUN_TEST(test_req_TST_03_motor_tuning_bounds_include_zero_kick_and_30_khz);
   RUN_TEST(test_req_TST_04_raw_led_test_is_capped_and_cleared_by_state_preset);
+  RUN_TEST(test_req_TST_11_led_test_brightness_is_temporary_and_applies_to_raw_colour);
   RUN_TEST(test_req_TST_05_test_volume_applies_to_normal_state_sounds);
   RUN_TEST(test_req_TST_07_timeout_stops_test_motor_and_keeps_volatile_tunings);
   RUN_TEST(test_req_FW_01_state_led_and_arms_follow_the_table);

@@ -177,6 +177,9 @@ const char* parseCommand(const char* line, Command& out) {
   } else if ((arg = argumentOf(line, "TEST:VOLUME")) != nullptr) {
     if (!parseInt(arg, 0, 100, out.value)) return "bad value";
     out.kind = Command::Kind::TestVolume;
+  } else if ((arg = argumentOf(line, "TEST:BRIGHTNESS")) != nullptr) {
+    if (!parseInt(arg, 0, 100, out.value)) return "bad value";
+    out.kind = Command::Kind::TestBrightness;
   } else if ((arg = argumentOf(line, "TEST:TUNING:SAVE")) != nullptr) {
     if (!copyTimestamp(arg, out)) return "bad timestamp";
     out.kind = Command::Kind::TestTuningSave;

@@ -36,6 +36,7 @@ struct Command {
     TestKick,
     TestDecay,
     TestVolume,
+    TestBrightness,
     TestTuningSave,
     TestTuningReset,
     TestLed,

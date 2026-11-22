@@ -19,7 +19,7 @@ let flashTargetPort = "";
 let testActive = false;
 let testBusy = false;
 let flashBusy = false;
-let flashPortsLoaded = false;
+let flashModeTouched = false;
 let tuningDirty = false;
 let displayedTuning = "";
 let tuningQuerySent = false;
@@ -64,12 +64,11 @@ function renderStatus(status) {
   const wasConnected = deviceConnected;
   deviceConnected = status.device.connected;
   devicePort = status.device.port || "";
-  if (!deviceConnected) {
+  if (wasConnected !== deviceConnected) {
     tuningQuerySent = false;
-    if (wasConnected || !flashPortsLoaded) {
-      void refreshFlashPorts();
-    }
-  } else if (!tuningQuerySent) {
+    void refreshFlashPorts();
+  }
+  if (deviceConnected && !tuningQuerySent) {
     tuningQuerySent = true;
     postTest("/api/test/tuning", { action: "query" }).catch((error) => {
       tuningQuerySent = false;
@@ -156,7 +155,8 @@ function renderTestControls() {
     "#test-states button, #test-speed, #test-frequency, #test-kick, #test-decay, " +
     "#test-apply-motor, #test-save-tuning, #test-reset-tuning, #test-motor-start, " +
     "#test-motor-stop, #test-red, #test-green, #test-blue, #test-show-led, #test-volume, " +
-    "#test-sound, #test-apply-volume, #test-play-sound"
+    "#test-led-brightness, #test-apply-led-brightness, #test-sound, #test-apply-volume, " +
+    "#test-play-sound"
   )) {
     control.disabled = !deviceConnected || !testActive || testBusy || flashBusy;
   }
@@ -164,17 +164,15 @@ function renderTestControls() {
 
 function renderFlashControls() {
   const mode = byId("flash-mode");
-  const firstOption = mode.querySelector('option[value="first"]');
   const updateOption = mode.querySelector('option[value="update"]');
-  firstOption.disabled = deviceConnected;
   updateOption.disabled = !deviceConnected;
   mode.disabled = flashBusy;
-  if (!flashBusy && deviceConnected && mode.value !== "update") mode.value = "update";
-  if (!flashBusy && !deviceConnected && mode.value !== "first") mode.value = "first";
+  if (!flashModeTouched && deviceConnected) mode.value = "update";
+  if (!flashBusy && !deviceConnected && mode.value === "update") mode.value = "manual";
 
-  const firstMode = mode.value === "first";
-  byId("flash-first-controls").hidden = !firstMode;
-  byId("flash-update-target").hidden = firstMode;
+  const manualMode = mode.value === "manual";
+  byId("flash-manual-controls").hidden = !manualMode;
+  byId("flash-update-target").hidden = manualMode;
   const targetPort = flashBusy ? flashTargetPort : devicePort;
   byId("flash-update-target").textContent = targetPort
     ? `Connected Cody target: ${targetPort}`
@@ -185,8 +183,8 @@ function renderFlashControls() {
   const image = byId("flash-image").files[0];
   byId("flash-submit").disabled = flashBusy || testBusy ||
     !image ||
-    (firstMode && !byId("flash-port").value) ||
-    (!firstMode && !deviceConnected);
+    (manualMode && !byId("flash-port").value) ||
+    (!manualMode && !deviceConnected);
 }
 
 async function refreshFlashPorts() {
@@ -203,7 +201,6 @@ async function refreshFlashPorts() {
       select.append(option);
     }
     if (ports.includes(previous)) select.value = previous;
-    flashPortsLoaded = true;
     if (ports.length === 0) {
       byId("flash-status").textContent = "No Espressif serial ports found. Connect the board and refresh.";
     } else if (byId("flash-status").textContent.startsWith("No Espressif serial ports")) {
@@ -232,9 +229,12 @@ async function flashFirmware() {
     byId("flash-status").textContent = "Choose a non-empty .bin file no larger than 4 MiB.";
     return;
   }
-  const operation = mode === "first" ? "first flash" : "update";
+  const operation = mode === "manual" ? "manual ROM bootloader flash" : "tuning-preserving update";
+  const tuningWarning = mode === "manual"
+    ? "\n\nManual mode cannot back up motor tuning; saved tuning and its timestamp may be lost or reset."
+    : "";
   if (!window.confirm(
-    `This ${operation} will replace the device firmware.\n\nImage: ${image.name}\nTarget port: ${port}\n\nContinue?`
+    `This ${operation} will replace the device firmware.${tuningWarning}\n\nImage: ${image.name}\nTarget port: ${port}\n\nContinue?`
   )) {
     return;
   }
@@ -263,7 +263,13 @@ async function flashFirmware() {
         : status.phase;
       byId("flash-output").textContent = status.output;
       if (status.done) {
-        if (!status.success) throw new Error(status.error || "Firmware flashing failed");
+        if (!status.success) {
+          let message = status.error || "Firmware flashing failed";
+          if (status.mode === "update" && message.toLowerCase().includes("unknown command")) {
+            message += ". Select Manual ROM bootloader flash to upgrade firmware without tuning backup.";
+          }
+          throw new Error(message);
+        }
         break;
       }
     }
@@ -377,6 +383,20 @@ function sendTestCommand(action, value) {
   return postTest("/api/test/command", { action, value: String(value) });
 }
 
+function sendLedColour() {
+  return postTest("/api/test/command", {
+    action: "led",
+    red: Number(byId("test-red").value),
+    green: Number(byId("test-green").value),
+    blue: Number(byId("test-blue").value),
+  });
+}
+
+async function applyLedBrightness() {
+  await sendLedColour();
+  await sendTestCommand("led-brightness", byId("test-led-brightness").value);
+}
+
 async function applyMotorSettings() {
   await sendTestCommand("speed", byId("test-speed").value);
   await sendTestCommand("frequency", byId("test-frequency").value);
@@ -392,6 +412,8 @@ function setConfig(config) {
   byId("brightness").value = config.brightness;
   byId("volume-value").textContent = `${config.volume}%`;
   byId("brightness-value").textContent = `${config.brightness}%`;
+  byId("test-led-brightness").value = config.brightness;
+  byId("test-led-brightness-value").textContent = `${config.brightness}%`;
   byId("session-timeout").value = config.session_timeout_min;
   byId("serial-port").value = config.serial_port;
   byId("log-level").value = config.log_level;
@@ -498,14 +520,10 @@ byId("test-motor-stop").addEventListener("click", () => {
   void runTestAction(() => sendTestCommand("motor", "STOP"));
 });
 byId("test-show-led").addEventListener("click", () => {
-  void runTestAction(() =>
-    postTest("/api/test/command", {
-      action: "led",
-      red: Number(byId("test-red").value),
-      green: Number(byId("test-green").value),
-      blue: Number(byId("test-blue").value),
-    })
-  );
+  void runTestAction(sendLedColour);
+});
+byId("test-apply-led-brightness").addEventListener("click", () => {
+  void runTestAction(applyLedBrightness);
 });
 byId("test-apply-volume").addEventListener("click", () => {
   void runTestAction(() => sendTestCommand("volume", byId("test-volume").value));
@@ -534,7 +552,10 @@ byId("test-reset-tuning").addEventListener("click", () => {
     tuningDirty = false;
   });
 });
-byId("flash-mode").addEventListener("change", renderFlashControls);
+byId("flash-mode").addEventListener("change", () => {
+  flashModeTouched = true;
+  renderFlashControls();
+});
 byId("flash-port").addEventListener("change", renderFlashControls);
 byId("flash-image").addEventListener("change", renderFlashControls);
 byId("flash-refresh-ports").addEventListener("click", () => void refreshFlashPorts());
@@ -542,6 +563,7 @@ byId("flash-submit").addEventListener("click", () => void flashFirmware());
 for (const [id, outputId] of [
   ["volume", "volume-value"],
   ["brightness", "brightness-value"],
+  ["test-led-brightness", "test-led-brightness-value"],
   ["test-volume", "test-volume-value"],
 ]) {
   byId(id).addEventListener("input", () => {
@@ -560,5 +582,6 @@ renderFlashControls();
 void refreshStatus();
 void loadConfig();
 void refreshTestStatus();
+void refreshFlashPorts();
 window.setInterval(() => void refreshStatus(), 3000);
 window.setInterval(() => void refreshTestStatus(), 2000);

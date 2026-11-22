@@ -97,6 +97,8 @@ class Device {
   std::string tuningTimestamp_;
   int volume_ = kDefaultVolume;
   int brightness_ = kDefaultBrightness;
+  int testLedBrightness_ = kDefaultBrightness;
+  bool testLedBrightnessOverride_ = false;
   bool ledOverride_ = false;
   Rgb ledOverrideColour_;
   Sound sound_ = Sound::None;

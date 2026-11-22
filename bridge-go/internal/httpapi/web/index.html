@@ -84,8 +84,13 @@
             <input id="test-green" type="number" min="0" max="255" step="1" value="0">
             <label for="test-blue">Blue <span class="hint">(0-255)</span></label>
             <input id="test-blue" type="number" min="0" max="255" step="1" value="0">
+            <label for="test-led-brightness">Brightness <output id="test-led-brightness-value">100%</output></label>
+            <input id="test-led-brightness" type="range" min="0" max="100" step="1" value="100">
           </div>
-          <button id="test-show-led" type="button">Show colour</button>
+          <div class="actions">
+            <button id="test-show-led" type="button">Show colour</button>
+            <button id="test-apply-led-brightness" type="button">Apply brightness</button>
+          </div>
         </fieldset>
 
         <fieldset>
@@ -112,14 +117,15 @@
           <p>Choose the combined Cody firmware image (.bin, up to 4 MiB). A .bin extension does not prove that the file contains the bootloader, partition table and app.</p>
           <label for="flash-mode">Operation</label>
           <select id="flash-mode">
-            <option value="first">First flash (unprogrammed board)</option>
-            <option value="update">Update connected Cody device</option>
+            <option value="update">Update connected Cody device (preserve tuning)</option>
+            <option value="manual">Manual ROM bootloader flash</option>
           </select>
-          <div id="flash-first-controls">
+          <div id="flash-manual-controls">
             <label for="flash-port">Espressif serial port</label>
             <select id="flash-port"></select>
             <button id="flash-refresh-ports" type="button">Refresh ports</button>
-            <p>Connect the board by USB. Hold BOOT, tap and release RESET, then release BOOT to enter ROM bootloader mode.</p>
+            <p>Use for a first flash or firmware that cannot read motor tuning. Select the device's COM port. Hold BOOT, tap and release RESET, then release BOOT. If ROM mode uses a different COM port, refresh the list and select that port.</p>
+            <p class="notice">Manual flashing skips the tuning backup. Saved motor tuning and its timestamp may be lost or reset. Use the update mode when the installed firmware supports tuning reads.</p>
           </div>
           <p id="flash-update-target" hidden></p>
           <label for="flash-image">Firmware image</label>

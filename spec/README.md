@@ -62,7 +62,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | ELE | Electronics | 6 | 7 | 2, 4, 5 | specified |
 | FIG | Figure and mechanism | 7 | 17 | 4, 5 | specified |
 | DOC | Build documentation | 8 | 7 | 2, 4, 5 | specified |
-| TST | Hardware test panel | 9 | 10 | 2 | in progress |
+| TST | Hardware test panel | 9 | 11 | 2 | in progress |
 
 ## Decisions
 
@@ -101,6 +101,8 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-21 | The Windows tray remains a launcher/status indicator; Cody serves one embedded local website for status, configuration, the bridge-backed test panel and firmware updates. The site is loopback-only with same-origin checks for browser mutations; settings require restart. The updater is Windows-first and uses a pinned espflash helper. | requirements.md 4, 9; architecture.md 4, 5, TD-08, TD-09; delivery.md 2; implementation-plan.md |
 | 2026-11-22 | Motor tuning is per-device NVS data, saved explicitly with a bridge-supplied UTC timestamp; the website shows it and can save or restore firmware defaults. Volume and brightness are Windows Go bridge preferences with 1%-step sliders; volume uses `V=(x/100)^2.5`, defaults to 50%, and brightness uses `b=(x/100)^2.2` on channels after the existing 50% cap, defaulting to 100%. The frozen Python bridge is knowingly incompatible with the new firmware until Stage 6. | requirements.md 3–4, 9; architecture.md 4.2–4.4, TD-10; verification.md; implementation-plan.md |
 | 2026-11-22 | Add first-time and update `.bin` flashing through the bridge, with explicit ESP32-C3 bootloader selection, preserving saved motor tuning through protocol snapshot/restore; no devcontainer USB bind mount. Keep the GitHub release updater as a separate Stage 6 feature. | requirements.md 9; architecture.md 4.2, 4.4, TD-11; implementation-plan.md |
+| 2026-11-22 | Add Manual ROM bootloader flash for existing Cody devices whose firmware lacks `TUNING?`; this path warns that motor tuning may be lost, while the separate Update path continues to require and restore a tuning snapshot. | requirements.md 9; architecture.md 4.2, 4.4, TD-12; implementation-plan.md |
+| 2026-11-22 | Add a temporary LED test brightness control that applies after the raw RGB test colour and restores the saved bridge preference on test exit. | requirements.md 9; architecture.md 4.2, TD-13; implementation-plan.md |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points

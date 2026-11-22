@@ -5,15 +5,15 @@ import (
 	"testing"
 )
 
-func Test_req_TST_10_EspflashArgsSelectFirstBootloaderModeAndAddressZero(t *testing.T) {
+func Test_req_TST_10_EspflashArgsSelectManualBootloaderModeAndAddressZero(t *testing.T) {
 	tests := []struct {
 		name string
 		mode string
 		want []string
 	}{
 		{
-			name: "first flash uses manual ROM bootloader entry",
-			mode: "first",
+			name: "manual flash uses ROM bootloader entry",
+			mode: "manual",
 			want: []string{
 				"write-bin", "--chip", "esp32c3", "--port", "COM4",
 				"--non-interactive", "--skip-update-check",

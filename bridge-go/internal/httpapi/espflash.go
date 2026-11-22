@@ -62,7 +62,7 @@ func espflashArgs(mode, port, image string) []string {
 		"write-bin", "--chip", "esp32c3", "--port", port,
 		"--non-interactive", "--skip-update-check",
 	}
-	if mode == "first" {
+	if mode == "manual" {
 		args = append(args, "--before", "no-reset")
 	}
 	return append(args, "0x0", image)

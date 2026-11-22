@@ -325,22 +325,57 @@ func Test_req_TST_10_FirmwareFlashReleasesDeviceAndRestoresLatestState(t *testin
 	}
 }
 
-func Test_req_TST_10_FirstFlashRequiresAvailableEspressifPort(t *testing.T) {
+func Test_req_TST_10_ManualFlashAllowsRecognizedDeviceOnAvailableEspressifPort(t *testing.T) {
+	port := "COM4"
+	link := &fakeLink{
+		status: device.Status{Connected: true, Port: &port},
+		ports:  []device.PortInfo{{Device: "COM4", VID: "303A"}},
+	}
+	app := New(sessions.New(time.Minute), link, logging.New(io.Discard, "info"), "v", "c")
+
+	if err := app.BeginFirmwareFlash("manual", "COM5", nil, time.Unix(100, 0)); err == nil {
+		t.Fatal("manual flash accepted an unavailable port")
+	}
+	if err := app.BeginFirmwareFlash("manual", "COM4", nil, time.Unix(101, 0)); err != nil {
+		t.Fatal(err)
+	}
+	if !link.suspended {
+		t.Fatal("manual flash did not suspend the connected device")
+	}
+	if err := app.EndFirmwareFlash(time.Unix(102, 0)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func Test_req_TST_10_ManualFlashRefusesDifferentConnectedPort(t *testing.T) {
+	connectedPort := "COM4"
+	link := &fakeLink{
+		status: device.Status{Connected: true, Port: &connectedPort},
+		ports:  []device.PortInfo{{Device: "COM5", VID: "303A"}},
+	}
+	app := New(sessions.New(time.Minute), link, logging.New(io.Discard, "info"), "v", "c")
+
+	if err := app.BeginFirmwareFlash("manual", "COM5", nil, time.Unix(100, 0)); err == nil {
+		t.Fatal("manual flash accepted a different port while Cody was connected")
+	}
+	if link.suspended {
+		t.Fatal("manual flash suspended the bridge before rejecting the port")
+	}
+}
+
+func Test_req_TST_10_ManualFlashAllowsUnprogrammedDevice(t *testing.T) {
 	link := &fakeLink{
 		ports: []device.PortInfo{{Device: "COM4", VID: "303A"}},
 	}
 	app := New(sessions.New(time.Minute), link, logging.New(io.Discard, "info"), "v", "c")
 
-	if err := app.BeginFirmwareFlash("first", "COM5", nil, time.Unix(100, 0)); err == nil {
-		t.Fatal("first flash accepted an unavailable port")
-	}
-	if err := app.BeginFirmwareFlash("first", "COM4", nil, time.Unix(101, 0)); err != nil {
+	if err := app.BeginFirmwareFlash("manual", "COM4", nil, time.Unix(100, 0)); err != nil {
 		t.Fatal(err)
 	}
 	if !link.suspended {
-		t.Fatal("first flash did not suspend serial discovery")
+		t.Fatal("manual flash did not suspend serial discovery")
 	}
-	if err := app.EndFirmwareFlash(time.Unix(102, 0)); err != nil {
+	if err := app.EndFirmwareFlash(time.Unix(101, 0)); err != nil {
 		t.Fatal(err)
 	}
 }
