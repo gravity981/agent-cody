@@ -53,7 +53,7 @@ The ESP32 firmware turns simple commands from the bridge into physical behaviour
 
 ## 4. Host bridge (BRG)
 
-A background process on the host that receives agent events from the hooks over local HTTP, merges the state of all sessions and drives the device over USB serial (FW). On Windows it is a tray app with a local web interface (BRG-16 – BRG-18, BRG-20 – BRG-24); on Linux it runs as a Docker container until the native Linux build (BRG-19).
+A background process on the host that receives agent events from the hooks over local HTTP, merges the state of all sessions and drives the device over USB serial (FW). On Windows it is a tray app with a local web interface (BRG-16 – BRG-18, BRG-20 – BRG-24); WSL2 and devcontainers use its relay. Native Linux support returns in Stage 6 (BRG-19), leaving an intentional gap after the Stage 3 retirement (TD-15).
 
 | ID | Requirement | Prio |
 |---|---|---|
@@ -63,7 +63,7 @@ A background process on the host that receives agent events from the hooks over 
 | BRG-04 | It drops a session in WORKING, THINKING or APPROVAL after no event for a configurable time (default 10 min); a session in COMPLETED or ERROR stays until its next event or its end. | Must |
 | BRG-05 | It sends a heartbeat to the device at least every 10 s. | Must |
 | BRG-06 | Plug & play: it runs without the device; when the device is plugged in (first time or replug) or reset, it finds and uses it within 10 s without a port setting or any manual step on the host (after a one-time host setup), and then resends the settings and the current state. | Must |
-| BRG-07 | The frozen Python Docker bridge reads its legacy settings (including motor speed, volume, session timeout and optional serial-port override) from its config file. It is not required to work with firmware implementing revised FW-08, FW-09 and FW-13–FW-15; Windows Go bridge settings are specified in BRG-22. | Must |
+| ~~BRG-07~~ | ~~The frozen Python Docker bridge reads its legacy settings (including motor speed, volume, session timeout and optional serial-port override) from its config file. It is not required to work with firmware implementing revised FW-08, FW-09 and FW-13–FW-15; Windows Go bridge settings are specified in BRG-22.~~ (withdrawn: retired with the Python Docker bridge in Stage 3; native Linux support is deferred to Stage 6.) | – |
 | BRG-08 | It listens only on the loopback interface and the local Docker/WSL interfaces, never on the LAN. | Must |
 | BRG-09 | It starts automatically and runs in the background. | Should |
 | BRG-10 | It reports its version and commit (REL-02). | Must |

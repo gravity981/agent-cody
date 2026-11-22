@@ -20,8 +20,7 @@ How every requirement in [requirements.md](requirements.md) is shown to be met, 
 | Level | Covers | Tool | Result format |
 |---|---|---|---|
 | Unit (firmware) | Parser, state machine, timeouts, LED/sound sequencing, without hardware | PlatformIO `native` environment, Unity | JUnit XML in `reports/` |
-| Unit / integration (bridge, hooks) | Session merging, timeouts, reconnect, config, heartbeat, listen addresses; mapping of recorded hook payloads | pytest with a fake serial device | JUnit XML in `reports/` |
-| Unit / integration (Go bridge app and relay) | As above, plus relay tunnel, tray state colour, autostart value, config and log paths (platform calls behind interfaces, so they run on Linux) | go test with gotestsum, fake serial device, the same recorded payloads | JUnit XML in `reports/` |
+| Unit / integration (Go bridge app and relay) | Session merging, timeouts, reconnect, config, heartbeat, HTTP UI/API, hook mapping, relay tunnel, tray state colour, autostart, updater | go test with gotestsum, fake serial/processes and recorded payloads (platform calls behind interfaces, so tests run on Linux) | JUnit XML in `reports/` |
 | Model checks (CAD) | Height, fit on the MK3S+ bed, part count, files present | pytest over the build123d models | JUnit XML in `reports/` |
 | Requirement report | TRC | pytest | JUnit XML in `reports/` |
 | Bench and real use | Visible/audible behaviour, real agents, current, endurance, look, service | Manual | verification-log.md |
@@ -56,7 +55,7 @@ and fails if an implemented requirement has no passing evidence, if any evidence
 | TRC | Test (the report's own tests) | |
 | REL | REL-01: green CI run on a pull request (log). REL-02: tests of the version determination, the bridge `--version` and the version and commit in the firmware image. REL-03 – REL-06: first candidate, promotion, tag ruleset and delivery done by the owner and recorded in the log | REL-03 – REL-06 stay on the "not yet implemented" list until their log rows exist. |
 | FW | Test (unit, host); demonstration on the bench (log) | Visible/audible behaviour (FW-01, FW-04, FW-06, FW-07, FW-09, FW-14), including the gamma-corrected brightness curve, and NVS save/load/reset (FW-13, FW-15) are demonstrated on hardware. |
-| BRG | Test (pytest and go test, fake serial; HTTP UI/config and updater tests); demonstration of autostart, replug, tray, website, installer and firmware update (log) | BRG-07 applies to the frozen Python bridge until its Stage 3 retirement; the new firmware is supported by the Windows Go app. BRG-06 replug, BRG-09 autostart, BRG-16 – BRG-18 and BRG-20 – BRG-24 are demonstrated with the Windows app and device; BRG-19 on a Linux host and a Mac. |
+| BRG | Test (Go tests with fake serial; HTTP UI/config and updater tests); demonstration of autostart, replug, tray, website, installer and firmware update (log) | BRG-07 is withdrawn with the retired Python bridge; the new firmware is supported by the Windows Go app. BRG-06 replug, BRG-09 autostart, BRG-16 – BRG-18 and BRG-20 – BRG-24 are demonstrated with the Windows app and device; BRG-19 on a Linux host and a Mac. |
 | AGT | Test (recorded payloads, bridge discovery); demonstration with real Claude Code and Copilot (log) | AGT-02 and AGT-11 need runs on the Windows host, on WSL2 (counts as Linux) and in a devcontainer; AGT-12 in WSL2 NAT and mirrored mode and in devcontainers on Docker Engine in WSL2 and on Docker Desktop; AGT-10 is demonstrated on a fresh host. |
 | ELE | Inspection (BOM, wiring, modules); measurement (USB meter, multimeter); demonstration (8 h run) | All manual. ELE-03: the motor's stall current is measured on the bench (shaft held briefly at 5 V) and compared with the driver's continuous rating. |
 | FIG | Analysis (CI model checks: FIG-02 – FIG-04, FIG-17); inspection and demonstration (log) | Look, travel, noise, stability, endurance and service are judged on the printed assembly. |
@@ -96,4 +95,4 @@ Verified manually because they need real hardware, real agents or the owner's ju
 - [ ] CI green on the candidate's commit, requirement report OK.
 - [ ] Manual checks for this release recorded in verification-log.md.
 - [ ] Candidate verified as described in delivery.md.
-- [ ] Firmware from the candidate flashed; Windows app installed from the candidate's installer (and, before Stage 3, the bridge image pulled and running on Linux); one real Claude Code session drives the device.
+- [ ] Firmware from the candidate flashed; Windows app installed from the candidate's installer; one real Claude Code session drives the device.

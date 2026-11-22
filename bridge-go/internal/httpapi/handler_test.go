@@ -290,6 +290,24 @@ func Test_req_BRG_10_StatusReportsBridgeVersionAndCommit(t *testing.T) {
 	}
 }
 
+func Test_req_BRG_11_CodyStatusTextShowsDeviceSessionsAndState(t *testing.T) {
+	server, _, _ := newTestServer(t)
+	client := server.Client()
+	response, _ := request(t, client, http.MethodPost, server.URL+"/hooks/claude-code",
+		[]byte(`{"session_id":"s1","hook_event_name":"Stop"}`))
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("hook status = %d", response.StatusCode)
+	}
+
+	response, data := request(t, client, http.MethodGet, server.URL+"/status?format=text", nil)
+	if response.StatusCode != http.StatusOK ||
+		!bytes.Contains(data, []byte("device:   connected on /dev/ttyACM0, firmware 1.2.3 abc\n")) ||
+		!bytes.Contains(data, []byte("state:    COMPLETED\n")) ||
+		!bytes.Contains(data, []byte("claude-code  COMPLETED  s1")) {
+		t.Fatalf("text status = %q", data)
+	}
+}
+
 func Test_req_BRG_12_ManualStateAndSessionClearEndpoints(t *testing.T) {
 	server, _, _ := newTestServer(t)
 	client := server.Client()

@@ -12,17 +12,16 @@ Hook configuration for Claude Code and GitHub Copilot ([spec/architecture.md](..
 |---|---|---|
 | The machine where you run the installer | Installing the hooks (once) | Python 3.10 or newer (`python3`); no packages. In this repository, `uv` provides it. |
 | Every environment where Claude Code runs (host and each devcontainer) | The hooks at run time | `curl` and a POSIX shell (`sh`). Without curl the hooks do nothing; Claude Code keeps working. |
-| Linux host | Receiving the events | The Cody bridge running in Docker, using the compose file from the release. |
+| Native Linux host | Receiving the events | Not supported between Stage 3 and Stage 6 step 6a (TD-15). |
 | Windows host | Receiving the events | The Cody tray app installed and running. It starts the WSL relay automatically when WSL is installed. |
 
-The hooks use the same configuration on all platforms:
+The hooks use the same configuration on supported setups:
 
 - Windows host and WSL: `127.0.0.1`.
 - Docker Desktop devcontainer on Windows: `host.docker.internal`.
 - Devcontainer in Docker Engine in WSL2: `172.17.0.1`, through the relay in WSL. The hook installer’s `--port` option sets the relay listener port for this target.
-- Linux devcontainer: `host.docker.internal` or `172.17.0.1`; it must run on the same host as the bridge.
 
-Hooks default to port `8765`. To use a WSL relay listening on another port, set `--port` to the port shown in the relay log; this changes only the `172.17.0.1` target. The `127.0.0.1` and `host.docker.internal` targets stay on `8765`. The WSL relay selects the first available port in `8766`–`8770`; if all are occupied, it logs a warning and retries. Each of the three hook targets is tried in order, and the hook stops at Cody's `ok` response.
+Hooks default to port `8765`. To use a WSL relay listening on another port, set `--port` to the port shown in the relay log; this changes only the `172.17.0.1` target. The `127.0.0.1` and `host.docker.internal` targets stay on `8765`. The WSL relay selects the first available port in `8766`–`8770`; if all are occupied, it logs a warning and retries. Each applicable hook target is tried in order, and the hook stops at Cody's `ok` response.
 
 On Windows, the app relays traffic into the default WSL distribution. To relay into several distributions, list them in `%APPDATA%\cody\bridge.toml`:
 
