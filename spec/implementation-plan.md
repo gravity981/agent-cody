@@ -141,17 +141,18 @@ Requirements: AGT-10.
 ### Stage 4 – Mechanism prototype
 
 **Before the stage starts:**
-- Motor model and gear ratio chosen; filament and screws available.
+- The 6 V, 500 rpm N20 is selected; filament and screws are available.
+- The owner's [chest cam concept](../cad/concept/Cody%20Chest%20Cam%20Drive.html) is reviewed and its dimensions are integrated below.
 
 **Steps:**
 
-**4a – Crank and arms.** Code-CAD test rig: motor mount, crankshaft with two pins at 180°, rods, shoulder pivots, stops, test arms; tuned to the travel and stroke rate.
+**4a – Chest cam and arms.** Code-CAD test rig based on the concept: a 2 mm steel shoulder axle at mid-depth about 10 mm below the shoulder top; action-figure sleeve joints, with the left arm's sleeve extending along the axle so both levers sit side by side; 8 mm levers pointing forward, with hands about 37 mm forward; and stops above both lever tips. Place the 34 mm motor across the chest, with its axis about 8 mm in front of and 6 mm below the axle. Fit one printed double eccentric to the motor's Ø3 × 10 mm D-shaft, with two side-by-side Ø10 × 4 mm lobes offset 0.65 mm and phased 180° apart; arm weight holds each lever tip on its lobe. Check the 62 × 38 mm shoulder envelope (about 58 × 34 mm inside with 2 mm walls), the motor surface about 4 mm from the axle center, about 1.5 mm clearance to the arm sleeves, and its 5 mm recess from the chest surface (2 mm wall plus 3 mm gap). Tune target hand travel to about 6 mm and verify alternating motion, follower contact at up to 4 strokes/s, and 1–4 strokes/s per arm. The owner measured about 0.52 s per revolution (about 1.9 strokes/s per arm); the motor can run faster, so tune to the fastest non-distracting rate at 1 m within FIG-08.
 Requirements: FIG-06 – FIG-09, FIG-11.
 
-**4b – Power and endurance.** USB current measured incl. motor start; stability of ESP32 and USB; 8 h run with motor temperature and noise.
+**4b – Power and endurance.** Measure USB current including motor start; check ESP32 and USB stability; run for 8 h without failure with the motor below 60 °C; assess noise at 1 m.
 Requirements: FIG-12, FIG-13, ELE-04, ELE-05.
 
-**4c – Mechanism instructions.** Assembly instructions for motor, crank, rods and arms; parts list updated.
+**4c – Mechanism instructions.** Assembly instructions for motor, double eccentric, shoulder axle, arm sleeves, levers, stops and arms; parts list updated.
 Requirements: DOC-03.
 
 ### Stage 5 – Character and assembly
@@ -345,8 +346,7 @@ After each completed stage, Claude appends a report with this structure to secti
 **Remaining requirements by stage:** 1 → 0, 2 → 7, 3 → 1, 4 → 10, 5 → 14, 6 → 3.
 
 **Waiting on the project owner:**
-- Before Stage 4, choose the motor model and gear ratio (the 300 rpm N20 is recommended for the preferred mechanism); provide filament and screws.
-- Confirm the arm mechanism concept. The preferred option in architecture.md 8.3 is the chest cam drive with action-figure shoulder joints; after confirmation, adapt step 4a, FIG-10 and TD-05.
+- Before Stage 5, choose the figure-construction approach: Meshy outer shapes with code-CAD functional geometry (recommended), or full code CAD.
 
 **Risks and notes:**
 - AGT-05 depends on VS Code exposing an approval hook event; keep it open until that event is available and verified.

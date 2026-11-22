@@ -130,8 +130,8 @@ The printed desk scene and the arm mechanism. The figure is simplified to a bust
 | FIG-07 | The hands stay close to the laptop keyboard; each hand moves 3–8 mm up and down. | Must |
 | FIG-08 | Each arm makes 1–4 strokes per second, set via the motor speed (FW-08). | Must |
 | FIG-09 | Mechanical stops limit the arm travel. | Must |
-| FIG-10 | Motor and crank are hidden inside the torso. | Must |
-| FIG-11 | No lubrication-intensive or precision-machined parts; connecting rods are simple wire or printed parts. | Must |
+| FIG-10 | Motor and cam drive are hidden inside the torso. | Must |
+| FIG-11 | No lubrication-intensive or precision-machined parts; the cam and levers are simple printed parts. | Must |
 | FIG-12 | The mechanism runs 8 h continuously in WORKING without failure; the motor stays below 60 °C. | Must |
 | FIG-13 | In WORKING, the noise is not distracting at 1 m in a quiet office (judged by the owner). | Should |
 | FIG-14 | Serviceable: the torso opens; the motor and each arm can be replaced without damage; the electronics are reachable through the platform; modules can be swapped without changing printed parts; the USB port is accessible. | Must |

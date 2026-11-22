@@ -402,7 +402,9 @@ Open questions are listed in "Open points" in [README.md](README.md).
 
 ## 8. Arm mechanism and figure construction (concept)
 
-Concept for stages 4 and 5, worked out on 2026-11-06 with the drafts of the bust and the left arm (hoodie bust with a large head and headphones, arm with a bent elbow). Not decided yet: the concept is confirmed or changed at the start of stage 4 (see "Open points" in [README.md](README.md)). Sizes are first guesses for the stage 4 test rig.
+Concept for stages 4 and 5, worked out on 2026-11-06 with the drafts of the bust and the left arm (hoodie bust with a large head and headphones, arm with a bent elbow). The owner confirmed the chest cam drive and selected the 500 rpm N20 on 2026-11-22. The supplied HTML concept specifies the mechanism but not how the bust, head and arms are modelled; that method is to be chosen before Stage 5. Sizes are first guesses for the stage 4 test rig.
+
+The owner's [chest cam concept](../cad/concept/Cody%20Chest%20Cam%20Drive.html) supplies the mechanical proportions below as first-pass targets for the Stage 4 prototype.
 
 ### 8.1 Goals
 
@@ -418,19 +420,19 @@ Concept for stages 4 and 5, worked out on 2026-11-06 with the drafts of the bust
 | B | As A, but the lever hangs down inside the chest and horizontal rods push its lower end | not pursued | Superseded by C and D before it was worked out; needs rods and room below the shoulders. |
 | C | Motor upright, shaft up, turning a tilted disc ("wave plate"); short levers pointing back from the shoulder axle, pressed up against the plate's underside by the arms' weight | rejected | The bust is too short below the shoulders for a 34 mm motor plus plate; the motor would have to sit below the bust, against FIG-10. |
 | C′ | As C, with the shoulder axle pointing forward (in the figure's viewing direction) | rejected | The arm then swings in the frontal plane: the hand, which sits below the shoulder, moves mostly sideways (≈ 19 mm sideways for 6 mm up and down), which doesn't look like typing. |
-| **D** | **Chest cam drive** (8.3): motor lying across the upper chest with a double eccentric; levers pointing forward from the shoulder axle rest on the eccentrics; action-figure shoulder joints | **preferred** | Everything inside the chest, no rods, natural shoulders, few parts. |
+| **D** | **Chest cam drive** (8.3): motor lying across the upper chest with a double eccentric; levers pointing forward from the shoulder axle rest on the eccentrics; action-figure shoulder joints | **selected** | Everything inside the chest, no rods, natural shoulders, few parts. |
 
 ### 8.3 Preferred concept: chest cam drive
 
 - **Shoulder joint:** each arm joins the torso like an action figure's. The sleeve cap turns around a hidden steel axle (≈ Ø2 mm, left–right) at mid-depth, about 10 mm below the top of the shoulders. The joint surfaces of arm and torso are concentric to the axle, so the seam stays closed while the arm turns (only a few degrees). The axle ends are hidden under the sleeve caps.
 - **Lever:** inside the chest each arm continues as a lever of ≈ 8 mm pointing forward, slightly below the axle. The left arm reaches its lever through a sleeve on the axle, so both levers sit side by side next to the motor shaft. Lever and hand are on the same side of the axle: lifting the tip lifts the hand.
-- **Drive:** the N20 (Ø12 × 24 mm, shaft Ø3 × 10 mm, 34 mm in total) lies across the upper chest, its axis ≈ 8 mm in front of and ≈ 6 mm below the shoulder axle. Its D-shaft carries one printed double eccentric: two eccentrics (≈ Ø10 × 4 mm, offset ≈ 0.65 mm) half a turn apart. Each lever tip rests on top of one eccentric, held there by the arm's weight; one turn is one stroke of each arm, alternately.
+- **Drive:** the selected N20 (Ø12 × 24 mm, shaft Ø3 × 10 mm, 34 mm in total) lies across the upper chest, its axis ≈ 8 mm in front of and ≈ 6 mm below the shoulder axle. Its Ø3 mm D-shaft carries one printed part with two side-by-side eccentrics (each ≈ Ø10 × 4 mm, offset ≈ 0.65 mm) half a turn apart. Each lever tip rests on top of an eccentric, held there by the arm's weight; one turn is one stroke of each arm, alternately.
 - **Travel:** lever ratio ≈ 37 : 8 (hand ≈ 37 mm in front of the axle), so ±0.65 mm at the tip gives ≈ 6 mm at the hand (FIG-07). The travel is tuned by swapping the double eccentric.
-- **Speed:** with the 300 rpm N20 at 5 V and partial PWM, about 1.5–4 turns/s, so 1.5–4 strokes/s per arm (FIG-08) without extra gears.
+- **Speed:** the selected 500 rpm N20 was measured by the owner at about 0.52 s/revolution (about 1.9 strokes/s per arm) and can run faster. Tune it for the fastest non-distracting rate at 1 m within 1–4 strokes/s per arm (FIG-08, FIG-13), without extra gears.
 - **Contact:** at 4 strokes/s the hand needs ≈ 2 m/s², below gravity; a light spring can press the levers down if a tip lifts off.
 - **Stops:** one above each lever tip, catching the arm when someone lifts a hand (FIG-09); downwards the eccentric holds the lever.
 - **Clearances:** motor surface ≈ 4 mm from the axle centre (≈ 1.5 mm to the arm sleeves); front of the motor ≈ 5 mm behind the chest surface (2 mm wall plus 3 mm gap). If too tight, the motor goes 1–2 mm lower and the eccentrics get larger; the lever ratio and travel stay the same.
-- **Sizes of the figure:** bust (head and torso) ≈ 105 mm high; torso at the shoulders ≈ 62 × 38 mm (inside ≈ 58 × 34 mm, the motor uses 34 mm across). With table and platform the assembly stays within FIG-02.
+- **Sizes of the figure:** bust (head and torso) ≈ 105 mm high; torso at the shoulders ≈ 62 × 38 mm (inside ≈ 58 × 34 mm, about 2 mm walls, the motor uses 34 mm across). With table and platform the assembly stays within FIG-02.
 - **Service and cables:** a removable back panel gives access to motor, eccentric and axle; the arms pull off the axle (FIG-14). Motor wires leave the bust downwards to the electronics in the platform.
 - **Noise (FIG-13):** PWM at 20 kHz is inaudible; the lever tips slide on the eccentrics, so they get smooth, rounded tips; the stops are not touched while running.
 - **Status LED:** in the laptop lid (4.5).
