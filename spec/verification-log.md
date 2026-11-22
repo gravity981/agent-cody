@@ -25,3 +25,18 @@ Manual verification: inspections, demonstrations, checks on real hardware or in 
 | AGT-11, AGT-12 | 2026-11-21 | Devcontainer (Docker Engine in WSL2), Claude Code, Windows Cody app, Ubuntu WSL relay | pass | User confirmed hook delivery after installing with `--port 8767`; relay log showed listener at `172.17.0.1:8767` |
 | BRG-21, BRG-22 | 2026-11-21 | Windows Cody website | pass | User confirmed the updated hook/relay setup guidance works and session timeout `10` is accepted |
 | BRG-20 | 2026-11-21 | Windows Cody tray app | pass | User confirmed "Open Cody" in the tray opened the website |
+| FW-01 | 2026-11-22 | Bench assembly | pass | User reports all six state behaviors matched: arms, LED colors/patterns and sounds |
+| FW-04 | 2026-11-22 | Bench assembly | pass | User reports APPROVAL, COMPLETED and ERROR each sounded once on entry, repeats did not replay sounds, and IDLE/WORKING/THINKING stayed silent |
+| FW-06 | 2026-11-22 | Bench assembly | pass | User confirms after 30 s without commands or heartbeat, the motor stopped and the disconnected LED pattern appeared |
+| FW-07 | 2026-11-22 | Bench assembly | pass | User confirms the disconnected pattern appeared after power-up and the first state command switched to its requested state |
+| FW-09 | 2026-11-22 | Bench assembly | pass | User confirms 0% was silent, 50% quieter than 100%, and 100% loudest; below 20% was inaudible on this buzzer, consistent with the curve's very low output |
+| FW-13 | 2026-11-22 | Bench assembly | pass | User reports saving changed tuning, then power-cycling; all saved values and the UTC write timestamp persisted |
+| FW-14 | 2026-11-22 | Bench assembly | pass | User confirms 0%, 50%, and 100% brightness behaved as expected; below 20% appeared off and below 50% the pulsating effects looked stepped |
+| BRG-06 | 2026-11-22 | Windows Cody app with assembled ESP32-C3 | pass | User reports the app stayed running without the device and detected first plug, replug and reset within 10 s without manual port selection; settings and current state returned |
+| BRG-16 | 2026-11-22 | Windows Cody app | pass | User reports the app appeared in the tray, launched WSL relay without a console window, and allowed autostart to be toggled without admin rights |
+| BRG-17 | 2026-11-22 | Windows Cody app | pass | User reports the tray icon changed to the corresponding color for multiple bridge states |
+| ELE-07 | 2026-11-22 | Assembled bench, wiring diagram and parts list inspection | pass | User confirms the diagram and listed electronics are correct; the coil wires cross motor connections in the SVG, and the layout could be improved |
+| TST-01 | 2026-11-22 | Bench assembly, Windows Cody hardware test panel | pass | User reports test mode retained control while a normal agent state was triggered, then normal control resumed after test mode stopped |
+| TST-02 | 2026-11-22 | Bench assembly, Windows Cody hardware test panel | pass | User reports all six state presets applied without leaving test mode |
+| TST-03 | 2026-11-22 | Bench assembly, Windows Cody hardware test panel | pass | User reports motor start/stop, tuning controls and decay modes worked, changes affected WORKING, and unsaved tuning did not persist after power-cycle |
+| TST-04 | 2026-11-22 | Bench assembly, Windows Cody hardware test panel | pass | User reports raw RGB tests displayed the selected hues and normal state color/brightness returned unchanged after test mode |

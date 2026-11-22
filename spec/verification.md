@@ -69,13 +69,12 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 
 | Prefix | IDs |
 |---|---|
-| FW | FW-01, FW-04, FW-06 – FW-07, FW-09, FW-13 – FW-15 |
-| BRG | BRG-06, BRG-16 – BRG-19, BRG-23 – BRG-24 |
+| FW | FW-15 |
+| BRG | BRG-18 – BRG-19, BRG-23 – BRG-24 |
 | AGT | AGT-02, AGT-04 – AGT-06, AGT-08 – AGT-10, AGT-12 |
-| ELE | ELE-01 – ELE-07 |
+| ELE | ELE-01 – ELE-06 |
 | FIG | FIG-01 – FIG-17 |
 | DOC | DOC-01, DOC-03 – DOC-04, DOC-07 |
-| TST | TST-01 – TST-04 |
 
 ## 6. Manual verification
 
@@ -91,7 +90,6 @@ Verified manually because they need real hardware, real agents or the owner's ju
 - FIG-01, FIG-05 – FIG-16: printed assembly, motion, endurance, noise, service.
 - DOC-01 – DOC-05: completeness and usability of the parts list and instructions, checked by building along them; DOC-07: a test build by someone else.
 
-The 2026-11-21 FW-09 log predates the percentage volume curve; it does not verify the revised behavior. Keep FW-09 on the "not yet implemented" list until the updated range is demonstrated.
 
 ## 7. Release checklist
 
