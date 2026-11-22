@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="300" viewBox="0 0 900 300">
+  <rect width="900" height="300" fill="#ffffff"/>
+  <text x="450" y="38" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#164b72">Claude Code events reach Cody through the bridge</text>
+  <g font-family="sans-serif" text-anchor="middle">
+    <rect x="55" y="95" width="205" height="120" rx="12" fill="#e8f0f5" stroke="#164b72" stroke-width="3"/>
+    <text x="157" y="140" font-size="19" fill="#202a35">Claude Code</text>
+    <text x="157" y="173" font-size="15" fill="#53616d">host or devcontainer</text>
+    <path d="M270 155h155m-15-12 15 12-15 12" fill="none" stroke="#53616d" stroke-width="4"/>
+    <rect x="440" y="95" width="205" height="120" rx="12" fill="#f3f5f7" stroke="#8795a1" stroke-width="3"/>
+    <text x="542" y="140" font-size="19" fill="#202a35">Cody bridge</text>
+    <text x="542" y="173" font-size="15" fill="#53616d">hooks + relay</text>
+    <path d="M655 155h155m-15-12 15 12-15 12" fill="none" stroke="#53616d" stroke-width="4"/>
+    <rect x="825" y="95" width="55" height="120" rx="12" fill="#dcefe1" stroke="#315b38" stroke-width="3"/>
+    <text x="852" y="147" font-size="16" fill="#202a35">LED</text>
+    <text x="852" y="174" font-size="14" fill="#53616d">sound</text>
+  </g>
+  <text x="450" y="260" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#53616d">Install hooks in every separate Claude Code configuration environment.</text>
+</svg>

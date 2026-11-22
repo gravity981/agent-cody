@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="380" viewBox="0 0 800 380">
+  <rect width="800" height="380" fill="#ffffff"/>
+  <text x="400" y="38" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#164b72">Solder headers with USB disconnected</text>
+  <rect x="120" y="90" width="420" height="220" rx="18" fill="#d8e6d8" stroke="#315b38" stroke-width="4"/>
+  <text x="330" y="190" text-anchor="middle" font-family="sans-serif" font-size="25" fill="#202a35">ESP32-C3 SuperMini</text>
+  <rect x="255" y="75" width="150" height="25" fill="#53616d"/>
+  <text x="330" y="70" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#53616d">USB-C remains accessible</text>
+  <g fill="#c6a85b" stroke="#765c20" stroke-width="2">
+    <circle cx="150" cy="125" r="8"/><circle cx="150" cy="165" r="8"/><circle cx="150" cy="205" r="8"/><circle cx="150" cy="245" r="8"/>
+    <circle cx="510" cy="125" r="8"/><circle cx="510" cy="165" r="8"/><circle cx="510" cy="205" r="8"/><circle cx="510" cy="245" r="8"/>
+  </g>
+  <g stroke="#765c20" stroke-width="5">
+    <path d="M150 125v45m0-5v55m0-15v55m0-15v55"/>
+    <path d="M510 125v45m0-5v55m0-15v55m0-15v55"/>
+  </g>
+  <path d="M605 130h115v120H605z" fill="#f3f5f7" stroke="#8795a1" stroke-width="3"/>
+  <text x="662" y="175" text-anchor="middle" font-family="sans-serif" font-size="17" fill="#202a35">Check joints</text>
+  <text x="662" y="205" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#53616d">No bridges</text>
+  <text x="662" y="230" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#53616d">to adjacent pads</text>
+  <text x="400" y="350" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#53616d">The drawing is illustrative; use your board's printed pin labels.</text>
+</svg>

@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+: "${VERSION:?VERSION must be set}"
+: "${COMMIT:?COMMIT must be set}"
+temporary_release_dir=
+tmp_dir=
+cleanup() {
+  if [[ -n $tmp_dir ]]; then
+    rm -rf "$tmp_dir"
+  fi
+  if [[ -n $temporary_release_dir ]]; then
+    rm -rf "$temporary_release_dir"
+  fi
+}
+trap cleanup EXIT
+
+if [[ -z ${RELEASE_DIR:-} ]]; then
+  temporary_release_dir=$(mktemp -d)
+  RELEASE_DIR=$temporary_release_dir
+fi
+mkdir -p "$RELEASE_DIR"
+
+tmp_dir=$(mktemp -d)
+espflash_archive="$tmp_dir/espflash-x86_64-pc-windows-msvc.zip"
+curl --fail --location --retry 3 --silent --show-error \
+  --output "$espflash_archive" \
+  https://github.com/esp-rs/espflash/releases/download/v4.7.0/espflash-x86_64-pc-windows-msvc.zip
+printf '%s  %s\n' \
+  2b10333e4f4f1a26024259b0cc1942ba17f27b3c530621c6111f4c10ac70213e \
+  "$espflash_archive" | sha256sum --check --status
+unzip -p "$espflash_archive" espflash.exe > "$tmp_dir/espflash.exe"
+test -s "$tmp_dir/espflash.exe"
+curl --fail --location --retry 3 --silent --show-error \
+  --output "$tmp_dir/LICENSE-espflash-MIT.txt" \
+  https://raw.githubusercontent.com/esp-rs/espflash/v4.7.0/LICENSE-MIT
+curl --fail --location --retry 3 --silent --show-error \
+  --output "$tmp_dir/LICENSE-espflash-APACHE.txt" \
+  https://raw.githubusercontent.com/esp-rs/espflash/v4.7.0/LICENSE-APACHE
+test -s "$tmp_dir/LICENSE-espflash-MIT.txt"
+test -s "$tmp_dir/LICENSE-espflash-APACHE.txt"
+(
+  cd bridge-go
+  GOOS=windows CGO_ENABLED=0 go build \
+    -ldflags "-H=windowsgui -X github.com/gravity981/agent-cody/bridge-go/internal/buildinfo.Version=$VERSION -X github.com/gravity981/agent-cody/bridge-go/internal/buildinfo.Commit=$COMMIT" \
+    -o "$tmp_dir/cody.exe" ./cmd/cody-bridge
+  GOOS=linux CGO_ENABLED=0 go build \
+    -ldflags "-X github.com/gravity981/agent-cody/bridge-go/internal/buildinfo.Version=$VERSION -X github.com/gravity981/agent-cody/bridge-go/internal/buildinfo.Commit=$COMMIT" \
+    -o "$tmp_dir/cody-linux" ./cmd/cody-bridge
+)
+
+installer="$RELEASE_DIR/cody-$VERSION-windows-setup.exe"
+makensis -V2 \
+  -DVERSION="$VERSION" \
+  -DAPP_EXE="$tmp_dir/cody.exe" \
+  -DRELAY_EXE="$tmp_dir/cody-linux" \
+  -DESPFLASH_EXE="$tmp_dir/espflash.exe" \
+  -DESPFLASH_MIT_LICENSE="$tmp_dir/LICENSE-espflash-MIT.txt" \
+  -DESPFLASH_APACHE_LICENSE="$tmp_dir/LICENSE-espflash-APACHE.txt" \
+  -DOUTFILE="$installer" \
+  bridge-go/installer/cody.nsi
+test -s "$installer"

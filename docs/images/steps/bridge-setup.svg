@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="310" viewBox="0 0 900 310">
+  <rect width="900" height="310" fill="#ffffff"/>
+  <text x="450" y="38" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#164b72">Bridge owns the USB serial connection</text>
+  <g font-family="sans-serif" text-anchor="middle">
+    <rect x="45" y="100" width="225" height="130" rx="12" fill="#e8f0f5" stroke="#164b72" stroke-width="3"/>
+    <text x="157" y="145" font-size="20" fill="#202a35">Windows Cody app</text>
+    <text x="157" y="180" font-size="16" fill="#53616d">tray + local website</text>
+    <path d="M280 165h115m-15-12 15 12-15 12" fill="none" stroke="#53616d" stroke-width="4"/>
+    <rect x="410" y="100" width="200" height="130" rx="12" fill="#f3f5f7" stroke="#8795a1" stroke-width="3"/>
+    <text x="510" y="145" font-size="20" fill="#202a35">USB serial</text>
+    <text x="510" y="180" font-size="16" fill="#53616d">single owner</text>
+    <path d="M620 165h115m-15-12 15 12-15 12" fill="none" stroke="#53616d" stroke-width="4"/>
+    <rect x="750" y="100" width="120" height="130" rx="12" fill="#dcefe1" stroke="#315b38" stroke-width="3"/>
+    <text x="810" y="145" font-size="20" fill="#202a35">ESP32</text>
+    <text x="810" y="180" font-size="16" fill="#53616d">status light</text>
+  </g>
+  <text x="450" y="275" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#53616d">The devcontainer does not need USB access or a /dev bind mount.</text>
+</svg>

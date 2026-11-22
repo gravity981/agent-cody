@@ -31,7 +31,7 @@ Details in [delivery.md](delivery.md). The GitHub workflows come with the bluepr
 
 ## 3. Firmware (FW)
 
-The ESP32 firmware turns simple commands from the bridge into physical behaviour. It knows nothing about agents or IDEs. Protocol details in [architecture.md](architecture.md). Settings (speed, volume, mute) are kept by the bridge and sent after every (re)connect; the firmware stores none.
+The ESP32 firmware turns simple commands from the bridge into physical behaviour. It knows nothing about agents or IDEs. Protocol details in [architecture.md](architecture.md). Motor tuning is device-specific and stored by the firmware; sound volume and LED brightness are user preferences stored by the Windows Go bridge and sent after every (re)connect.
 
 | ID | Requirement | Prio |
 |---|---|---|
@@ -42,15 +42,18 @@ The ESP32 firmware turns simple commands from the bridge into physical behaviour
 | FW-05 | COMPLETED and ERROR stay until the next state command. | Must |
 | FW-06 | After 30 s without any command or heartbeat, it stops the motor and shows a distinct "disconnected" LED pattern. | Must |
 | FW-07 | After power-up it shows "disconnected" until the first command arrives. | Must |
-| FW-08 | `SPEED:<n>` sets the motor speed (PWM) used in WORKING. | Must |
-| FW-09 | Sound can be muted, and its volume set in at least 3 levels, by serial command. | Should |
+| FW-08 | WORKING uses the motor speed from the device's current motor tuning; a bridge setting cannot override it. | Must |
+| FW-09 | Sound volume is set by serial command from 0% (mute) to 100% (maximum), with 1% increments; the firmware maps slider value `x` with `V=(x/100)^2.5`. | Must |
 | FW-10 | Every command is answered with `OK` or an error line; unknown or malformed commands don't change the state. | Must |
 | FW-11 | On request, it reports its firmware version and commit (REL-02). | Must |
 | FW-12 | Test commands `LED:r,g,b` (show a colour) and `BEEP:<sound>` (play a sound). | Could |
+| FW-13 | The firmware stores motor speed, PWM frequency, startup kick and decay mode with a UTC write timestamp in NVS on explicit save, and loads saved values after reboot; before the first save, firmware defaults are active. A failed save is reported. | Must |
+| FW-14 | LED brightness can be set from 0% to 100% in 1% increments; for slider value `x`, the firmware uses `b=(x/100)^2.2` to scale each channel after the existing 50% brightness cap. 100% is the default. | Must |
+| FW-15 | The firmware can restore motor tuning to firmware defaults and persist those defaults with the supplied UTC timestamp; a failed write is reported. | Must |
 
 ## 4. Host bridge (BRG)
 
-A background process on the host (Linux, WSL2) that receives agent events from the hooks over local HTTP, merges the state of all sessions and drives the device over USB serial (FW).
+A background process on the host that receives agent events from the hooks over local HTTP, merges the state of all sessions and drives the device over USB serial (FW). On Windows it is a tray app with a local web interface (BRG-16 – BRG-18, BRG-20 – BRG-24); on Linux it runs as a Docker container until the native Linux build (BRG-19).
 
 | ID | Requirement | Prio |
 |---|---|---|
@@ -60,12 +63,24 @@ A background process on the host (Linux, WSL2) that receives agent events from t
 | BRG-04 | It drops a session in WORKING, THINKING or APPROVAL after no event for a configurable time (default 10 min); a session in COMPLETED or ERROR stays until its next event or its end. | Must |
 | BRG-05 | It sends a heartbeat to the device at least every 10 s. | Must |
 | BRG-06 | Plug & play: it runs without the device; when the device is plugged in (first time or replug) or reset, it finds and uses it within 10 s without a port setting or any manual step on the host (after a one-time host setup), and then resends the settings and the current state. | Must |
-| BRG-07 | Settings (motor speed, volume, mute, session timeout, and optionally a serial port that overrides auto-detection) are read from a config file; the device settings are sent to the device on every connect. | Must |
+| BRG-07 | The frozen Python Docker bridge reads its legacy settings (including motor speed, volume, session timeout and optional serial-port override) from its config file. It is not required to work with firmware implementing revised FW-08, FW-09 and FW-13–FW-15 and is retired in Stage 6; Windows Go bridge settings are specified in BRG-22. | Must |
 | BRG-08 | It listens only on the loopback interface and the local Docker/WSL interfaces, never on the LAN. | Must |
 | BRG-09 | It starts automatically and runs in the background. | Should |
 | BRG-10 | It reports its version and commit (REL-02). | Must |
 | BRG-11 | A status command shows whether the device is connected, its firmware version, the sessions with their states, and the merged state. | Should |
 | BRG-12 | A state can be set manually from the command line, for testing and demos. | Could |
+| BRG-13 | The bridge writes a formatted log (time, level, message): every change of the merged state with its cause and whether it reached the device, also without a device; device connects and losses; at the configurable debug level also every received event and every command and reply on the serial line. | Must |
+| BRG-14 | The bridge's log takes at most 2 files of at most 10 MB each. | Must |
+| BRG-15 | All sessions, including a manual state, can be cleared from the command line, which sets the merged state to IDLE; for resetting the bridge when a session is stale. | Could |
+| BRG-16 | On Windows, the bridge runs as an app in the notification area and starts WSL processes without showing console windows; the user turns its start at login on or off there, without admin rights. | Must |
+| BRG-17 | The notification-area icon shows the merged state by its colour. | Should |
+| BRG-18 | On Windows, the bridge is installed and uninstalled with an installer, without admin rights. | Must |
+| BRG-19 | The bridge runs natively on Linux and macOS. | Should |
+| BRG-20 | The Windows tray menu opens Cody's local web interface in the default browser; the bridge does not open a native Cody window. | Must |
+| BRG-21 | The web interface shows bridge version and commit, firmware version, device connection, merged state, sessions, each configured WSL distro's relay port, and routing guidance distinguishing WSL-host hooks from Docker Engine devcontainer hooks. | Must |
+| BRG-22 | The Windows Go bridge web interface edits and saves the WSL distro list, sound volume and LED brightness as 0–100% sliders with 1% steps, session timeout, optional serial-port override and log level; it has no motor-tuning setting. It clearly indicates that changes require a restart and offers Restart now. | Must |
+| BRG-23 | On user request, the updater checks the latest stable Cody GitHub release and shows installed and available firmware versions; release/network errors are reported, not treated as "no update". Flashing requires confirmation before download. It offers an update only when the release is newer, except that an unknown installed version may be updated after explicit confirmation. | Must |
+| BRG-24 | The updater verifies the firmware asset's SHA-256 digest before flashing, shows progress and errors, and restores bridge device operation afterward; if automatic bootloader entry fails, it provides manual recovery instructions and retry. | Must |
 
 ## 5. Agent integrations (AGT)
 
@@ -74,7 +89,7 @@ Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). 
 | ID | Requirement | Prio |
 |---|---|---|
 | AGT-01 | Claude Code sessions drive all six states. | Must |
-| AGT-02 | The Claude Code integration works with Claude Code running on Linux, in WSL2 and in a devcontainer. | Must |
+| AGT-02 | The Claude Code integration works with Claude Code running on Windows, on Linux (including WSL2) and in a devcontainer. | Must |
 | AGT-03 | The Claude Code hooks are set up once at user level and apply to every project. | Must |
 | AGT-04 | GitHub Copilot agent mode in VS Code drives the states IDLE, THINKING, WORKING and COMPLETED. | Must |
 | AGT-05 | GitHub Copilot drives APPROVAL and ERROR, once VS Code provides events for them. | Could |
@@ -82,6 +97,9 @@ Hooks that turn coding-agent lifecycle events into events for the bridge (BRG). 
 | AGT-07 | If the bridge is unreachable, a hook returns within 1 s and never blocks or fails the agent. | Must |
 | AGT-08 | No agent event is counted twice (e.g. Copilot also reads Claude Code hook configuration). | Must |
 | AGT-09 | The hook setup for both agents is described step by step in the repository. | Should |
+| AGT-10 | One command sets up Cody on a host: it starts the bridge with autostart, installs the Claude Code and Copilot hooks at user level, checks the connection to the device, and reports what is missing. | Must |
+| AGT-11 | The same hook configuration works on the host and in devcontainers; the hooks find the bridge on `localhost` or on the Docker host. | Must |
+| AGT-12 | The hooks reach the bridge in every WSL2 networking mode and from devcontainers on Docker Desktop and on Docker Engine in WSL2, without changing network settings. | Must |
 
 ## 6. Electronics (ELE)
 
@@ -91,10 +109,10 @@ Electronics built from ready-made modules only, powered from the host's USB port
 |---|---|---|
 | ELE-01 | The electronics consist only of ready-made development boards and breakout modules; no custom PCB and no discrete circuits. | Must |
 | ELE-02 | Soldering is limited to header pins and wires onto modules; all other connections are pluggable (JST, Dupont, screw terminals). | Must |
-| ELE-03 | The motor is driven only through a ready-made motor driver breakout with PWM, rated for the motor's stall current with margin. | Must |
+| ELE-03 | The motor is driven only through a ready-made motor driver breakout with PWM, whose continuous current rating is at least 1.5 × the motor's stall current. | Must |
 | ELE-04 | The whole device is powered from one USB port of the host through a single cable; its total current, including motor start, stays at or below 500 mA. There is no second supply. | Must |
 | ELE-05 | Motor start and switching never reset the ESP32 or interrupt the USB connection. | Must |
-| ELE-06 | The purchased parts (electronics and mechanics, without filament and tools) cost at most CHF 25. | Must |
+| ELE-06 | The purchased parts of one Cody (electronics and mechanics, without filament and tools) cost at most CHF 25, counted per piece used (pack price divided by pack size), without spares and shipping. | Must |
 | ELE-07 | A wiring diagram (modules, pins, connectors) is in the repository; the purchased parts are listed in the parts list (DOC-01). | Must |
 
 ## 7. Figure and mechanism (FIG)
@@ -134,3 +152,21 @@ Written so that a maker with a 3D printer and a soldering iron can build a Cody 
 | DOC-05 | Each step of the instructions names the parts and tools it needs and has a picture or render. | Must |
 | DOC-06 | The parts list and the assembly instructions are release files, with the version in their names. | Must |
 | DOC-07 | Someone other than the owner builds a Cody from the parts list and the instructions. | Should |
+
+## 9. Hardware test panel (TST)
+
+A developer-only bench tool for exercising the firmware and its peripherals. Its controls and local firmware flashing are served by the Windows bridge's local web interface; it does not open USB serial directly.
+
+| ID | Requirement | Prio |
+|---|---|---|
+| TST-01 | The firmware provides an explicit test mode that gives test commands exclusive control of the motor, LED and buzzer, separate from normal agent state commands. | Must |
+| TST-02 | The test panel can apply each of the six normal states as a preset without leaving test mode. | Must |
+| TST-03 | The panel can start and stop the motor and set speed (0–255), PWM frequency (1–30 kHz), startup kick (0–100 ms) and DRV8833 fast or slow decay. Changes take effect in RAM for testing and normal WORKING behavior; they are not persisted until explicit Save (TST-09). | Must |
+| TST-04 | The panel can show a raw RGB test colour (0–255 per channel), subject to the existing 50% brightness cap and active brightness level; raw LED tests do not change normal state colours. | Must |
+| TST-05 | The panel can play the APPROVAL, SUCCESS and WARNING sounds and set volume with a 0–100% slider in 1% steps; 0% is mute and test sounds are one-shot. | Must |
+| TST-06 | The developer test panel is part of the Windows bridge's local web interface, uses the bridge's device connection, and displays connection status, replies and errors without opening USB serial itself. | Must |
+| TST-07 | Unsaved motor tuning is volatile; saved motor tuning persists across reboot. Exiting test mode clears temporary outputs and stops the test motor while retaining the current motor tuning. Volume and brightness preferences are stored by the bridge and reapplied after reconnect; test-panel volume and LED test brightness changes are temporary. Loss of the device connection stops the motor and enters disconnected behavior. | Must |
+| TST-08 | During test mode the bridge remains the sole serial owner and suspends normal device writes while continuing to merge agent events; on panel stop or 10 s without a panel heartbeat, it exits test mode and applies the latest merged state. | Must |
+| TST-09 | The bridge website shows the current motor tuning and last-write date, allows tuning changes followed by explicit Save, and provides a factory-reset control that restores firmware defaults. Before the first NVS write it identifies the firmware defaults as never saved; timestamps are shown in local date and time. | Must |
+| TST-10 | The bridge test panel supports manual ROM-bootloader flashing of a first-time or existing ESP32-C3, and a tuning-preserving update of a recognized Cody device, without devcontainer USB access. Manual flashing lets the user select an Espressif serial port and guides entry to ROM bootloader mode without requiring a Cody handshake, whether or not the current firmware is recognized. It warns that manual flashing does not back up motor tuning and saved tuning or its timestamp may be lost. The preserving update snapshots motor tuning and timestamp before flashing and restores them after Cody firmware reconnects; `UNSAVED` remains unsaved. The panel accepts a non-empty `.bin` up to 4 MiB, explains that the user must select a combined Cody image, and asks browser confirmation naming the image and target port before flashing it at `0x0`. It reports flash phases, captured output and errors, exits test mode, and restores the latest bridge preferences and merged state after reconnect. | Must |
+| TST-11 | The panel can apply a temporary 0–100% brightness override in 1% steps to its current raw RGB test colour, using the existing brightness curve and 50% LED cap. It does not change the bridge's saved brightness preference; ending test mode restores that preference. | Must |

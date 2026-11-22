@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""Installs Cody's Claude Code hooks at user level (AGT-03, AGT-11; spec/architecture.md 4.1).
+
+Merges the hooks into $CLAUDE_CONFIG_DIR/settings.json or ~/.claude/settings.json,
+keeps every other setting, and replaces Cody hooks installed earlier.
+
+  install-claude-code               install (or update)
+  install-claude-code --uninstall   remove Cody's hooks
+  install-claude-code --record FILE also append every payload to FILE (test fixtures)
+
+Run it once on the host and once in a devcontainer that uses the shared
+claude-config volume. Standard library only.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import shlex
+import shutil
+import sys
+from pathlib import Path
+
+MARKER = "/hooks/claude-code"  # identifies Cody's hooks in settings.json
+PORT = 8765
+TIMEOUT_S = 2  # the hook's own limit; each of its three curl attempts is capped at 0.1 s
+CURL_TIMEOUT_S = 0.1
+
+EVENTS = [
+    "SessionStart",
+    "UserPromptSubmit",
+    "PreToolUse",
+    "PostToolUse",
+    "PostToolUseFailure",
+    "PermissionRequest",
+    "Notification",
+    "Stop",
+    "StopFailure",
+    "SessionEnd",
+]
+
+
+def parse_port(value: str) -> int:
+    port = int(value)
+    if not 1 <= port <= 65535:
+        raise argparse.ArgumentTypeError("must be between 1 and 65535")
+    return port
+
+
+def hook_targets(port: int = PORT) -> list[str]:
+    return [
+        f"http://127.0.0.1:{PORT}{MARKER}",
+        f"http://host.docker.internal:{PORT}{MARKER}",
+        f"http://172.17.0.1:{port}{MARKER}",
+    ]
+
+
+def hook_command(record: str | None = None, port: int = PORT) -> str:
+    """The inline hook: forwards the payload, never prints, always exits 0 (AGT-07)."""
+    save = f"printf '%s\\n' \"$p\" >> {shlex.quote(record)}; " if record else ""
+    return (
+        f"p=$(cat); {save}for u in {' '.join(hook_targets(port))}; do "
+        f"r=$(printf '%s' \"$p\" | curl -fsS --connect-timeout {CURL_TIMEOUT_S} "
+        f"-m {CURL_TIMEOUT_S} -H 'Expect:' --data-binary @- \"$u\" 2>/dev/null) "
+        '&& [ "$r" = ok ] && break; '
+        "done; exit 0"
+    )
+
+
+def is_cody(group: dict) -> bool:
+    return any(MARKER in h.get("command", "") for h in group.get("hooks", []))
+
+
+def merged(settings: dict, record: str | None, uninstall: bool, port: int = PORT) -> dict:
+    hooks = settings.setdefault("hooks", {})
+    for event in EVENTS:
+        groups = [g for g in hooks.get(event, []) if not is_cody(g)]
+        if not uninstall:
+            groups.append(
+                {
+                    "hooks": [
+                        {
+                            "type": "command",
+                            "command": hook_command(record, port),
+                            "timeout": TIMEOUT_S,
+                        }
+                    ]
+                }
+            )
+        if groups:
+            hooks[event] = groups
+        else:
+            hooks.pop(event, None)
+    if not hooks:
+        del settings["hooks"]
+    return settings
+
+
+def settings_path() -> Path:
+    base = os.environ.get("CLAUDE_CONFIG_DIR")
+    return Path(base) if base else Path.home() / ".claude"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--uninstall", action="store_true", help="remove Cody's hooks")
+    parser.add_argument("--record", metavar="FILE", help="also append every payload to FILE")
+    parser.add_argument("--settings", type=Path, help="settings.json to change (default: user's)")
+    parser.add_argument(
+        "--port",
+        type=parse_port,
+        default=PORT,
+        help="port for the 172.17.0.1 Docker-gateway target (default: 8765)",
+    )
+    args = parser.parse_args(argv)
+
+    path = args.settings or settings_path() / "settings.json"
+    settings = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    if not isinstance(settings, dict):
+        print(f"{path}: not a JSON object", file=sys.stderr)
+        return 1
+    if path.exists():
+        shutil.copy2(path, path.with_suffix(".json.bak"))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(merged(settings, args.record, args.uninstall, args.port), indent=2) + "\n"
+    )
+    action = "removed from" if args.uninstall else "installed in"
+    print(f"Cody's Claude Code hooks {action} {path}")
+    if shutil.which("curl") is None and not args.uninstall:
+        print("warning: curl is not installed here; the hooks need it", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

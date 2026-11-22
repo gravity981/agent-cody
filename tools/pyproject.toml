@@ -1,9 +1,8 @@
 [project]
 name = "cody-tools"
 version = "0.0.0"
-description = "Cody tools: requirement report"
+description = "Cody requirement report and developer utilities"
 requires-python = ">=3.14,<3.15"
-dependencies = []
 
 [project.scripts]
 cody-report = "cody_tools.report:main"

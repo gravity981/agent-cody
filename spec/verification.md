@@ -21,6 +21,7 @@ How every requirement in [requirements.md](requirements.md) is shown to be met, 
 |---|---|---|---|
 | Unit (firmware) | Parser, state machine, timeouts, LED/sound sequencing, without hardware | PlatformIO `native` environment, Unity | JUnit XML in `reports/` |
 | Unit / integration (bridge, hooks) | Session merging, timeouts, reconnect, config, heartbeat, listen addresses; mapping of recorded hook payloads | pytest with a fake serial device | JUnit XML in `reports/` |
+| Unit / integration (Go bridge app and relay) | As above, plus relay tunnel, tray state colour, autostart value, config and log paths (platform calls behind interfaces, so they run on Linux) | go test with gotestsum, fake serial device, the same recorded payloads | JUnit XML in `reports/` |
 | Model checks (CAD) | Height, fit on the MK3S+ bed, part count, files present | pytest over the build123d models | JUnit XML in `reports/` |
 | Requirement report | TRC | pytest | JUnit XML in `reports/` |
 | Bench and real use | Visible/audible behaviour, real agents, current, endurance, look, service | Manual | verification-log.md |
@@ -29,7 +30,7 @@ How every requirement in [requirements.md](requirements.md) is shown to be met, 
 
 ### Tagging evidence
 
-- pytest and Unity test names are identifiers and use `req_ABC_01` in the name: `test_req_BRG_02_most_urgent_wins`, `test_req_FW_10_unknown_command_keeps_state`. Several IDs: `test_req_BRG_03_req_FW_04_…`.
+- pytest, Unity and Go test names are identifiers and use `req_ABC_01` in the name: `test_req_BRG_02_most_urgent_wins`, `test_req_FW_10_unknown_command_keeps_state`, `Test_req_BRG_02_most_urgent_wins` (Go). Several IDs: `test_req_BRG_03_req_FW_04_…`.
 - Manual checks name their IDs in the "Requirements" column of verification-log.md.
 - Every ID must exist in requirements.md and must not be withdrawn.
 - A tag is malformed if `req_` in a test name is not followed by 2–4 capital letters, `_` and two digits (`req_BRG_02` is valid; `req_brg_2` and `req_BRG_2` are errors).
@@ -54,12 +55,13 @@ and fails if an implemented requirement has no passing evidence, if any evidence
 |---|---|---|
 | TRC | Test (the report's own tests) | |
 | REL | REL-01: green CI run on a pull request (log). REL-02: tests of the version determination, the bridge `--version` and the version and commit in the firmware image. REL-03 – REL-06: first candidate, promotion, tag ruleset and delivery done by the owner and recorded in the log | REL-03 – REL-06 stay on the "not yet implemented" list until their log rows exist. |
-| FW | Test (unit, host); demonstration on the bench (log) | Visible/audible behaviour (FW-01, FW-04, FW-06, FW-07) also demonstrated on hardware. |
-| BRG | Test (pytest, fake serial); demonstration of autostart and replug (log) | BRG-06 replug and BRG-09 autostart need the real container and device. |
-| AGT | Test (recorded payloads); demonstration with real Claude Code and Copilot (log) | AGT-02 needs Linux, WSL2 and devcontainer runs. |
-| ELE | Inspection (BOM, wiring, modules); measurement (USB meter); demonstration (8 h run) | All manual. |
+| FW | Test (unit, host); demonstration on the bench (log) | Visible/audible behaviour (FW-01, FW-04, FW-06, FW-07, FW-09, FW-14), including the gamma-corrected brightness curve, and NVS save/load/reset (FW-13, FW-15) are demonstrated on hardware. |
+| BRG | Test (pytest and go test, fake serial; HTTP UI/config and updater tests); demonstration of autostart, replug, tray, website, installer and firmware update (log) | BRG-07 applies to the frozen Python bridge; the new firmware is supported by the Windows Go app. BRG-06 replug, BRG-09 autostart, BRG-16 – BRG-18 and BRG-20 – BRG-24 are demonstrated with the Windows app and device; BRG-19 on a Linux host and a Mac. |
+| AGT | Test (recorded payloads, bridge discovery); demonstration with real Claude Code and Copilot (log) | AGT-02 and AGT-11 need runs on the Windows host, on WSL2 (counts as Linux) and in a devcontainer; AGT-12 in WSL2 NAT and mirrored mode and in devcontainers on Docker Engine in WSL2 and on Docker Desktop; AGT-10 is demonstrated on a fresh host. |
+| ELE | Inspection (BOM, wiring, modules); measurement (USB meter, multimeter); demonstration (8 h run) | All manual. ELE-03: the motor's stall current is measured on the bench (shaft held briefly at 5 V) and compared with the driver's continuous rating. |
 | FIG | Analysis (CI model checks: FIG-02 – FIG-04, FIG-17); inspection and demonstration (log) | Look, travel, noise, stability, endurance and service are judged on the printed assembly. |
-| DOC | Test where scriptable (DOC-06: release files present; links and referenced files exist); inspection (log); DOC-07 demonstration by a test builder (log) | The owner builds along the instructions for each milestone. |
+| DOC | Automated checks for required Stage 2 topics, per-step parts/tools/images and DOC-06 versioned release files; inspection (log); DOC-07 demonstration by a test builder (log) | The owner builds along the instructions for each milestone. DOC-01 remains incomplete until the final parts list in stage 5. |
+| TST | Host tests for firmware protocol/state logic, local firmware image validation/flashing and the bridge-backed panel API using fake serial/processes; demonstration on the bench (log) | Motor ranges and fast/slow decay, NVS save/load/reset, tuning display and timestamps, sliders, first-time and update image flashing, tuning restoration and device reconnection, LED/buzzer controls, state presets, panel timeout/state restoration and serial loss need hardware demonstration. |
 
 ## 5. Not yet implemented
 
@@ -67,29 +69,31 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 
 | Prefix | IDs |
 |---|---|
-| FW | FW-01 – FW-12 |
-| BRG | BRG-01 – BRG-12 |
-| AGT | AGT-01 – AGT-09 |
-| ELE | ELE-01 – ELE-07 |
+| FW | FW-15 |
+| BRG | BRG-18 – BRG-19, BRG-23 – BRG-24 |
+| AGT | AGT-02, AGT-04 – AGT-06, AGT-08 – AGT-10, AGT-12 |
+| ELE | ELE-01 – ELE-06 |
 | FIG | FIG-01 – FIG-17 |
-| DOC | DOC-01 – DOC-07 |
+| DOC | DOC-01, DOC-03 – DOC-04, DOC-07 |
 
 ## 6. Manual verification
 
-Requirements that need real hardware, real environments or human judgement are recorded in [verification-log.md](verification-log.md): one row per check with requirement IDs, date, verifier, environment and result. For each requirement only the latest record counts; older rows stay as history.
+Requirements that need real hardware, real environments or human judgement are recorded in [verification-log.md](verification-log.md): one row per check with requirement IDs, date, environment and result. For each requirement only the latest record counts; older rows stay as history.
 
 Verified manually because they need real hardware, real agents or the owner's judgement:
 
-- FW-01, FW-04, FW-06, FW-07: behaviour seen and heard on the device (also unit-tested).
-- BRG-06, BRG-09: replug and autostart with the real container and device.
-- AGT-01 – AGT-04: real agent sessions in each environment; AGT-09: setup guide followed once.
+- FW-01, FW-04, FW-06, FW-07, FW-09, FW-13 – FW-15: behaviour seen and heard on the device (also unit-tested), including volume, gamma-corrected brightness, NVS persistence, factory reset and timestamp.
+- BRG-06, BRG-09, BRG-16 – BRG-18: replug, autostart, tray and installer with the Windows app and the device; BRG-20 – BRG-24: website status/configuration, sliders, restart behavior and firmware update flow; BRG-19: native Linux and macOS.
+- AGT-01 – AGT-04, AGT-12: real agent sessions in each environment; AGT-09: setup guide followed once.
 - ELE-01 – ELE-07: modules, soldering, current, stability, cost, documents.
+- TST-01 – TST-11: test mode and bridge-backed panel controls on the bench, including state presets, motor range/decay, NVS save/reset, displayed tuning and timestamp, sliders, temporary LED test brightness and preference restoration, first-time and legacy-firmware flashing from ROM bootloader, tuning-preserving update, reconnection, LED and buzzer, browser close, timeout restoration and serial loss.
 - FIG-01, FIG-05 – FIG-16: printed assembly, motion, endurance, noise, service.
 - DOC-01 – DOC-05: completeness and usability of the parts list and instructions, checked by building along them; DOC-07: a test build by someone else.
+
 
 ## 7. Release checklist
 
 - [ ] CI green on the candidate's commit, requirement report OK.
 - [ ] Manual checks for this release recorded in verification-log.md.
 - [ ] Candidate verified as described in delivery.md.
-- [ ] Firmware from the candidate flashed; bridge image of the candidate pulled and running; one real Claude Code session drives the device.
+- [ ] Firmware from the candidate flashed; Windows app installed from the candidate's installer (and, until stage 6, the bridge image pulled and running on Linux); one real Claude Code session drives the device.

@@ -1,6 +1,17 @@
 # Development environment and CI environment (spec/delivery.md 2).
 # Every tool has a pinned version (spec/architecture.md 5.1).
+ARG UV_VERSION=0.13.7
+ARG NSIS_VERSION=3.08-3+deb12u1
+ARG PANDOC_VERSION=2.17.1.1-2~deb12u1
+ARG WEASYPRINT_VERSION=57.2-1
+FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uv
+
 FROM mcr.microsoft.com/devcontainers/base:bookworm@sha256:99f5250dd2d5f8b11046d5662dd94c1e3c1dae56b560c7caad5ceb7edf349046
+
+ARG UV_VERSION
+ARG NSIS_VERSION
+ARG PANDOC_VERSION
+ARG WEASYPRINT_VERSION
 
 # Mount point for the shared claude-config volume, owned by vscode so the empty
 # volume inherits that ownership on first mount
@@ -10,7 +21,27 @@ RUN mkdir -p /home/vscode/.claude && chown vscode:vscode /home/vscode/.claude
 # libgl1 for OpenCascade (build123d)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential xz-utils libgl1 \
+         "nsis=${NSIS_VERSION}" "pandoc=${PANDOC_VERSION}" "weasyprint=${WEASYPRINT_VERSION}" \
     && rm -rf /var/lib/apt/lists/*
+
+# Go toolchain, checksum-verified; gotestsum supplies the JUnit output consumed by cody-report
+ARG GO_VERSION=1.27.4
+ARG GO_SHA256_AMD64=7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840
+ARG GO_SHA256_ARM64=3392582988a273a87ab5043ee1b2c9c17a2c3c00580bf9326c47a2e0aaaeac92
+RUN arch="$(dpkg --print-architecture)" \
+    && case "$arch" in \
+         amd64) sha="$GO_SHA256_AMD64" ;; \
+         arm64) sha="$GO_SHA256_ARM64" ;; \
+         *) echo "unsupported architecture $arch" >&2; exit 1 ;; \
+       esac \
+    && curl -fsSL -o /tmp/go.tar.gz "https://go.dev/dl/go${GO_VERSION}.linux-${arch}.tar.gz" \
+    && echo "${sha}  /tmp/go.tar.gz" | sha256sum -c - \
+    && tar -xzf /tmp/go.tar.gz -C /usr/local \
+    && rm /tmp/go.tar.gz
+ENV PATH="/usr/local/go/bin:${PATH}" \
+    GOTOOLCHAIN=local
+RUN GOBIN=/usr/local/bin go install gotest.tools/gotestsum@v1.13.0 \
+    && rm -rf /root/go /root/.cache/go-build
 
 # shellcheck, checksum-verified
 ARG SHELLCHECK_VERSION=0.11.0
@@ -30,7 +61,7 @@ RUN arch="$(uname -m)" \
     && rm -rf /tmp/shellcheck*
 
 # uv (pinned image tag) manages Python, the workspace environment and Python tools
-COPY --from=ghcr.io/astral-sh/uv:0.13.7 /uv /uvx /usr/local/bin/
+COPY --from=uv /uv /uvx /usr/local/bin/
 
 # Shared locations. devcontainers/ci changes the vscode user's UID to the
 # runner's, so everything that is written at runtime (uv cache, workspace
@@ -73,6 +104,7 @@ RUN cd /tmp/cody/firmware \
     && mkdir -p src \
     && printf '#include <Arduino.h>\nvoid setup() {}\nvoid loop() {}\n' > src/main.cpp \
     && pio run --environment esp32c3 \
+    && uv pip install --python=/opt/platformio/penv/bin/python "uv==${UV_VERSION}" \
     && rm -rf /opt/platformio/dist /opt/platformio/.cache \
     && find /opt/platformio/packages/framework-arduinoespressif32-libs -mindepth 1 -maxdepth 1 \
          -type d ! -name esp32c3 ! -name hosted -exec rm -rf {} + \

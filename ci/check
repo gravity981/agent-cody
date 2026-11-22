@@ -39,6 +39,15 @@ if [[ -d firmware/test ]]; then
   check "Firmware unit tests" bash -c \
     'cd firmware && pio test --environment native --junit-output-path ../reports/firmware-unit.xml'
 fi
+if [[ -f bridge-go/go.mod ]]; then
+  check "Go bridge tests" bash -c \
+    'cd bridge-go && gotestsum --junitfile ../reports/go.xml -- ./...'
+  check "Go Windows build" bash -c \
+    'cd bridge-go && GOOS=windows CGO_ENABLED=0 go build ./...'
+  check "Windows app and installer" ci/build-windows-installer
+  check "Go Linux build without cgo" bash -c \
+    'cd bridge-go && GOOS=linux CGO_ENABLED=0 go build ./...'
+fi
 
 # Last: the requirement report (spec/verification.md 3)
 check "Requirement report" uv run --frozen cody-report

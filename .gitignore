@@ -2,6 +2,7 @@
 reports/
 
 # Release files (written by ci/build-release)
+release/
 release-files/
 
 # Local secrets
