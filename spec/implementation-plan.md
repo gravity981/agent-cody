@@ -31,7 +31,7 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 | 3 | Copilot integration | M2 | open |
 | 4 | Mechanism prototype | | open |
 | 5 | Character and assembly | M3 | open |
-| 6 | Native bridge for Linux and macOS | | open |
+| 6 | Native bridge for Linux and macOS, firmware updater | | open |
 
 ### Stage 1 – Walking Skeleton
 
@@ -63,7 +63,7 @@ Requirements: REL-02 – REL-06.
 
 **Steps:**
 
-Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived. Order after 2d (decided 2026-11-21, TD-06, TD-08, TD-09): 2g, 2h, 2i, 2j, 2k, 2l, then 2e.
+Steps 2a – 2c need no hardware; step 2d starts when the parts have arrived. Order after 2d (decided 2026-11-21, TD-06, TD-08, TD-09): 2g, 2h, 2i, 2j, 2k, then 2e. Step 2l was moved to Stage 6 on 2026-11-22; the stage-2 documentation will cover the test panel but not the updater.
 
 **2a – Firmware logic — done.** Serial protocol, state machine, LED effects, sounds with volume and motor control as logic with host unit tests (defaults in architecture.md 4.3); firmware builds for the ESP32-C3.
 Requirements: FW-02, FW-03, FW-05, FW-08, FW-10 – FW-12.
@@ -83,7 +83,7 @@ Requirements: BRG-15.
 **2g – Go bridge core — done.** Added 2026-11-21 (TD-06). Go toolchain and gotestsum in the devcontainer; gofmt and go vet in `tools/static-checks`; Go tests in `ci/check`. In `bridge-go/`: the bridge logic ported from Python (HTTP endpoints, session merging, Claude Code mapping tested with the shared recorded payloads, timeouts, heartbeat, serial connection with a fake device, config, log with rotation, version); builds for Windows and Linux without cgo, including the tray library. The Python bridge stays as is (frozen).
 Requirements: BRG-01 – BRG-05, BRG-07, BRG-10, BRG-13 – BRG-15.
 
-**2h – Windows app and installer — implementation done; manual verification pending.** Tray icon in the state colour with menu, "Start automatically" (Run key), single instance, COM port discovery and plug & play (first plug-in, replug, reset, `usbipd attach`/`detach`), config and log under `%APPDATA%`/`%LOCALAPPDATA%`; NSIS installer `cody-<version>-windows-setup.exe` as a release file; shown on Windows with the device. Autostart is enabled by the installer by default. The 2h installer contains `cody.exe`; step 2i adds `cody-linux` when the WSL relay is implemented, and step 2l adds the pinned firmware-flashing helper and its license notices.
+**2h – Windows app and installer — implementation done; manual verification pending.** Tray icon in the state colour with menu, "Start automatically" (Run key), single instance, COM port discovery and plug & play (first plug-in, replug, reset, `usbipd attach`/`detach`), config and log under `%APPDATA%`/`%LOCALAPPDATA%`; NSIS installer `cody-<version>-windows-setup.exe` as a release file; shown on Windows with the device. Autostart is enabled by the installer by default. The 2h installer contains `cody.exe`; step 2i adds `cody-linux` when the WSL relay is implemented, and step 6c adds the pinned firmware-flashing helper and its license notices.
 *Implementation status (2026-11-21): Linux CI, Windows cross-build and installer compilation pass; demonstration of the tray app and install/uninstall on Windows with the device remains.*
 Requirements: BRG-06, BRG-09, BRG-16 – BRG-18.
 
@@ -98,10 +98,7 @@ Requirements: BRG-20 – BRG-22.
 **2k – Bridge-backed hardware test panel.** Replace the devcontainer's direct-serial panel with the test section of the Windows bridge website. The bridge remains the sole serial owner, suppresses normal device writes during testing, continues merging agent events, and restores the latest merged state on stop or after the 10 s panel-heartbeat timeout. Remove the old panel's serial ownership and direct-serial tests.
 Requirements: TST-06, TST-08.
 
-**2l – Firmware updater.** Add a user-initiated check of the latest stable Cody release to the website, with explicit confirmation, SHA-256 verification, serial handoff, pinned espflash helper, progress, automatic bootloader entry and manual recovery/retry on failure; reconnect the bridge and report the result. Unknown current firmware can be updated only after explicit confirmation; same/newer versions do not offer an update.
-Requirements: BRG-23, BRG-24.
-
-**2e – Build documentation for the status light.** Done after 2l. Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, bridge app and website on Windows, Docker bridge on Linux, hooks, updater and test panel, Git for Windows on a Windows host) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
+**2e – Build documentation for the status light.** Done after 2k. Parts list; assembly instructions for the electronics and the setup (soldering, wiring, flashing, bridge app and website on Windows, Docker bridge on Linux, hooks and test panel, Git for Windows on a Windows host) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
 Requirements: DOC-01, DOC-02, DOC-05, DOC-06.
 
 ### Stage 3 – Copilot integration
@@ -153,9 +150,10 @@ Requirements: FIG-14 – FIG-16, ELE-06.
 **5d – Complete build documentation.** Printing and full assembly instructions; parts list final; a test build by someone other than the owner.
 Requirements: DOC-04, DOC-07.
 
-### Stage 6 – Native bridge for Linux and macOS
+### Stage 6 – Native bridge for Linux and macOS, firmware updater
 
 Added 2026-11-21 (TD-06).
+Step 6c was added on 2026-11-22 by moving the firmware updater from Stage 2. The updater remains Windows-first; its setup instructions are added to the build documentation here.
 
 **Before the stage starts:**
 - A Mac (or a macOS CI runner) for building the tray with cgo and for the demonstrations.
@@ -168,6 +166,9 @@ Requirements: BRG-19.
 
 **6b – Retire the Python bridge.** `bridge/`, the Docker image, the compose file, `ci/publish` and `ci/promote` removed; TD-03 and TD-04 marked superseded; setup guide and delivery.md updated.
 Requirements: none (part of BRG-19).
+
+**6c – Firmware updater.** Add a user-initiated check of the latest stable Cody release to the Windows bridge website, with explicit confirmation, SHA-256 verification, serial handoff, pinned espflash helper, progress, automatic bootloader entry and manual recovery/retry on failure; reconnect the bridge and report the result. Unknown current firmware can be updated only after explicit confirmation; same/newer versions do not offer an update. Add the updater setup instructions to the build documentation.
+Requirements: BRG-23, BRG-24.
 
 ## 4. Status report template
 
