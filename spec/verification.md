@@ -60,7 +60,7 @@ and fails if an implemented requirement has no passing evidence, if any evidence
 | AGT | Test (recorded payloads, bridge discovery); demonstration with real Claude Code and Copilot (log) | AGT-02 and AGT-11 need runs on the Windows host, on WSL2 (counts as Linux) and in a devcontainer; AGT-12 in WSL2 NAT and mirrored mode and in devcontainers on Docker Engine in WSL2 and on Docker Desktop; AGT-10 is demonstrated on a fresh host. |
 | ELE | Inspection (BOM, wiring, modules); measurement (USB meter, multimeter); demonstration (8 h run) | All manual. ELE-03: the motor's stall current is measured on the bench (shaft held briefly at 5 V) and compared with the driver's continuous rating. |
 | FIG | Analysis (CI model checks: FIG-02 – FIG-04, FIG-17); inspection and demonstration (log) | Look, travel, noise, stability, endurance and service are judged on the printed assembly. |
-| DOC | Test where scriptable (DOC-06: release files present; links and referenced files exist); inspection (log); DOC-07 demonstration by a test builder (log) | The owner builds along the instructions for each milestone. |
+| DOC | Automated checks for required Stage 2 topics, per-step parts/tools/images and DOC-06 versioned release files; inspection (log); DOC-07 demonstration by a test builder (log) | The owner builds along the instructions for each milestone. DOC-01 remains incomplete until the final parts list in stage 5. |
 | TST | Host tests for firmware protocol/state logic, local firmware image validation/flashing and the bridge-backed panel API using fake serial/processes; demonstration on the bench (log) | Motor ranges and fast/slow decay, NVS save/load/reset, tuning display and timestamps, sliders, first-time and update image flashing, tuning restoration and device reconnection, LED/buzzer controls, state presets, panel timeout/state restoration and serial loss need hardware demonstration. |
 
 ## 5. Not yet implemented
@@ -74,7 +74,7 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 | AGT | AGT-02, AGT-04 – AGT-06, AGT-08 – AGT-10, AGT-12 |
 | ELE | ELE-01 – ELE-07 |
 | FIG | FIG-01 – FIG-17 |
-| DOC | DOC-01 – DOC-07 |
+| DOC | DOC-01, DOC-03 – DOC-04, DOC-07 |
 | TST | TST-01 – TST-04 |
 
 ## 6. Manual verification

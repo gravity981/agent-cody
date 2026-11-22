@@ -114,8 +114,9 @@ Requirements: TST-10.
 Implementation status: Firmware behavior and bridge command mapping are covered by requirement-tagged tests; manual Windows/bench verification of the slider, command order, brightness levels, and preference restoration remains.
 Requirements: TST-11.
 
-**2e – Build documentation for the status light.** Done after 2p. Parts list; assembly instructions for the electronics and the setup (soldering, wiring, building and selecting a combined firmware image in the bridge test panel, Windows bridge app and website, legacy Docker bridge on Linux with its firmware compatibility limitation, hooks and test panel, motor tuning persistence, user volume/brightness settings and sliders, Git for Windows on a Windows host) with own pictures; released as CSV and PDF (PDF tool added to the devcontainer).
-Requirements: DOC-01, DOC-02, DOC-05, DOC-06.
+**2e – Build documentation for the status light — implementation done; manual verification pending.** Done after 2p. Stage 2 electronics parts-list draft; assembly instructions for soldering, wiring, flashing a combined firmware image, installing the Windows bridge or compatible legacy Docker bridge, installing Claude Code hooks, and using the hardware test panel and settings. Each step names parts and tools and has an illustration. `ci/build-release` emits a versioned CSV and PDF from the Markdown sources.
+Implementation status: Documentation exports and their release filenames are covered by CI; the owner still needs to inspect the instructions and follow them on the Windows host and bench. DOC-01's complete parts list moves to step 5d because printed parts and fasteners are not yet defined.
+Requirements: DOC-02, DOC-05, DOC-06.
 
 ### Stage 3 – Copilot integration
 
@@ -163,8 +164,8 @@ Requirements: FIG-01 – FIG-05, FIG-10, FIG-17.
 **5c – Assembly and service.** Full assembly; service checks, stability, no glue; final parts cost (from the parts list).
 Requirements: FIG-14 – FIG-16, ELE-06.
 
-**5d – Complete build documentation.** Printing and full assembly instructions; parts list final; a test build by someone other than the owner.
-Requirements: DOC-04, DOC-07.
+**5d – Complete build documentation.** Printing and full assembly instructions; complete parts list including printed parts, fasteners and consumables; a test build by someone other than the owner.
+Requirements: DOC-01, DOC-04, DOC-07.
 
 ### Stage 6 – Native bridge for Linux and macOS, firmware updater
 

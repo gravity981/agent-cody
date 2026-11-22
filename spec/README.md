@@ -103,6 +103,7 @@ Status values: **specified** (requirements written, not implemented) · **in pro
 | 2026-11-22 | Add first-time and update `.bin` flashing through the bridge, with explicit ESP32-C3 bootloader selection, preserving saved motor tuning through protocol snapshot/restore; no devcontainer USB bind mount. Keep the GitHub release updater as a separate Stage 6 feature. | requirements.md 9; architecture.md 4.2, 4.4, TD-11; implementation-plan.md |
 | 2026-11-22 | Add Manual ROM bootloader flash for existing Cody devices whose firmware lacks `TUNING?`; this path warns that motor tuning may be lost, while the separate Update path continues to require and restore a tuning snapshot. | requirements.md 9; architecture.md 4.2, 4.4, TD-12; implementation-plan.md |
 | 2026-11-22 | Add a temporary LED test brightness control that applies after the raw RGB test colour and restores the saved bridge preference on test exit. | requirements.md 9; architecture.md 4.2, TD-13; implementation-plan.md |
+| 2026-11-22 | Keep the Stage 2 parts list as an electronics draft and complete DOC-01 in step 5d, after the printed parts and fasteners are defined. Use pinned Pandoc and WeasyPrint to publish versioned documentation files. | implementation-plan.md 2e, 5d; architecture.md 5.1, TD-14; delivery.md 2 |
 <!-- | 2026-01-31 | Example: chose X over Y because … | architecture.md 3.2 | -->
 
 ## Open points

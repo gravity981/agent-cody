@@ -31,6 +31,9 @@ RELEASE_DIR="$RELEASE_DIR" ci/build-windows-installer
 # Wiring diagram (ELE-07)
 cp electronics/wiring.svg "$RELEASE_DIR/cody-wiring-$VERSION.svg"
 
+# Build documentation (DOC-06): CSV from Markdown and PDF with the pinned renderer
+uv run --frozen python -m cody_tools.build_docs --version "$VERSION" --release-dir "$RELEASE_DIR"
+
 # Claude Code hook installer (AGT-03, AGT-11): Python, standard library only
 cp hooks/install-claude-code "$RELEASE_DIR/cody-install-claude-code-$VERSION"
 chmod +x "$RELEASE_DIR/cody-install-claude-code-$VERSION"

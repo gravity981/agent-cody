@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="300" viewBox="0 0 900 300">
+  <rect width="900" height="300" fill="#ffffff"/>
+  <text x="450" y="38" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#164b72">Manual ROM bootloader flash</text>
+  <g font-family="sans-serif" text-anchor="middle">
+    <rect x="30" y="95" width="180" height="115" rx="12" fill="#e8f0f5" stroke="#164b72" stroke-width="3"/>
+    <text x="120" y="140" font-size="18" fill="#202a35">Hold BOOT</text>
+    <text x="120" y="170" font-size="16" fill="#53616d">tap RESET</text>
+    <path d="M220 152h48m-15-12 15 12-15 12" fill="none" stroke="#53616d" stroke-width="4"/>
+    <rect x="280" y="95" width="180" height="115" rx="12" fill="#e8f0f5" stroke="#164b72" stroke-width="3"/>
+    <text x="370" y="140" font-size="18" fill="#202a35">Release RESET</text>
+    <text x="370" y="170" font-size="16" fill="#53616d">then BOOT</text>
+    <path d="M470 152h48m-15-12 15 12-15 12" fill="none" stroke="#53616d" stroke-width="4"/>
+    <rect x="530" y="95" width="180" height="115" rx="12" fill="#e8f0f5" stroke="#164b72" stroke-width="3"/>
+    <text x="620" y="140" font-size="18" fill="#202a35">Select combined</text>
+    <text x="620" y="170" font-size="16" fill="#53616d">Cody .bin image</text>
+    <path d="M720 152h48m-15-12 15 12-15 12" fill="none" stroke="#53616d" stroke-width="4"/>
+    <rect x="780" y="95" width="90" height="115" rx="12" fill="#dcefe1" stroke="#315b38" stroke-width="3"/>
+    <text x="825" y="145" font-size="18" fill="#202a35">Flash</text>
+    <text x="825" y="175" font-size="14" fill="#53616d">at 0x0</text>
+  </g>
+  <text x="450" y="260" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#53616d">Manual mode may lose saved motor tuning and its timestamp.</text>
+</svg>

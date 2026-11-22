@@ -66,6 +66,8 @@ Everything a user needs to make Cody work is a release file; nothing has to be t
 | `ci/publish` | Builds the bridge image and pushes it to GHCR as `cody-bridge:<version>-rc.<M>` (from `CANDIDATE_TAG`); needs `packages: write`. |
 | `ci/promote` | Adds the tags `<version>` and `latest` to the candidate's image on GHCR, without rebuilding; needs `packages: write`. |
 
+For DOC-06, `ci/build-release` creates `cody-parts-list-<version>.csv` from the parts-list Markdown and `cody-assembly-instructions-<version>.pdf` from the assembly-instructions Markdown, using the pinned Pandoc and WeasyPrint packages in the devcontainer.
+
 The Windows updater reads the firmware asset's SHA-256 digest from the official GitHub release metadata and fails closed if the digest is absent or does not match; the firmware image remains a release asset.
 
 The bridge image on GHCR is public, so the compose file pulls it without a login. It carries the OCI labels for version, commit, source repository and licence (`MIT`). `ci/publish` and `ci/promote` log in to GHCR with the workflow's `GITHUB_TOKEN` (`packages: write`), passed into the devcontainer; no personal token is needed. The entry points get Docker through the devcontainer feature docker-outside-of-docker. The first release (stage 1) contains skeletons: firmware that only sends `READY <version>`, and a bridge image that only answers `--version`, with its compose file.

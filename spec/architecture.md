@@ -219,6 +219,7 @@ WSL2 in NAT mode and devcontainers in Docker Engine in WSL2 cannot reach `127.0.
 | Python dependencies | uv workspace (members `bridge`, `cad`, `tools`) with one lockfile `uv.lock`; tests with pytest | uv 0.13.7, pytest 9.2.0 | this table |
 | Static checks | ruff (Python), clang-format (C++), shellcheck (shell), gofmt and go vet (Go, from step 2g) | ruff 0.17.3, clang-format 23.1.5, shellcheck 0.11.0, Go's own tools | this table |
 | Wiring diagram (ELE-07) | schemdraw (Python), SVG output | pinned in `uv.lock` when added in step 2d | this table |
+| Documentation PDF (DOC-06) | Pandoc converts Markdown to standalone HTML; WeasyPrint renders the versioned PDF | Pandoc 2.17.1.1-2~deb12u1, WeasyPrint 57.2-1 from Debian Bookworm | TD-14 |
 | Bridge website and hardware test panel | Go `net/http`, embedded HTML/CSS/JavaScript; test controls through the bridge-owned device connection | Go 1.27.4; no frontend runtime | TD-08 |
 | Windows firmware updater helper | `espflash` standalone Windows binary; version and SHA-256 pinned in release build | v4.7.0 at decision time | TD-09 |
 
@@ -375,6 +376,16 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 **Decision:** Add a 1%-step test brightness slider and Apply button. Applying it first sends the current RGB test colour and then sets a temporary firmware brightness override, using the existing brightness curve and 50% cap. Initialize the slider from the saved bridge preference; do not write the preference from the test panel.
 
 **Consequences:** The test brightness affects only the raw test colour. It is cleared when test mode ends, after which the saved bridge brightness preference applies again.
+
+#### TD-14 Versioned documentation exports
+
+**Status:** decided (2026-11-22)
+
+**Context:** DOC-06 requires a versioned parts-list CSV and assembly-instructions PDF in each release. The Markdown is the repository source of truth, and the renderer must be available in the pinned devcontainer.
+
+**Decision:** Generate the CSV from the purchased-parts table in Markdown. Convert the assembly instructions to standalone HTML with Pandoc, embedding referenced assets, then render the PDF with WeasyPrint. Pin both Debian Bookworm package versions in the devcontainer.
+
+**Consequences:** `ci/build-release` emits `cody-parts-list-<version>.csv` and `cody-assembly-instructions-<version>.pdf`. The Stage 2 parts list remains a draft; DOC-01 moves to step 5d, when the printed parts and fasteners are known.
 
 ## 6. Version information
 
