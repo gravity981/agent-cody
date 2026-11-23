@@ -15,6 +15,7 @@ The specification in `spec/` is the source of truth; the project's files impleme
 | `spec/verification.md` | Verification methods, tagging of evidence, requirement report, "not yet implemented" list |
 | `spec/verification-log.md` | Manual verification records |
 | `spec/implementation-plan.md` | Stages and steps, preconditions per stage, milestones, status reports |
+| `spec/mechanical-workflow.md` | Mechanical design phases, review gates, FDM rules, and evidence handoffs |
 
 ## Working with the spec
 
@@ -28,6 +29,14 @@ The specification in `spec/` is the source of truth; the project's files impleme
 - Every active requirement is verified by at least one piece of evidence, and each piece of evidence names the requirement IDs it verifies, using the tag convention in `spec/verification.md` (e.g. a test named `test_req_ABC_01_does_something`).
 - What can't be automated is recorded in `spec/verification-log.md` by the person who did the check. Never add a record for a check you didn't observe.
 - The requirement report (`reports/requirements.md`, last step of `ci/check`) lists requirement → evidence → result. CI fails if an implemented requirement has no passing evidence. Requirements not implemented yet are listed in `spec/verification.md` ("Not yet implemented"); shrink that list as stages are delivered.
+
+## Mechanical work
+
+- For mechanical design or revision, follow [spec/mechanical-workflow.md](spec/mechanical-workflow.md). This applies to Claude Code and GitHub Copilot, including direct requests to model, change a fit, or prepare a print.
+- Follow all nine phases in order, reusing current evidence where valid. Do not jump from requirements to detailed CAD; concept selection and the dimensioning basis need owner approval first.
+- Load the specialist skill for the earliest phase lacking current evidence, as listed in the workflow. Canonical procedures live in `.claude/skills/`. Direct specialist invocation does not bypass prerequisite gates.
+- Independent verification requires a fresh read-only reviewer context or a separate human; author self-review never counts. Missing review or physical evidence stays blocked/pending, not passed.
+- Mechanical gates supplement, never bypass, stage/step preflight and owner-controlled commits/releases.
 
 ## Implementation in stages
 

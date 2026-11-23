@@ -15,7 +15,7 @@ mkdir -p "$RELEASE_DIR"
 RELEASE_DIR=$(cd "$RELEASE_DIR" && pwd -P)
 
 # Firmware: one combined image (bootloader, partitions, app), flashed at 0x0
-(cd firmware && pio run --environment esp32c3)
+(cd firmware && pio run --environment esp32c3 --jobs 15)
 cp firmware/.pio/build/esp32c3/firmware.factory.bin "$RELEASE_DIR/cody-firmware-$VERSION.bin"
 
 # Host command (BRG-11, BRG-12): the script with its version filled in
@@ -30,6 +30,10 @@ cp electronics/wiring.svg "$RELEASE_DIR/cody-wiring-$VERSION.svg"
 
 # Build documentation (DOC-06): CSV from Markdown and PDF with the pinned renderer
 uv run --frozen python -m cody_tools.build_docs --version "$VERSION" --release-dir "$RELEASE_DIR"
+
+# Printable CAD parts (FIG-11): flat, versioned STL files; omit the STEP assembly
+uv run --frozen python -m cody_cad.mechanism \
+    --output "$RELEASE_DIR" --version "$VERSION" --stl-only
 
 # Claude Code hook installer (AGT-03, AGT-11): Python, standard library only
 cp hooks/install-claude-code "$RELEASE_DIR/cody-install-claude-code-$VERSION"

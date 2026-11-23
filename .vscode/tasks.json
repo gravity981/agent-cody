@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CAD: View chest-cam mechanism",
+      "type": "process",
+      "command": "uv",
+      "args": ["run", "--frozen", "python", "cad/view_mechanism.py"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

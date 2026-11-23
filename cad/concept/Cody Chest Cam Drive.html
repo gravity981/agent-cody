@@ -56,7 +56,7 @@
   svg .dim { font-family: var(--font-mono); font-size: 12px; fill: var(--muted); }
   .fixed { stroke: var(--fixed); fill: var(--fixed-fill); stroke-width: 1.5; }
   .fixed-line { stroke: var(--fixed); stroke-width: 1.5; fill: none; }
-  .axle { stroke: var(--fixed); stroke-width: 4; }
+  .axle { stroke: var(--fixed); stroke-width: 4; stroke-linecap: round; }
   .shell { stroke: var(--fixed); fill: none; stroke-width: 1.5; stroke-dasharray: 6 4; }
   .ghost { stroke: var(--line); fill: none; stroke-width: 1.5; stroke-dasharray: 4 4; }
   .disc { stroke: var(--drive); fill: none; stroke-width: 3; }
@@ -85,7 +85,7 @@
 <main>
   <header>
     <h1>Chest cam drive for Cody's arms</h1>
-    <p class="lede">Everything that moves the arms sits inside the chest. The motor lies across the upper chest, just in front of and below the shoulder axle, and carries two small eccentric discs, half a turn apart. Each arm joins the torso like an action figure: its sleeve cap turns around a hidden steel axle, and inside the chest it continues as a short lever pointing forward. The arm's weight rests the lever tip on its disc. As the disc turns, it lifts and lowers the tip, and the hand bobs on the keys. Drawn to scale for a bust about 105 mm high (5 px = 1 mm); sizes are first guesses for stage 4.</p>
+    <p class="lede">Everything that moves the arms sits inside the chest. The motor lies across the upper chest, just in front of and below the shoulder axle, and carries two small eccentric discs, half a turn apart. Each arm joins the torso like an action figure: its sleeve cap moves around a fixed, Ø6 mm circular printed crossbar through a circular bearing, while concentric shoulder surfaces guide the rotation. Inside the chest, each arm continues as a 9.7 mm lever, at least 4 mm thick, pointing forward. The arm's weight rests the lever tip on its disc. As the disc turns, it lifts and lowers the tip, and the hand bobs on the keys. Drawn to scale for a bust about 105 mm high (5 px = 1 mm); sizes are first guesses for stage 4.</p>
   </header>
 
   <div class="controls">
@@ -135,7 +135,7 @@
         <text x="48" y="346">the axle, the seam stays</text>
         <text x="48" y="362">closed (action-figure joint)</text>
         <path class="leader" d="M 186 360 L 236 392"/>
-        <text x="48" y="420">hidden steel axle</text>
+        <text x="48" y="420">printed Ø6 circular axle</text>
         <path class="leader" d="M 158 416 L 258 405"/>
         <text x="372" y="368">stop</text>
         <path class="leader" d="M 370 364 L 320 373"/>
@@ -153,7 +153,7 @@
 
     <figure>
       <p class="view-title">Front view · inside the chest</p>
-      <svg viewBox="40 60 520 600" role="img" aria-label="Front view of the bust: steel axle through both shoulders, motor lying across the upper chest with two eccentric discs on its shaft, each lever tip resting on one disc">
+      <svg viewBox="40 60 520 600" role="img" aria-label="Front view of the bust: printed circular axle through both shoulders, motor lying across the upper chest with two eccentric discs on its shaft, each lever tip resting on one disc">
         <ellipse class="ghost" cx="300" cy="225" rx="150" ry="150"/>
         <rect class="ghost" x="128" y="170" width="44" height="120" rx="20"/>
         <rect class="ghost" x="428" y="170" width="44" height="120" rx="20"/>
@@ -206,13 +206,13 @@
       <tbody>
         <tr><td>Bust (head and torso)</td><td class="num">≈ 105 mm high</td><td>Leaves room for platform and table within 150 mm (FIG-02).</td></tr>
         <tr><td>Torso at the shoulders</td><td class="num">≈ 62 × 38 mm</td><td>Inside ≈ 58 × 34 mm: the motor is 34 mm long including its shaft, so about 24 mm to spare across.</td></tr>
-        <tr><td>Motor (datasheet)</td><td class="num">Ø12 × 24 mm, shaft Ø3 × 10 mm</td><td>34 mm in total; lies across the chest.</td></tr>
-        <tr><td>Shoulder axle</td><td class="num">steel pin ~2 mm, left–right</td><td>At mid-depth, about 10 mm below the top of the shoulders; hidden under the sleeve caps.</td></tr>
-        <tr><td>Lever, forward from the axle</td><td class="num">≈ 8 mm</td><td>Same side as the hand: the tip rides on top of the disc, held by the arm's weight.</td></tr>
-        <tr><td>Hand, forward of the axle</td><td class="num">≈ 37 mm</td><td>Lever ratio 37 : 8 ≈ 4.6.</td></tr>
+        <tr><td>Motor (datasheet)</td><td class="num">12 × 10 mm envelope; 9 mm gearbox + 15 mm can; shaft Ø3 × 10 mm</td><td>34 mm overall; lies across the chest.</td></tr>
+        <tr><td>Shoulder axle</td><td class="num">fixed Ø6 × 60 mm circular printed bar, left–right</td><td>At mid-depth, about 10 mm below the top of the shoulders; arm sleeves have Ø6.4 mm circular bores and are retained by blind-socket end caps attached to the frame (61.6 mm overall).</td></tr>
+        <tr><td>Lever, forward from the axle</td><td class="num">≈ 9.7 mm, at least 4 mm thick</td><td>Same side as the hand: the tip rides on top of the disc, held by the arm's weight.</td></tr>
+        <tr><td>Hand, forward of the axle</td><td class="num">≈ 37 mm</td><td>Lever ratio 37 : 9.7 ≈ 3.8.</td></tr>
         <tr><td>Double eccentric</td><td class="num">one part, 2 × Ø10 × 4 mm, offset 0.65 mm</td><td>Both eccentrics half a turn apart on one hub that fits the 10 mm D-shaft. Tip moves ±0.65 mm, hand ≈ ±3 mm: about 6 mm travel (FIG-07: 3–8 mm). Swap the part to tune the travel.</td></tr>
-        <tr><td>Motor position</td><td class="num">axis 8 mm in front of, 6 mm below the axle</td><td>Directly under the lever tips. Motor surface 4 mm from the axle centre: about 1.5 mm clearance to the arm sleeves. Front of the motor 5 mm behind the chest surface: 2 mm wall plus 3 mm gap.</td></tr>
-        <tr><td>Strokes per arm</td><td class="num">1 per turn</td><td>N20 300 rpm at 5 V and partial PWM: about 1.5–4 turns/s (FIG-08).</td></tr>
+        <tr><td>Motor position</td><td class="num">axis 9.7 mm in front of, 8.8 mm below the axle</td><td>Directly under the lever tips. At least 1.5 mm calculated clearance to the arm sleeves; about 1.3 mm to the inside of the front wall before its 2 mm thickness.</td></tr>
+        <tr><td>Strokes per arm</td><td class="num">1 per turn</td><td>The selected 500 rpm N20 currently runs at about 120 rpm (about 2 strokes/s per arm) and can run faster; tune to the fastest non-distracting rate (FIG-08, FIG-13).</td></tr>
         <tr><td>Contact</td><td class="num">arm weight</td><td>At 4 strokes/s the hand needs about 2 m/s², below gravity; a light spring adds margin.</td></tr>
         <tr><td>Stops</td><td class="num">above each lever tip</td><td>Catch an arm when someone lifts a hand (FIG-09).</td></tr>
         <tr><td>Service</td><td class="num">removable back panel</td><td>Motor, discs and axle reachable; arms pull off the axle like an action figure's (FIG-14).</td></tr>

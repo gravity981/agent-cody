@@ -123,21 +123,22 @@ The printed desk scene and the arm mechanism. The figure is simplified to a bust
 |---|---|---|
 | FIG-01 | The figure is a cartoon developer bust (oversized head, torso, hoodie, two arms) behind a table with a laptop on a platform; no lower body is needed (judged by the owner). | Must |
 | FIG-02 | The whole assembly is at most 150 mm high (target 120–130 mm). | Must |
-| FIG-03 | All printed parts print on a Prusa MK3S+ (FDM, 0.4 mm nozzle) in PLA; PETG is allowed for mechanism parts. | Must |
+| FIG-03 | All printed parts fit the Prusa MK3S+ build volume (250 × 210 × 210 mm) and are designed for FDM printing in PLA; PETG is allowed for mechanism parts. Prefer a 0.6 mm nozzle with PrusaSlicer 2.9.4; smaller nozzles are possible but should be avoided. | Must |
 | FIG-04 | There are at most 12 printed parts. | Must |
 | FIG-05 | Parts print without support material, except where noted in the print notes. | Should |
 | FIG-06 | Both arms move alternately, driven by one continuously rotating geared DC motor; no servos. | Must |
 | FIG-07 | The hands stay close to the laptop keyboard; each hand moves 3–8 mm up and down. | Must |
 | FIG-08 | Each arm makes 1–4 strokes per second, set via the motor speed (FW-08). | Must |
-| FIG-09 | Mechanical stops limit the arm travel. | Must |
+| ~~FIG-09~~ | ~~Mechanical stops limit the arm travel.~~ (withdrawn: the owner chose gravity and cam contact without a separate frame endstop.) | – |
 | FIG-10 | Motor and cam drive are hidden inside the torso. | Must |
-| FIG-11 | No lubrication-intensive or precision-machined parts; the cam and levers are simple printed parts. | Must |
+| FIG-11 | No lubrication-intensive or precision-machined parts; two separate, closed, hollow Ø6 mm shoulder tubes mount to the frame, each guiding a circular Ø4 mm rotating arm axle in a Ø4.6 mm bore (0.3 mm radial clearance). Each axle has an integral cam lever at least 4 mm thick whose root covers the full axle end face on the cam side; the arm-knob socket remains open. Each arm has a 4 mm-long male knob that fits into its axle socket. Each tube has a full-length rear mounting shelf and a sturdy upward lip with two through-holes. Two rear-access M3 × 8 socket-head screws per lip pass through Ø3.4 mm clearance holes in the 5 mm backplate and lip; loose M3 hex nuts on the inside are accessible to a wrench. Ø6 × 3.1 mm rear head recesses keep screw heads flush. Each arm's outward-facing side is planar and lies flat on the print bed with its knob pointing up; arms have Ø8 mm, 2 mm-thick shoulder hubs that clear the frame. The motor mount stands on the ground plate without overhangs when the frame is printed flat on that plate. | Must |
 | FIG-12 | The mechanism runs 8 h continuously in WORKING without failure; the motor stays below 60 °C. | Must |
 | FIG-13 | In WORKING, the noise is not distracting at 1 m in a quiet office (judged by the owner). | Should |
 | FIG-14 | Serviceable: the torso opens; the motor and each arm can be replaced without damage; the electronics are reachable through the platform; modules can be swapped without changing printed parts; the USB port is accessible. | Must |
-| FIG-15 | The assembly uses screws or snap fits, no glue. | Should |
+| FIG-15 | The assembly uses screws or snap fits with standard hand tools, no glue. | Should |
 | FIG-16 | The assembly stands stable on the desk and doesn't move or tip while the arms move. | Must |
 | FIG-17 | CAD sources and print files with their print settings are in the repository. | Must |
+| FIG-18 | The mechanism can be assembled step by step without blocking or trapping a part before it is installed. | Must |
 
 ## 8. Build documentation (DOC)
 
@@ -147,7 +148,7 @@ Written so that a maker with a 3D printer and a soldering iron can build a Cody 
 |---|---|---|
 | DOC-01 | A parts list names every part of one Cody: purchased parts (with source and price), printed parts (file, material, quantity), fasteners and consumables. | Must |
 | DOC-02 | Assembly instructions cover the electronics and the setup: soldering, wiring, flashing the firmware, installing the bridge and the hooks. | Must |
-| DOC-03 | Assembly instructions cover the mechanism: motor, cam drive, shoulder axle and arm joints, levers, stops, and arms. | Must |
+| DOC-03 | Assembly instructions cover the mechanism: motor, cam drive, shoulder axle and arm joints, levers, and arms. | Must |
 | DOC-04 | Assembly instructions cover printing the parts and assembling the full figure. | Must |
 | DOC-05 | Each step of the instructions names the parts and tools it needs and has a picture or render. | Must |
 | DOC-06 | The parts list and the assembly instructions are release files, with the version in their names. | Must |

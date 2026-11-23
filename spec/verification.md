@@ -7,6 +7,7 @@ How every requirement in [requirements.md](requirements.md) is shown to be met, 
 - Every active requirement is verified by at least one piece of evidence, and every piece of evidence names the requirement IDs it verifies.
 - Automate what can be automated and run it in CI. What can't (real hardware, physical inspection, real environments) is verified manually and recorded in [verification-log.md](verification-log.md).
 - A requirement counts as implemented only when it is off the "not yet implemented" list (section 5) and has passing evidence.
+- Mechanical work also follows the gates in [mechanical-workflow.md](mechanical-workflow.md). Keep a requirement in section 5 while required physical checks or other required evidence are missing, even when partial CAD tests pass. The requirement report does not enforce mechanical gates or completeness of a requirement's physical verification; green CI alone is not mechanical release readiness.
 
 ## 2. Verification methods and levels
 
@@ -72,7 +73,7 @@ Requirements that are not implemented yet. The requirement report doesn't expect
 | BRG | BRG-18 – BRG-19, BRG-23 – BRG-24 |
 | AGT | AGT-02, AGT-05, AGT-12 |
 | ELE | ELE-01 – ELE-06 |
-| FIG | FIG-01 – FIG-17 |
+| FIG | FIG-01 – FIG-08, FIG-10, FIG-12 – FIG-18 |
 | DOC | DOC-01, DOC-03 – DOC-04, DOC-07 |
 
 ## 6. Manual verification
@@ -86,7 +87,7 @@ Verified manually because they need real hardware, real agents or the owner's ju
 - AGT-01 – AGT-04, AGT-12: real agent sessions in each environment.
 - ELE-01 – ELE-07: modules, soldering, current, stability, cost, documents.
 - TST-01 – TST-11: test mode and bridge-backed panel controls on the bench, including state presets, motor range/decay, NVS save/reset, displayed tuning and timestamp, sliders, temporary LED test brightness and preference restoration, first-time and legacy-firmware flashing from ROM bootloader, tuning-preserving update, reconnection, LED and buzzer, browser close, timeout restoration and serial loss.
-- FIG-01, FIG-05 – FIG-16: printed assembly, motion, endurance, noise, service.
+- FIG-01, FIG-05 – FIG-08, FIG-10 – FIG-16, FIG-18: printed assembly, motion, endurance, noise, service, and a step-by-step assembly without trapped parts.
 - DOC-01 – DOC-05: completeness and usability of the parts list and instructions, checked by building along them; DOC-07: a test build by someone else.
 
 
