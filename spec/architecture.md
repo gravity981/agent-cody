@@ -16,7 +16,7 @@ flowchart LR
     FW --> BZ["Passive buzzer"]
 ```
 
-External systems: Claude Code and GitHub Copilot (their hook mechanisms), the host's USB port (data and all power), Meshy.ai (generates the head mesh, used manually), GitHub (CI, releases, GHCR).
+External systems: Claude Code and GitHub Copilot (their hook mechanisms), the host's USB port (data and all power), optional Meshy.ai for alternative head meshes, GitHub (CI, releases, GHCR).
 
 Out of scope: arm home-position sensor; Wi-Fi/Bluetooth on the device.
 
@@ -193,7 +193,7 @@ WSL2 in NAT mode and devcontainers in Docker Engine in WSL2 cannot reach `127.0.
 | Firmware framework | Arduino-ESP32 3.x with PlatformIO (pioarduino platform) | PlatformIO 6.2.0, pioarduino 55.03.312-1; toolchain baked into the devcontainer image | TD-02 |
 | Bridge app (Windows) and WSL relay | Go; fyne.io/systray, go.bug.st/serial, hashicorp/yamux, pelletier/go-toml/v2, natefinch/lumberjack; tests with go test and gotestsum (JUnit) | Go 1.27.4, gotestsum 1.13.0; libraries pinned in `go.sum` | TD-06 |
 | Windows installer | NSIS (`makensis`) | 3.08-3+deb12u1 from Debian Bookworm | TD-06 |
-| CAD | build123d; head mesh from Meshy.ai, processed with manifold3d | build123d 0.13.0, manifold3d 3.5.4 | TD-05 |
+| CAD | build123d, including the baseline head; optional imported head mesh processed with manifold3d | build123d 0.13.0, manifold3d 3.5.4 | TD-05 |
 | CI environment | Devcontainer (devcontainers/ci), Docker via docker-outside-of-docker | – | delivery.md 2 |
 | Python dependencies | uv workspace (members `cad`, `tools`) with one lockfile `uv.lock`; tests with pytest | uv 0.13.7, pytest 9.2.0 | this table |
 | Static checks | ruff (Python), clang-format (C++), shellcheck (shell), gofmt and go vet (Go, from step 2g) | ruff 0.17.3, clang-format 23.1.5, shellcheck 0.11.0, Go's own tools | this table |
@@ -256,7 +256,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 **Consequences:** Stage 2 releases remain usable with their Linux Docker bridge. Stage 3 releases no longer include it; native Linux support returns in Stage 6.
 
-#### TD-05 CAD: build123d, head mesh from Meshy.ai
+#### TD-05 CAD: build123d, optional Meshy head
 
 **Status:** decided (2026-11-05)
 
@@ -264,9 +264,9 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 **Options evaluated:** Fusion (strong organic + mechanical, proprietary files, no CI); build123d (Python code CAD on OpenCascade, headless exports and checks in CI, organic shapes hard); CadQuery (same kernel, older fluent API, larger community); FreeCAD (open source, scriptable, awkward UI).
 
-**Decision:** build123d for platform, table, laptop, torso, arms and mechanism. The head is generated with Meshy.ai (manual, web); the raw mesh and the prompt are committed as sources, and a script with manifold3d repairs, scales and cuts the head socket and exports the printable STL.
+**Decision:** build123d for the figure and scene, including a simple stylized baseline head with facial details in its geometry. Meshy.ai is optional, not needed to build or release Cody. An optional Meshy head must use the same functional neck interface; if an imported mesh is distributed, its source, prompt and applicable licence must permit repository and release use.
 
-**Consequences:** Model checks (height, bed size, part count, files present) run in CI. Meshy's licence terms for generated models must allow use in an open repository (open point in README.md).
+**Consequences:** Model checks (height, bed size, files present) run in CI. Meshy licensing and mesh repair are relevant only if an optional generated mesh is actually used or distributed. A generated head is not a Stage 5 prerequisite.
 
 #### TD-06 Bridge app: Go, tray app on Windows, WSL relay, NSIS installer
 
@@ -364,7 +364,7 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 
 **Decision:** Generate the CSV from the purchased-parts table in Markdown. Convert the assembly instructions to standalone HTML with Pandoc, embedding referenced assets, then render the PDF with WeasyPrint. Pin both Debian Bookworm package versions in the devcontainer.
 
-**Consequences:** `ci/build-release` emits `cody-parts-list-<version>.csv` and `cody-assembly-instructions-<version>.pdf`. The Stage 2 parts list remains a draft; DOC-01 moves to step 5d, when the printed parts and fasteners are known.
+**Consequences:** `ci/build-release` emits `cody-parts-list-<version>.csv` and `cody-assembly-instructions-<version>.pdf`. The Stage 2 parts list remains a draft; DOC-01 moves to step 5g, when the printed parts and fasteners are known.
 
 #### TD-15 Python Docker bridge retirement in Stage 3
 
@@ -396,13 +396,13 @@ Records are numbered `TD-<nn>` and never renumbered; a revised decision gets a n
 | Unsigned installer and exe: SmartScreen warning, antivirus false alarms | Documented in the setup guide; signing only if it becomes a real problem. |
 | Copilot hook API (Preview) changes or reads Claude Code hook configs too (AGT-08) | Mapping in the bridge, not in hooks; recorded payloads in tests; dedupe by endpoint and payload format. |
 | Drive fits in the bust with 3–8 mm hand travel (FIG-07, FIG-10); tight clearance between motor and outer axle (8.3) | Mechanism prototype first (stage 4), before the character; motor lower and eccentrics larger if needed. |
-| Meshy mesh not printable or not watertight | manifold3d repair in the pipeline; regenerate. |
+| Optional Meshy mesh not printable or not watertight | Inspect and repair with manifold3d or choose another mesh; the CAD baseline remains available. |
 
 Open questions are listed in "Open points" in [README.md](README.md).
 
 ## 8. Arm mechanism and figure construction (concept)
 
-Concept for stages 4 and 5, worked out on 2026-11-06 with the drafts of the bust and the left arm (hoodie bust with a large head and headphones, arm with a bent elbow). The owner confirmed the chest cam drive and selected the 500 rpm N20 on 2026-11-22. The supplied HTML concept specifies the mechanism but not how the bust, head and arms are modelled; that method is to be chosen before Stage 5. Sizes are first guesses for the stage 4 test rig.
+Concept for stages 4 and 5, worked out on 2026-11-06 with the drafts of the bust and the left arm (hoodie bust with a large head and headphones, arm with a bent elbow). The owner confirmed the chest cam drive and selected the 500 rpm N20 on 2026-11-22. The Stage 5 construction direction was approved on 2026-11-23 (8.4). Sizes are first guesses for the stage 4 test rig.
 
 The owner's [chest cam concept](../cad/concept/Cody%20Chest%20Cam%20Drive.html) supplies the mechanical proportions below as first-pass targets for the Stage 4 prototype.
 
@@ -424,23 +424,28 @@ The owner's [chest cam concept](../cad/concept/Cody%20Chest%20Cam%20Drive.html) 
 
 ### 8.3 Preferred concept: chest cam drive
 
-- **Shoulder joint:** each arm joins the torso like an action figure's. Two separate, closed, unequal-length Ø6 mm hollow crossbars attach to the frame along full-length rear shelves. Each has a sturdy upward lip with two through-holes. The backplate is 5 mm thick and its rear plane remains flush. Two rear-access M3 × 8 socket-head screws per lip pass frontward through Ø3.4 mm clearance holes in the backplate and lip; standard M3 hex nuts (5.5 mm across flats, 2.4 mm thick) remain loose and wrench-accessible on the inside. The backplate has Ø6 × 3.1 mm counterbores for the screw heads; no threaded inserts or captured nut pockets are used. Each tube has a Ø4.6 mm bore guiding a circular Ø4 mm rotating arm axle, giving 0.3 mm radial clearance. The axle has an integral Ø5.2 mm collar that abuts the tube's inner end. The outside arm has a 4 mm-long male Ø2.6 mm knob that enters the axle's Ø2.7 mm socket (0.1 mm diametral clearance), and an Ø8 mm, 2 mm-thick shoulder hub with clearance from the frame. Print each arm on its planar outward-facing side with its knob pointing upward. Build each arm/axle/tube module first, then mount it to the frame; install the screws from the rear while holding the nuts with a wrench on the inside. No part or tool access may be blocked or trapped, and no glue is used.
-- **Lever contact:** inside the chest each axle continues as an integral lever of ≈ 9.7 mm pointing forward, slightly below the axle, and at least 4 mm thick. Its root covers the full Ø4 mm axle end face on the cam side for a broad integral connection; the arm-knob socket at the opposite end remains open. The levers sit side by side next to the motor shaft. Gravity keeps the lever tips on the eccentrics throughout the cycle; there is no separate frame endstop or stop bridge. Lever and hand are on the same side of the axle: lifting the tip lifts the hand.
-- **Drive:** the supplied GA12-N20 size drawing gives a 12 × 10 mm body envelope, a 9 mm gearbox, a 15 mm motor can and a Ø3 × 10 mm output shaft (34 mm overall). The test-rig motor is modeled as this conservative envelope for collision checking. Its axis is 9.7 mm in front of and 8.8 mm below the shoulder axle to maintain at least 1.5 mm calculated clearance to the round outer axle. In the concept front view, the motor body center is ≈ 7 mm left of the chest centerline, with the lobes at ≈ 7.2 and 12.2 mm to the right. The modeled D-shaft carries one printed part with two side-by-side eccentrics (each ≈ Ø10 × 4 mm, offset ≈ 0.65 mm) half a turn apart. Each lever tip rests on top of an eccentric, held there by the arm's weight; one turn is one stroke of each arm, alternately.
+- **Shoulder joint:** each arm joins the torso like an action figure's. Two separate unequal-length Ø10 mm hollow crossbars attach to the frame along full-length rear shelves, with local reliefs at the fasteners for nut and wrench access. Raise the tube and axle axes by 2 mm, but leave the frame geometry, motor position and frame screw-hole locations unchanged; keep the mounting lips aligned to the existing holes. Each lip has two through-holes. The backplate is 5 mm thick and its rear plane remains flush. Two rear-access M3 × 8 socket-head screws per lip pass frontward through Ø3.4 mm clearance holes in the backplate and lip; standard M3 hex nuts (5.5 mm across flats, 2.4 mm thick) remain loose and wrench-accessible on the inside. The backplate has Ø6 × 3.1 mm counterbores for the screw heads; no threaded inserts or captured nut pockets are used. Each tube has an Ø8.6 mm bore guiding a circular Ø8 mm rotating arm axle, giving 0.3 mm radial clearance. The axle has an integral Ø9.2 mm collar that abuts the tube's inner end and an outward-facing solid Ø6 × 8 mm knob. The outside arm has a blind Ø6.2 × 8.3 mm hole (0.1 mm radial clearance) in an Ø11 × 9.3 mm shoulder hub. The hub's inner face is flush with the tube end, moving each arm 3.55 mm outboard from its previous position. Print each arm on its planar outward-facing side with the blind hole pointing upward. Print the revised crossbars, axles and arms in PLA; retain the already-printed frame and eccentric. Build each arm/axle/tube module first, then mount it to the frame; install the screws from the rear while holding the nuts with a wrench on the inside. No part or tool access may be blocked or trapped, and no glue is used.
+- **Lever contact:** inside the chest each raised axle continues as an integral lever with a 9.7 mm forward reach, sloping down to the existing cam follower location; the raised pivot lengthens the diagonal lever path. Each lever is at least 4 mm thick, and its root covers the full Ø8 mm axle end face on the cam side for a broad integral connection. The arm-knob socket at the opposite end remains open. The levers sit side by side next to the motor shaft. Gravity keeps the lever tips on the eccentrics throughout the cycle; there is no separate frame endstop or stop bridge. Lever and hand are on the same side of the axle: lifting the tip lifts the hand.
+- **Drive:** the supplied GA12-N20 size drawing gives a 12 × 10 mm body envelope, a 9 mm gearbox, a 15 mm motor can and a Ø3 × 10 mm output shaft (34 mm overall). The test-rig motor is modeled as this conservative envelope for collision checking. Its position remains 9.7 mm in front of and 8.8 mm below the original frame datum; raising the shoulder axle by 2 mm places it 10.8 mm below the new axle axis. The Ø10 mm crossbars then have about 1.88 mm calculated clearance to the motor; verify no rubbing physically. In the concept front view, the motor body center is ≈ 7 mm left of the chest centerline, with the lobes at ≈ 7.2 and 12.2 mm to the right. The modeled D-shaft carries one printed part with two side-by-side eccentrics (each ≈ Ø10 × 4 mm, offset ≈ 0.65 mm) half a turn apart. Each lever tip rests on top of an eccentric, held there by the arm's weight; one turn is one stroke of each arm, alternately.
 - **Travel:** lever ratio ≈ 37 : 9.7 (hand ≈ 37 mm in front of the axle), so ±0.65 mm at the tip gives ≈ 5 mm at the hand (FIG-07). The travel is tuned by swapping the double eccentric.
 - **Speed:** the owner reports the selected 500 rpm N20 currently runs at about 120 rpm (about 2 strokes/s per arm) and can run faster. Tune it for the fastest non-distracting rate at 1 m within 1–4 strokes/s per arm (FIG-08, FIG-13), without extra gears.
 - **Contact:** at 4 strokes/s the hand needs ≈ 2 m/s², below gravity; arm weight keeps the lever tips on the eccentrics.
-- **Clearances:** the 12 × 10 mm motor envelope has at least 1.50 mm calculated clearance to the round outer crossbars. In the 34 mm internal torso depth, it reaches 15.7 mm forward from the shoulder axle, leaving about 1.3 mm to the inside of the front wall before its 2 mm thickness. The motor axis is 8.8 mm below the shoulder axle to preserve this clearance; further changes must preserve lever ratio and travel.
+- **Clearances:** the 12 × 10 mm motor envelope has about 1.88 mm calculated clearance to the raised Ø10 mm crossbars; verify no rubbing physically because the owner chose to retain the existing motor position and frame. In the 34 mm internal torso depth, it reaches 15.7 mm forward from the shoulder axle, leaving about 1.3 mm to the inside of the front wall before its 2 mm thickness.
 - **Sizes of the figure:** bust (head and torso) ≈ 105 mm high; torso at the shoulders ≈ 62 × 38 mm (inside ≈ 58 × 34 mm, about 2 mm walls, the motor uses 34 mm across). With table and platform the assembly stays within FIG-02.
-- **Service and cables:** a removable back panel gives access to motor, eccentric and printed axles; the arms pull off the inner axles (FIG-14). Motor wires leave the bust downwards to the electronics in the platform.
+- **Service and cables:** the Stage 4 prototype has an open frame and rear-access shoulder screws; the arms pull off the inner axles. Motor wires leave the bust downwards to the electronics in the platform. Stage 5 changes the frame and fastener access as described in 8.4.
 - **Prototype base:** the Stage 4 test frame includes a provisional 80 × 60 × 4 mm integrated base, with its back edge flush to the frame's back face. Print the frame flat on this plate and support the motor mount from the plate with a solid block, without unsupported overhangs; let the slicer optimize infill rather than adding material-saving pockets to the CAD. The base is a layout starting point; FIG-16 stability requires the complete Stage 5 figure and physical testing.
 - **Noise (FIG-13):** PWM at 20 kHz is inaudible; the lever tips slide on the eccentrics, so they get smooth, rounded tips.
 - **Status LED:** in the laptop lid (4.5).
 
-### 8.4 Figure construction: Meshy outer shapes, functional geometry in code
+### 8.4 Figure construction: integrated back, removable chest and scene
 
-- The outer shapes are generated in Meshy: the bust with the head (without arms) and the left arm, in their final pose; both are committed with their prompt or input images (as for the head in TD-05).
-- A script (manifold3d with build123d parts) repairs and scales the meshes, places the arm at the shoulder axle, cuts the action-figure joint into arm and bust with the same surface around the axle (fit by construction, defined gap ≈ 0.3 mm), adds the axle hole and lever to the arm, hollows the bust with a cavity designed around the drive, adds the motor mount, cuts the back panel and cable opening, mirrors the arm, and exports the print files; CI checks them (FIG-02 – FIG-04, FIG-17).
-- The script moves, turns and scales but doesn't re-pose: the elbow angle and the proportions of the arm in Meshy must suit the table height. Fingers ≥ about 2 mm thick, or merged, so they print with the preferred 0.6 mm nozzle.
-- This extends TD-05 (today: build123d for torso and arms, Meshy only for the head); TD-05 is revised when the concept is confirmed.
+The owner approved this **direction**, not detailed dimensions or print-ready geometry. The [exploratory illustration](../cad/concept/Cody%20Figure%20Assembly.html) is schematic and not evidence of fit. It retains the selected chest-cam mechanism (8.3); the Stage 4 test frame and its integrated provisional base are not yet the final Stage 5 frame.
+
+- A structural frame with an integral back carries the motor, shoulder modules and head. It connects removably to the solid-looking electronics enclosure; a separate removable chest cover dresses the front without carrying the drive. The simple, slightly robotic code-CAD head and arms can use angular shapes. The head pushes onto a keyed neck knob with removable retention. Retention geometry, clearance and orientation remain to be tested.
+- The tabletop and one-piece notebook are separate parts; every printed part is one color. The notebook accommodates the status LED in its lid (4.5). No fixed printed-part count is imposed; minimize parts where practical without compromising service, printability or the intended color separation.
+- Redesign the Stage 5 shoulder fasteners for access from the front after removing the chest cover. The Stage 4 rear screws and loose nuts remain the prototype design; no final fastener geometry or retention method is yet selected. Preserve replaceability of the motor and arms and check tools, screws, nuts, wires and the whole arm-motion cycle.
+- Assemble the mechanism modules and motor on the frame, connect the frame to the enclosure and route the wiring, then fit the chest cover, head, tabletop and notebook. Plan the reverse sequence and protect access to front fasteners, motor, arm joints, electronics, USB and LED wiring. The cover and frame/platform joint must not trap parts or tools.
+- Start with a base-down frame, arms on their flat outer faces, the chest cover on a suitable mating face and tabletop on its underside. The head and notebook orientations depend on their geometry. PLA is the baseline; PETG is permitted for mechanism parts (FIG-03). Check the actual shapes, nozzle-resolvable details, layer loading, supports and interfaces in the slicer; these orientations are proposals, not validated settings.
+- Compared with an integrated frame/platform, the removable connection improves replacement and service but adds a joint and part. Integrating the back with the frame removes a separate cover, but requires front access and constrains the frame's appearance and print orientation. A separate back cover was rejected by the owner.
+- Before dimensioning, establish component envelopes, front-access fasteners, the head and chest-cover retention, frame/platform joint, wiring routes, and tool and full-cycle arm clearances. Evaluate an integrated or separate chair backrest, a possible tabletop cutout, and how they affect service and printing. Use a representative neck-joint coupon as a possible first physical fit experiment, after its applicable design and print-review gates. No fit, retention, stability or physical test is yet proven.
 

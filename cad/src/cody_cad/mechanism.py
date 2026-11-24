@@ -22,17 +22,19 @@ from build123d import (
 @dataclass(frozen=True)
 class MechanismDimensions:
     chest_width: float = 62.0
-    crossbar_diameter: float = 6.0
+    crossbar_diameter: float = 10.0
     crossbar_relief: float = 0.3
-    arm_axle_diameter: float = 4.0
-    arm_axle_collar_diameter: float = 5.2
+    arm_axle_diameter: float = 8.0
+    arm_axle_collar_diameter: float = 9.2
     arm_axle_collar_width: float = 1.0
     shoulder_position: float = 32.0
-    arm_shoulder_hub_radius: float = 4.0
-    arm_shoulder_hub_thickness: float = 2.0
-    arm_knob_diameter: float = 2.6
-    arm_knob_fit_diametral_clearance: float = 0.1
-    arm_knob_length: float = 4.0
+    crossbar_axis_lift_z: float = 2.0
+    arm_shoulder_hub_radius: float = 5.5
+    arm_shoulder_hub_thickness: float = 9.3
+    arm_knob_diameter: float = 6.0
+    arm_knob_fit_diametral_clearance: float = 0.2
+    arm_knob_length: float = 8.0
+    arm_knob_socket_depth: float = 8.3
     backplate_center_y: float = -10.0
     backplate_thickness: float = 5.0
     frame_base_width: float = 80.0
@@ -69,7 +71,7 @@ class MechanismDimensions:
         return self.arm_axle_diameter + 2 * self.crossbar_relief
 
     @property
-    def arm_axle_socket_diameter(self) -> float:
+    def arm_knob_socket_diameter(self) -> float:
         return self.arm_knob_diameter + self.arm_knob_fit_diametral_clearance
 
     @property
@@ -101,7 +103,7 @@ CROSSBAR_MOUNT_LIP_TOP_Z = 11.5
 CROSSBAR_MOUNT_SHELF_FRONT_Y = 2.2
 CROSSBAR_MOUNT_SHELF_BOTTOM_Z = 2.4
 CROSSBAR_MOUNT_SHELF_TOP_Z = 4.0
-CROSSBAR_REAR_WEB_CENTER_Y = -3.0
+CROSSBAR_REAR_WEB_CENTER_Y = -5.5
 CROSSBAR_REAR_WEB_DEPTH_Y = 2.4
 CROSSBAR_REAR_WEB_BOTTOM_Z = 1.2
 CROSSBAR_REAR_WEB_TOP_Z = 2.6
@@ -190,7 +192,8 @@ def outer_axle_motor_clearance_mm() -> float:
         0,
     )
     distance_z = max(
-        abs(DIMENSIONS.motor_axis_z) - DIMENSIONS.motor_body_height / 2,
+        abs(DIMENSIONS.crossbar_axis_lift_z - DIMENSIONS.motor_axis_z)
+        - DIMENSIONS.motor_body_height / 2,
         0,
     )
     return sqrt(distance_y**2 + distance_z**2) - DIMENSIONS.crossbar_diameter / 2
@@ -244,11 +247,7 @@ def build_arm_crossbar(shoulder_x: float, cam_x: float) -> Shape:
     crossbar = _cylinder_x(
         DIMENSIONS.crossbar_diameter / 2,
         layout.length,
-        (center_x, 0, 0),
-    ) - _cylinder_x(
-        DIMENSIONS.arm_axle_bore_diameter / 2,
-        layout.length + 0.2,
-        (center_x, 0, 0),
+        (center_x, 0, DIMENSIONS.crossbar_axis_lift_z),
     )
     mounting_shelf = Pos(
         center_x,
@@ -282,16 +281,26 @@ def build_arm_crossbar(shoulder_x: float, cam_x: float) -> Shape:
         screw_hole = (
             Pos(
                 screw_x,
-                DIMENSIONS.backplate_inner_face_y + CROSSBAR_MOUNT_LIP_THICKNESS_Y / 2,
+                (DIMENSIONS.backplate_inner_face_y + CROSSBAR_SCREW_TIP_Y) / 2,
                 CROSSBAR_SCREW_Z,
             )
             * Rot(-90, 0, 0)
             * Cylinder(
                 M3_CLEARANCE_DIAMETER / 2,
-                CROSSBAR_MOUNT_LIP_THICKNESS_Y + 0.2,
+                CROSSBAR_SCREW_TIP_Y - DIMENSIONS.backplate_inner_face_y + 0.2,
             )
         )
-        crossbar = crossbar - screw_hole
+        wrench_access = Pos(
+            screw_x,
+            CROSSBAR_NUT_FACE_Y + 3.1,
+            CROSSBAR_SCREW_Z,
+        ) * Box(7.2, 6.2, 5.7)
+        crossbar = crossbar - screw_hole - wrench_access
+    crossbar = crossbar - _cylinder_x(
+        DIMENSIONS.arm_axle_bore_diameter / 2,
+        layout.length + 0.2,
+        (center_x, 0, DIMENSIONS.crossbar_axis_lift_z),
+    )
     return crossbar
 
 
@@ -311,43 +320,51 @@ def _beam_between_yz(
     return Pos(x, center_y, center_z) * Rot(angle, 0, 0) * Box(width_x, length, thickness)
 
 
-def _arm_section_center_x(shoulder_x: float, side: int, width_x: float) -> float:
-    return shoulder_x + side * (DIMENSIONS.arm_shoulder_hub_thickness / 2 - width_x / 2)
+def _arm_section_center_x(outer_face_x: float, side: int, width_x: float) -> float:
+    return outer_face_x - side * width_x / 2
 
 
 def build_arm(shoulder_x: float, cam_x: float) -> Shape:
-    side = 1 if shoulder_x > 0 else -1
+    layout = arm_crossbar_layout(shoulder_x, cam_x)
+    side = layout.side
+    hub_center_x = layout.outer_end_x + side * DIMENSIONS.arm_shoulder_hub_thickness / 2
+    hub_outer_face_x = hub_center_x + side * DIMENSIONS.arm_shoulder_hub_thickness / 2
     arm_hub = _cylinder_x(
         DIMENSIONS.arm_shoulder_hub_radius,
         DIMENSIONS.arm_shoulder_hub_thickness,
-        (shoulder_x, 0, 0),
+        (hub_center_x, 0, 0),
     )
-    knob = _cylinder_x(
-        DIMENSIONS.arm_knob_diameter / 2,
-        DIMENSIONS.arm_knob_length,
-        (shoulder_x - side * (1 + DIMENSIONS.arm_knob_length / 2), 0, 0),
+    socket = _cylinder_x(
+        DIMENSIONS.arm_knob_socket_diameter / 2,
+        DIMENSIONS.arm_knob_socket_depth + 0.2,
+        (
+            layout.outer_end_x + side * (DIMENSIONS.arm_knob_socket_depth - 0.2) / 2,
+            0,
+            0,
+        ),
     )
     upper_arm = _beam_between_yz(
-        _arm_section_center_x(shoulder_x, side, 2.0),
+        _arm_section_center_x(hub_outer_face_x, side, 2.0),
         (0, -2.5),
         (2, -22),
         2.0,
         3,
     )
     forearm = _beam_between_yz(
-        _arm_section_center_x(shoulder_x, side, 3.6),
+        _arm_section_center_x(hub_outer_face_x, side, 3.6),
         (1, -20),
         (DIMENSIONS.hand_reach, -DIMENSIONS.hand_drop),
         3.6,
         3,
     )
     hand = Pos(
-        _arm_section_center_x(shoulder_x, side, 8.0),
+        _arm_section_center_x(hub_outer_face_x, side, 8.0),
         DIMENSIONS.hand_reach - 1,
         -DIMENSIONS.hand_drop,
     ) * Box(8, 7, 3)
 
-    return arm_hub + knob + upper_arm + forearm + hand
+    arm = arm_hub + upper_arm + forearm + hand - socket
+    return Pos(0, 0, DIMENSIONS.crossbar_axis_lift_z) * arm
 
 
 def build_cam_lever(cam_x: float) -> Shape:
@@ -356,10 +373,11 @@ def build_cam_lever(cam_x: float) -> Shape:
         raise ValueError(f"cam_x must match a cam lobe center: {cam_x}")
     cam_top_z = cam_center[2] + DIMENSIONS.cam_diameter / 2
     start_y = 0.0
+    start_z = DIMENSIONS.crossbar_axis_lift_z
     end_z = cam_top_z + DIMENSIONS.lever_thickness / 2
     return _beam_between_yz(
         cam_x,
-        (start_y, 0),
+        (start_y, start_z),
         (DIMENSIONS.lever_length, end_z),
         3,
         DIMENSIONS.lever_thickness,
@@ -373,19 +391,19 @@ def build_arm_axle(
 ) -> Shape:
     layout = arm_crossbar_layout(shoulder_x, cam_x)
     side = layout.side
-    outer_end_x = shoulder_x - side
+    outer_end_x = layout.outer_end_x
     shaft_length = abs(outer_end_x - cam_x)
     shaft_center_x = (outer_end_x + cam_x) / 2
     shaft = _cylinder_x(
         DIMENSIONS.arm_axle_diameter / 2,
         shaft_length,
-        (shaft_center_x, 0, 0),
+        (shaft_center_x, 0, DIMENSIONS.crossbar_axis_lift_z),
     )
     collar_center_x = layout.inner_end_x - side * DIMENSIONS.arm_axle_collar_width / 2
     collar = _cylinder_x(
         DIMENSIONS.arm_axle_collar_diameter / 2,
         DIMENSIONS.arm_axle_collar_width,
-        (collar_center_x, 0, 0),
+        (collar_center_x, 0, DIMENSIONS.crossbar_axis_lift_z),
     )
 
     cam_center = next((center for center in cam_lobe_centers() if center[0] == cam_x), None)
@@ -403,14 +421,18 @@ def build_arm_axle(
     lever_root_face = _cylinder_x(
         DIMENSIONS.arm_axle_diameter / 2,
         CAM_LEVER_ROOT_FACE_THICKNESS,
-        (root_face_center_x, 0, 0),
+        (root_face_center_x, 0, DIMENSIONS.crossbar_axis_lift_z),
     )
-    socket = _cylinder_x(
-        DIMENSIONS.arm_axle_socket_diameter / 2,
-        DIMENSIONS.arm_knob_length + 0.2,
-        (shoulder_x - side * (1 + DIMENSIONS.arm_knob_length / 2), 0, 0),
+    knob = _cylinder_x(
+        DIMENSIONS.arm_knob_diameter / 2,
+        DIMENSIONS.arm_knob_length + 0.1,
+        (
+            outer_end_x + side * (DIMENSIONS.arm_knob_length / 2 - 0.05),
+            0,
+            DIMENSIONS.crossbar_axis_lift_z,
+        ),
     )
-    axle = (shaft + collar + build_cam_lever(cam_x) + lever_root_face + follower) - socket
+    axle = shaft + collar + build_cam_lever(cam_x) + lever_root_face + follower + knob
     return Rot(angle_degrees, 0, 0) * axle
 
 
@@ -615,10 +637,11 @@ def build_print_parts() -> dict[str, Shape]:
 
 def _arm_for_print(shoulder_x: float, cam_x: float) -> Shape:
     side = 1 if shoulder_x > 0 else -1
+    axis_z = DIMENSIONS.crossbar_axis_lift_z
     arm = (
-        Pos(shoulder_x, 0, 0)
+        Pos(shoulder_x, 0, axis_z)
         * Rot(0, side * 90, 0)
-        * Pos(-shoulder_x, 0, 0)
+        * Pos(-shoulder_x, 0, -axis_z)
         * build_arm(shoulder_x, cam_x)
     )
     return Pos(0, 0, -arm.bounding_box().min.Z) * arm

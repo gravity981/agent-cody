@@ -57,6 +57,7 @@ The specification in `spec/` is the source of truth; the project's files impleme
 ## Environment
 
 - Development happens in the devcontainer (`.devcontainer/`). Every tool is installed there with a pinned version, never only on a developer's machine. Which environment CI uses is decided in `spec/delivery.md`, section 2.
+- Do not use Pylance tools. Use repository source, terminal-based checks, and tests instead.
 - Monorepo: one top-level folder per building block, as listed in `spec/architecture.md`, section 3.
 
 | Command | Does |

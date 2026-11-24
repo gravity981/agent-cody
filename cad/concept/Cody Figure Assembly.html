@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Cody - figure assembly concept</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      color: #24292c;
+      background: #e9e9e3;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 1440px; margin: auto; padding: 32px clamp(16px, 4vw, 56px) 64px; }
+    header { display: flex; justify-content: space-between; gap: 24px; align-items: end; margin-bottom: 22px; }
+    h1 { margin: 5px 0 8px; font-size: clamp(2rem, 4vw, 3.5rem); line-height: 1.05; letter-spacing: -.05em; }
+    h2 { font-size: 1.2rem; margin: 0 0 10px; }
+    p { margin: 0; line-height: 1.55; }
+    .eyebrow { color: #6a735e; font-size: .73rem; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; }
+    .intro { max-width: 68ch; color: #626963; }
+    .badge { flex: none; padding: 9px 13px; border: 1px solid #d5c7a6; color: #775c2f; background: #f7f0dd; border-radius: 999px; font-size: .75rem; font-weight: 700; }
+    .stage { display: grid; grid-template-columns: minmax(0, 1fr) 292px; background: #f9f9f5; border: 1px solid #d3d8ce; border-radius: 20px; overflow: hidden; box-shadow: 0 14px 45px #424b3210; }
+    .canvas { min-width: 0; padding: 22px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    button { border: 1px solid #ccd2c7; background: #fff; padding: 9px 15px; border-radius: 9px; color: #4c5650; font: inherit; font-size: .83rem; font-weight: 650; cursor: pointer; }
+    button[aria-pressed="true"] { color: #fff; background: #415e4f; border-color: #415e4f; }
+    button:focus-visible { outline: 3px solid #e4a95c; outline-offset: 3px; }
+    .hint { margin-left: auto; color: #818a80; font-size: .75rem; }
+    svg { display: block; width: 100%; height: auto; }
+    svg text { font-family: system-ui, sans-serif; }
+    .caption { color: #6b746c; font-size: .79rem; padding: 0 8px 4px; min-height: 2.5em; }
+    aside { padding: 28px 25px; border-left: 1px solid #e2e6dd; background: #f3f5ef; }
+    aside h2 { font-size: 1.1rem; }
+    .part { display: flex; align-items: baseline; gap: 10px; padding: 13px 0; border-bottom: 1px solid #e0e5dc; font-size: .85rem; }
+    .part:last-of-type { border: 0; }
+    .swatch { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+    .part b { display: block; font-size: .83rem; }
+    .part span:last-child { color: #717a70; font-size: .76rem; line-height: 1.4; }
+    .note { margin-top: 20px; border-radius: 10px; background: #e6ecdf; padding: 14px; color: #52624f; font-size: .78rem; }
+    .details { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; }
+    .card { padding: 23px; background: #f9f9f5; border: 1px solid #d3d8ce; border-radius: 15px; }
+    .number { display: block; font-size: .7rem; font-weight: 750; color: #89937f; letter-spacing: .12em; margin-bottom: 13px; }
+    .card p, .card li { font-size: .83rem; color: #626b63; }
+    .card ol { margin: 0; padding-left: 18px; line-height: 1.65; }
+    .card li + li { margin-top: 5px; }
+    a { color: #385e4a; }
+    footer { margin-top: 20px; color: #727b71; font-size: .76rem; }
+    [hidden] { display: none !important; }
+    @media (max-width: 850px) {
+      header { align-items: start; flex-direction: column; }
+      .stage { grid-template-columns: 1fr; }
+      aside { border-left: 0; border-top: 1px solid #e2e6dd; }
+      .details { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 500px) { .canvas { padding: 14px; } .hint { width: 100%; margin: 4px 0 0; } }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <div class="eyebrow">Cody / Stage 5 look-ahead</div>
+      <h1>A figure built around a frame.</h1>
+      <p class="intro">A small developer at a desk, with the working parts inside and the character built up around them. Choose a view to explore the proposed part split.</p>
+    </div>
+    <div class="badge">Concept only &middot; not to scale</div>
+  </header>
+
+  <section class="stage" aria-label="Figure concept views">
+    <div class="canvas">
+      <div class="toolbar" aria-label="Choose a view">
+        <button type="button" data-view="assembled" aria-pressed="true">Assembled</button>
+        <button type="button" data-view="inside" aria-pressed="false">Inside the torso</button>
+        <button type="button" data-view="exploded" aria-pressed="false">Exploded parts</button>
+        <span class="hint">Illustrative shapes, not CAD</span>
+      </div>
+
+      <svg id="figure-view" viewBox="0 0 900 640" role="img" aria-labelledby="figure-title figure-desc">
+        <title id="figure-title">Cody assembled at the desk</title>
+        <desc id="figure-desc">A stylized figure behind a desk with an oversized head, hoodie, separate tabletop, one-piece notebook, and platform.</desc>
+        <defs>
+          <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#e9ede5" stroke-width="1"/></pattern>
+        </defs>
+        <rect x="0" y="12" width="900" height="580" rx="18" fill="#f3f5ef"/>
+        <rect x="0" y="12" width="900" height="580" rx="18" fill="url(#grid)"/>
+        <ellipse cx="450" cy="547" rx="324" ry="33" fill="#d9e0d4"/>
+        <!-- Solid-looking enclosure with an internal electronics compartment -->
+        <path d="M199 425 L270 457 L270 546 L199 514 Z" fill="#606969" stroke="#485150" stroke-width="3"/>
+        <path d="M270 457 L690 457 L690 543 Q685 550 676 550 H283 Q270 550 270 541 Z" fill="#4e5758" stroke="#3d4748" stroke-width="3"/>
+        <!-- Torso frame is visible in the cutaway -->
+        <g id="frame">
+          <path d="M328 254 Q335 231 357 228 L523 228 Q549 234 553 260 L542 412 L343 412 Z" fill="#bdc9b8" stroke="#506758" stroke-width="5"/>
+          <path d="M358 258 H522 L512 381 H367 Z" fill="#eef2e9" stroke="#718977" stroke-width="4"/>
+          <path d="M349 388 H529 V415 H349 Z" fill="#8da18d" stroke="#506758" stroke-width="4"/>
+          <path d="M426 228 V196 H471 V228" fill="#8da18d" stroke="#506758" stroke-width="4"/>
+          <path d="M434 196 V178 H461 V186 H468 V196" fill="#8da18d" stroke="#506758" stroke-width="4"/>
+          <path d="M365 285 H519" stroke="#778f7d" stroke-width="14" stroke-linecap="round"/>
+          <path d="M390 288 L417 311 M496 288 L469 311" stroke="#658876" stroke-width="9" stroke-linecap="round"/>
+          <rect x="397" y="319" width="76" height="36" rx="9" fill="#647c6b" stroke="#445a4c" stroke-width="3"/>
+          <circle cx="475" cy="329" r="13" fill="#e1a15b" stroke="#a56f34" stroke-width="3"/>
+          <circle cx="487" cy="339" r="13" fill="#d48b48" stroke="#a56f34" stroke-width="3"/>
+          <path d="M416 354 C405 376 415 400 408 418" fill="none" stroke="#d09257" stroke-width="3" stroke-dasharray="6 5"/>
+        </g>
+        <!-- Only the front cover is removable; the back belongs to the frame -->
+        <g id="covers">
+          <path d="M355 230 Q401 215 449 226 Q498 215 537 235 Q559 288 544 410 Q447 432 344 410 Q331 321 355 230 Z" fill="#719b8b" stroke="#365d52" stroke-width="4"/>
+          <path d="M385 230 Q448 268 506 230" fill="none" stroke="#527c6c" stroke-width="5"/>
+          <path d="M414 257 L410 282 M481 257 L485 282" stroke="#d9e5d6" stroke-width="4" stroke-linecap="round"/>
+          <path d="M397 360 Q447 348 496 360 L506 399 Q448 412 388 399 Z" fill="#668e7e" stroke="#527c6c" stroke-width="3"/>
+        </g>
+        <!-- Head: all the same part/color; outlines represent surface detail -->
+        <path d="M370 108 Q369 47 438 37 Q514 32 532 101 L527 160 Q519 208 451 216 Q385 210 371 159 Z" fill="#e8b99a" stroke="#976c56" stroke-width="4"/>
+        <path d="M374 101 Q364 49 413 38 Q457 16 501 41 Q527 51 531 94 Q513 82 504 69 Q488 82 471 76 Q447 92 428 79 Q404 96 374 101 Z" fill="#e8b99a" stroke="#976c56" stroke-width="4"/>
+        <path d="M395 66 Q421 40 444 55 M453 48 Q478 34 497 57" fill="none" stroke="#b1846b" stroke-width="4" stroke-linecap="round"/>
+        <ellipse cx="418" cy="123" rx="4" ry="6" fill="#966b58"/>
+        <ellipse cx="484" cy="123" rx="4" ry="6" fill="#966b58"/>
+        <path d="M433 154 Q451 166 469 154" fill="none" stroke="#a6765f" stroke-width="4" stroke-linecap="round"/>
+        <path d="M371 118 Q353 113 355 132 Q357 150 373 149 M531 118 Q549 113 547 132 Q545 150 529 149" fill="#e8b99a" stroke="#976c56" stroke-width="4"/>
+        <!-- Arms on either side of the torso -->
+        <path d="M350 263 Q323 262 309 285 L284 345 Q279 360 295 370 L355 399" fill="none" stroke="#365d52" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M350 263 Q323 262 309 285 L284 345 Q279 360 295 370 L355 399" fill="none" stroke="#719b8b" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M539 264 Q565 264 577 286 L600 345 Q605 360 590 370 L533 399" fill="none" stroke="#365d52" stroke-width="32" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M539 264 Q565 264 577 286 L600 345 Q605 360 590 370 L533 399" fill="none" stroke="#719b8b" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- Tabletop is a separate single-color piece -->
+        <path d="M199 414 L617 414 L690 446 L270 446 Z" fill="#deb982" stroke="#9e7b50" stroke-width="4"/>
+        <path d="M270 446 L690 446 L690 458 L270 458 Z M199 414 L270 446 L270 458 L199 426 Z" fill="#ca9f69" stroke="#9e7b50" stroke-width="3"/>
+        <!-- Notebook: one part; surface outlines and LED are illustrative -->
+        <path d="M353 397 L396 414 L553 414 L511 397 L516 328 L368 328 Z" fill="#717d83" stroke="#4b595e" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M368 328 L516 328 L511 397 L365 397 Z" fill="#717d83" stroke="#4b595e" stroke-width="3"/>
+        <path d="M383 345 H501 V383 H380 Z M378 403 H512 M391 408 H520" fill="none" stroke="#aeb8b7" stroke-width="2"/>
+        <circle cx="441" cy="336" r="4" fill="#d0a65e"/>
+        <path d="M339 397 Q351 384 366 394 L381 402 Q384 408 375 411 L356 409 Z M542 397 Q530 384 515 394 L500 402 Q497 408 506 411 L525 409 Z" fill="#719b8b" stroke="#365d52" stroke-width="3"/>
+        <text x="35" y="54" fill="#7b8b7b" font-size="12" font-weight="700" letter-spacing="2">THE COMPLETE SCENE</text>
+        <text x="35" y="78" fill="#a2ada1" font-size="13">Shape and proportions are exploratory</text>
+        <g id="inside-label" hidden="">
+          <rect x="583" y="247" width="239" height="94" rx="10" fill="#fff" stroke="#d9e3d6"/>
+          <text x="599" y="271" fill="#486251" font-size="13" font-weight="700">Mechanism on the frame</text>
+          <text x="599" y="293" fill="#78877a" font-size="12">Shoulder modules + motor</text>
+          <text x="599" y="312" fill="#78877a" font-size="12">Double cam shown schematically</text>
+          <path d="M583 289 L530 304" fill="none" stroke="#a5b6a4" stroke-width="2"/>
+        </g>
+      </svg>
+
+      <svg id="exploded-view" viewBox="0 0 900 640" role="img" aria-labelledby="exploded-title exploded-desc" hidden="">
+        <title id="exploded-title">Exploded concept diagram</title>
+        <desc id="exploded-desc">The head, front cover, integrated frame and back, electronics enclosure, tabletop and notebook are separated to show the proposed assembly. Lines indicate conceptual connections, not proven insertion paths.</desc>
+        <defs>
+          <pattern id="exploded-grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" fill="none" stroke="#e9ede5" stroke-width="1"/></pattern>
+        </defs>
+        <rect x="0" y="12" width="900" height="580" rx="18" fill="#f3f5ef"/>
+        <rect x="0" y="12" width="900" height="580" rx="18" fill="url(#exploded-grid)"/>
+        <text x="34" y="53" fill="#7b8b7b" font-size="12" font-weight="700" letter-spacing="2">EXPLODED / PART RELATIONSHIPS</text>
+        <text x="34" y="76" fill="#9ba99a" font-size="13">Spacing and attachment paths are illustrative</text>
+        <!-- Relationship lines, deliberately not claiming physical insertion paths -->
+        <g fill="none" stroke="#b7c5b4" stroke-width="2" stroke-dasharray="6 7">
+          <path d="M437 186 V222 M548 292 L512 317 M438 432 V472 M567 491 L620 466 M678 377 L678 405"/>
+        </g>
+        <!-- Head -->
+        <path d="M383 102 Q383 55 438 53 Q493 55 493 102 L490 135 Q484 173 438 177 Q392 173 385 135 Z" fill="#e8b99a" stroke="#976c56" stroke-width="4"/>
+        <path d="M388 95 Q387 55 426 55 Q466 42 487 76 L490 92 Q473 83 464 75 Q451 86 439 76 Q419 88 405 78 Z" fill="#e8b99a" stroke="#976c56" stroke-width="3"/>
+        <circle cx="417" cy="112" r="3" fill="#976c56"/><circle cx="459" cy="112" r="3" fill="#976c56"/>
+        <path d="M423 140 Q438 149 453 140" fill="none" stroke="#976c56" stroke-width="3"/>
+        <path d="M422 174 H453" stroke="#b1856c" stroke-width="5"/>
+        <!-- Integrated frame and back, schematically showing the drive and joints -->
+        <path d="M383 250 Q383 234 398 234 H477 Q494 234 494 250 L512 400 H367 Z" fill="#b5c5b2" stroke="#506758" stroke-width="4"/>
+        <path d="M406 259 H469 L477 373 H397 Z" fill="#b5c5b2" stroke="#7b9380" stroke-width="4"/>
+        <path d="M422 234 V215 H451 V234 M426 215 V203 H449 V210 H455 V215" fill="#8da18d" stroke="#506758" stroke-width="4"/>
+        <path d="M378 285 H500" stroke="#738e7b" stroke-width="13" stroke-linecap="round"/>
+        <circle cx="378" cy="285" r="10" fill="#719b8b" stroke="#365d52" stroke-width="3"/>
+        <circle cx="500" cy="285" r="10" fill="#719b8b" stroke="#365d52" stroke-width="3"/>
+        <path d="M399 287 L421 315 M479 287 L456 315" stroke="#658876" stroke-width="8" stroke-linecap="round"/>
+        <rect x="407" y="324" width="58" height="30" rx="8" fill="#647c6b" stroke="#445a4c" stroke-width="3"/>
+        <circle cx="465" cy="332" r="10" fill="#e1a15b" stroke="#a56f34" stroke-width="2"/>
+        <circle cx="474" cy="340" r="10" fill="#d48b48" stroke="#a56f34" stroke-width="2"/>
+        <path d="M367 400 H512 V421 H367 Z" fill="#8da18d" stroke="#506758" stroke-width="4"/>
+        <!-- Front cover -->
+        <path d="M569 241 Q610 229 652 241 L664 378 Q615 393 565 378 Z" fill="#719b8b" stroke="#365d52" stroke-width="4"/>
+        <path d="M581 246 Q614 267 644 246 M591 349 Q613 343 638 349 L641 370 Q614 377 587 370 Z" fill="none" stroke="#527c6c" stroke-width="3"/>
+        <!-- Electronics enclosure and frame joint -->
+        <path d="M297 487 L498 487 L568 510 L367 510 Z" fill="#7b9182" stroke="#53695a" stroke-width="3"/>
+        <path d="M367 510 H568 V553 H367 Z M297 487 L367 510 V553 L297 530 Z" fill="#4e5758" stroke="#3d4748" stroke-width="3"/>
+        <path d="M418 482 H458 V489 H418 Z" fill="#d9e3d4" stroke="#53695a" stroke-width="2"/>
+        <!-- Tabletop and notebook, separated for clarity -->
+        <path d="M615 438 L765 438 L800 454 L650 454 Z" fill="#deb982" stroke="#9e7b50" stroke-width="3"/>
+        <path d="M650 454 H800 V464 H650 Z M615 438 L650 454 V464 L615 448 Z" fill="#ca9f69" stroke="#9e7b50" stroke-width="3"/>
+        <path d="M631 397 L653 406 H734 L714 397 L718 354 H638 Z" fill="#717d83" stroke="#4b595e" stroke-width="3"/>
+        <path d="M638 354 H718 L714 397 H636 Z M649 365 H705 V385 H647 Z" fill="#717d83" stroke="#aeb8b7" stroke-width="2"/>
+        <circle cx="677" cy="361" r="3" fill="#d0a65e"/>
+        <!-- Labels with clear leaders -->
+        <g font-size="12" fill="#66776b">
+          <path d="M340 106 H382 M510 216 H456 M675 299 H661 M293 539 H367 M773 386 H731 M808 454 H849" fill="none" stroke="#a7b6a4" stroke-width="2"/>
+          <text x="268" y="102" font-weight="700">HEAD</text>
+          <text x="268" y="119">one-color CAD</text>
+          <text x="515" y="211" font-weight="700">NECK KNOB</text>
+          <text x="515" y="228">keyed push-on</text>
+          <text x="680" y="294" font-weight="700">CHEST COVER</text>
+          <text x="680" y="311">removable</text>
+          <text x="338" y="454" font-weight="700">FRAME / INTEGRAL BACK</text>
+          <text x="94" y="537" font-weight="700">ELECTRONICS BASE</text>
+          <text x="94" y="554">electronics access</text>
+          <text x="755" y="378" font-weight="700">NOTEBOOK</text>
+          <text x="755" y="395">one part</text>
+          <text x="797" y="474" font-weight="700">TABLETOP</text>
+        </g>
+      </svg>
+      <p id="caption" class="caption" aria-live="polite">The figure, tabletop and notebook are separate pieces. Shading and outlines are illustrative; each printed part uses one color.</p>
+    </div>
+
+    <aside>
+      <div class="eyebrow">The part split</div>
+      <h2>One part, one color.</h2>
+      <div class="part"><span class="swatch" style="background:#e8b99a"></span><div><b>Head</b><span>Simple CAD shape; push onto a keyed neck.</span></div></div>
+      <div class="part"><span class="swatch" style="background:#719b8b"></span><div><b>Chest &amp; arms</b><span>Removable chest cover; arms remain independent moving parts.</span></div></div>
+      <div class="part"><span class="swatch" style="background:#9bad99"></span><div><b>Frame + back</b><span>One part carrying the shoulder modules, motor and head.</span></div></div>
+      <div class="part"><span class="swatch" style="background:#4e5758"></span><div><b>Electronics base</b><span>Solid-looking enclosure with a removable frame connection.</span></div></div>
+      <div class="part"><span class="swatch" style="background:#deb982"></span><div><b>Tabletop</b><span>A separately printed piece.</span></div></div>
+      <div class="part"><span class="swatch" style="background:#717d83"></span><div><b>Notebook</b><span>One printed piece; separate electronic LED in lid.</span></div></div>
+      <div class="note"><b>No Meshy required.</b> A compatible generated head could be optional; the baseline is created in CAD.</div>
+    </aside>
+  </section>
+
+  <section class="details" aria-label="Assembly and design notes">
+    <article class="card">
+      <span class="number">01 / ASSEMBLE</span>
+      <h2>Inside first, character last.</h2>
+      <ol>
+        <li>Assemble shoulder modules, motor and cam on the frame.</li>
+        <li>Attach the frame to the platform and route the wiring.</li>
+        <li>Fit the removable chest cover and push the head onto the neck.</li>
+        <li>Add tabletop and notebook, connecting the LED wiring.</li>
+      </ol>
+    </article>
+    <article class="card">
+      <span class="number">02 / SERVICE</span>
+      <h2>Make the inside reachable.</h2>
+      <p>Remove the chest cover to reach the redesigned front-access fasteners, motor and arm joints. The base must give independent electronics and USB access. The illustration does not prove that tools, parts or wires have a clear path.</p>
+    </article>
+    <article class="card">
+      <span class="number">03 / STILL TO PROVE</span>
+      <h2>Concept, not fabrication.</h2>
+      <p>Front fasteners, backrest, tabletop cutout, joint retention, fits, wire routing, print orientations, motion clearance and stability remain open. A neck-joint coupon is a candidate first physical fit experiment after the required design and print-review gates.</p>
+    </article>
+  </section>
+  <footer>Approved direction: <a href="../../spec/architecture.md#84-figure-construction-integrated-back-removable-chest-and-scene">architecture section 8.4</a>. Stage 4's prototype remains separate from this look-ahead.</footer>
+</main>
+<script>
+  const buttons = document.querySelectorAll("button[data-view]");
+  const figure = document.getElementById("figure-view");
+  const exploded = document.getElementById("exploded-view");
+  const covers = document.getElementById("covers");
+  const insideLabel = document.getElementById("inside-label");
+  const caption = document.getElementById("caption");
+  const descriptions = {
+    assembled: "The figure, tabletop and notebook are separate pieces. Shading and outlines are illustrative; each printed part uses one color.",
+    inside: "The chest cover is hidden to reveal the integral back and a schematic chest-cam drive. Stage 5 front-access fasteners have not yet been designed.",
+    exploded: "The separated pieces show relationships rather than a proven assembly path. Arm modules and individual drive parts are simplified."
+  };
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const view = button.dataset.view;
+      buttons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+      figure.toggleAttribute("hidden", view === "exploded");
+      exploded.toggleAttribute("hidden", view !== "exploded");
+      covers.toggleAttribute("hidden", view === "inside");
+      insideLabel.toggleAttribute("hidden", view !== "inside");
+      caption.textContent = descriptions[view];
+    });
+  });
+</script>
+</body>
+</html>

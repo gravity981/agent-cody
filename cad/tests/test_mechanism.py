@@ -66,7 +66,7 @@ def test_req_FIG_08_each_arm_strokes_within_the_required_rate() -> None:
     assert isclose(strokes_per_second(), 2.0)
 
 
-def test_req_FIG_11_two_closed_crossbars_have_arm_specific_lengths() -> None:
+def test_req_FIG_11_two_hollow_crossbars_have_arm_specific_lengths() -> None:
     left = build_arm_crossbar(-DIMENSIONS.shoulder_position, CAM_CENTERS_X[0])
     right = build_arm_crossbar(DIMENSIONS.shoulder_position, CAM_CENTERS_X[1])
     left_bounds = left.bounding_box().size
@@ -75,17 +75,31 @@ def test_req_FIG_11_two_closed_crossbars_have_arm_specific_lengths() -> None:
     left_midpoint_x = (
         -DIMENSIONS.shoulder_position - 1.1 + CAM_CENTERS_X[0] - DIMENSIONS.cam_width / 2
     ) / 2
-    wall_probe = Pos(left_midpoint_x, 2.5, 0) * Box(0.1, 0.1, 0.1)
-    bore_probe = Pos(left_midpoint_x, 0, 0) * Box(0.1, 0.1, 0.1)
+    wall_probe = Pos(left_midpoint_x, 4.6, DIMENSIONS.crossbar_axis_lift_z) * Box(0.1, 0.1, 0.1)
+    bore_probe = Pos(left_midpoint_x, 0, DIMENSIONS.crossbar_axis_lift_z) * Box(0.1, 0.1, 0.1)
 
     assert left.is_valid and right.is_valid
     assert left_bounds.X > right_bounds.X
-    assert isclose(left_bounds.X, 36.1)
-    assert isclose(right_bounds.X, 16.7)
+    assert isclose(left_bounds.X, 36.1, abs_tol=1e-5)
+    assert isclose(right_bounds.X, 16.7, abs_tol=1e-5)
     assert (left & wall_probe).volume > 0
     assert (left & bore_probe).volume == 0
     assert (left & frame).volume == 0
     assert (right & frame).volume == 0
+
+
+def test_req_FIG_11_crossbar_lift_preserves_frame_geometry() -> None:
+    frame = build_test_frame()
+    bounds = frame.bounding_box()
+
+    assert isclose(DIMENSIONS.crossbar_axis_lift_z, 2.0)
+    assert isclose(frame.volume, 38768.325287, abs_tol=0.001)
+    assert isclose(bounds.min.X, -40.0)
+    assert isclose(bounds.min.Y, -12.5)
+    assert isclose(bounds.min.Z, -33.0)
+    assert isclose(bounds.max.X, 40.0)
+    assert isclose(bounds.max.Y, 47.5)
+    assert isclose(bounds.max.Z, 13.0)
 
 
 def test_req_FIG_11_crossbar_bore_has_0_3mm_radial_axle_clearance() -> None:
@@ -96,12 +110,12 @@ def test_req_FIG_11_crossbar_bore_has_0_3mm_radial_axle_clearance() -> None:
     layout = arm_crossbar_layout(shoulder_x, cam_x)
     crossbar = build_arm_crossbar(shoulder_x, cam_x)
     center_x = (layout.outer_end_x + layout.inner_end_x) / 2
-    bore_probe = Pos(center_x, 2.2, 0) * Box(0.1, 0.1, 0.1)
-    wall_probe = Pos(center_x, 2.4, 0) * Box(0.1, 0.1, 0.1)
+    bore_probe = Pos(center_x, 4.2, DIMENSIONS.crossbar_axis_lift_z) * Box(0.1, 0.1, 0.1)
+    wall_probe = Pos(center_x, 4.6, DIMENSIONS.crossbar_axis_lift_z) * Box(0.1, 0.1, 0.1)
 
-    assert isclose(DIMENSIONS.crossbar_diameter, 6.0)
-    assert isclose(bore_diameter, 4.6)
-    assert isclose(axle_diameter, 4.0)
+    assert isclose(DIMENSIONS.crossbar_diameter, 10.0)
+    assert isclose(bore_diameter, 8.6)
+    assert isclose(axle_diameter, 8.0)
     assert isclose((bore_diameter - axle_diameter) / 2, 0.3)
     assert (crossbar & bore_probe).volume == 0
     assert (crossbar & wall_probe).volume > 0
@@ -118,8 +132,8 @@ def test_req_FIG_11_crossbars_have_full_length_shelves_and_upward_lips() -> None
         shelf_probes = (
             Pos(
                 layout.outer_end_x + (layout.inner_end_x - layout.outer_end_x) * fraction,
-                0,
-                3,
+                -4.5,
+                3.5,
             )
             * Box(0.1, 0.1, 0.1)
             for fraction in (0.05, 0.5, 0.95)
@@ -205,7 +219,7 @@ def test_req_FIG_11_rear_screws_pass_through_backplate_and_crossbar_lip() -> Non
                 screw_x,
                 CROSSBAR_NUT_FACE_Y + 3,
                 CROSSBAR_SCREW_Z,
-            ) * Box(7, 6, 7.5)
+            ) * Box(7, 6, 5.5)
             tool_probe = (
                 Pos(
                     screw_x,
@@ -226,7 +240,7 @@ def test_req_FIG_11_rear_screws_pass_through_backplate_and_crossbar_lip() -> Non
             assert CROSSBAR_SCREW_TIP_Y > CROSSBAR_NUT_FACE_Y + M3_NUT_HEIGHT
 
 
-def test_req_FIG_11_arms_print_flat_with_knobs_up() -> None:
+def test_req_FIG_11_arms_print_flat_with_arm_sockets_up() -> None:
     parts = build_print_parts()
     for shoulder_x, name in (
         (-DIMENSIONS.shoulder_position, "left_arm"),
@@ -235,8 +249,12 @@ def test_req_FIG_11_arms_print_flat_with_knobs_up() -> None:
         side = 1 if shoulder_x > 0 else -1
         arm = parts[name]
         bounds = arm.bounding_box()
-        knob_tip_z = DIMENSIONS.arm_shoulder_hub_thickness + DIMENSIONS.arm_knob_length - 0.1
-        knob_tip_probe = Pos(shoulder_x, 0, knob_tip_z) * Box(0.1, 0.1, 0.1)
+        socket_open_probe = Pos(
+            shoulder_x,
+            0,
+            DIMENSIONS.arm_shoulder_hub_thickness - 0.1,
+        ) * Box(0.1, 0.1, 0.1)
+        socket_floor_probe = Pos(shoulder_x, 0, 0.5) * Box(0.1, 0.1, 0.1)
         forearm_z = -20 + (10 - 1) / (DIMENSIONS.hand_reach - 1) * (-DIMENSIONS.hand_drop + 20)
         outer_side_probes = (
             Pos(shoulder_x, 0, 0.05) * Box(0.1, 0.1, 0.1),
@@ -245,8 +263,9 @@ def test_req_FIG_11_arms_print_flat_with_knobs_up() -> None:
             Pos(shoulder_x + side * -DIMENSIONS.hand_drop, 36, 0.05) * Box(0.1, 0.1, 0.1),
         )
 
-        assert isclose(bounds.min.Z, 0.0)
-        assert (arm & knob_tip_probe).volume > 0
+        assert abs(bounds.min.Z) <= 1e-6
+        assert (arm & socket_open_probe).volume == 0
+        assert (arm & socket_floor_probe).volume > 0
         assert all((arm & probe).volume > 0 for probe in outer_side_probes)
 
 
@@ -257,10 +276,8 @@ def test_req_FIG_11_arm_shoulder_hubs_clear_the_mounting_lips() -> None:
     ):
         arm = build_arm(shoulder_x, cam_x)
         crossbar = build_arm_crossbar(shoulder_x, cam_x)
-        clearance_probe = Pos(shoulder_x, -4.5, 0) * Box(0.1, 0.2, 0.1)
 
-        assert (arm & clearance_probe).volume == 0
-        assert (crossbar & clearance_probe).volume == 0
+        assert (arm & crossbar).volume <= 1e-6
 
 
 def test_req_FIG_11_cam_levers_are_at_least_4mm_thick() -> None:
@@ -268,8 +285,9 @@ def test_req_FIG_11_cam_levers_are_at_least_4mm_thick() -> None:
         cam_center = next(center for center in cam_lobe_centers() if center[0] == cam_x)
         cam_top_z = cam_center[2] + DIMENSIONS.cam_diameter / 2
         start_y = 0.0
+        start_z = DIMENSIONS.crossbar_axis_lift_z
         end_z = cam_top_z + DIMENSIONS.lever_thickness / 2
-        beam_length = sqrt((DIMENSIONS.lever_length - start_y) ** 2 + end_z**2)
+        beam_length = sqrt((DIMENSIONS.lever_length - start_y) ** 2 + (end_z - start_z) ** 2)
         lever = build_cam_lever(cam_x)
 
         assert lever.volume / (3 * beam_length) >= 4.0 - 1e-6
@@ -293,10 +311,10 @@ def test_req_FIG_11_levers_cover_the_full_cam_side_axle_face() -> None:
             CAM_LEVER_ROOT_FACE_THICKNESS / 2 - CAM_LEVER_ROOT_FACE_OVERLAP / 2
         )
         face_probes = (
-            Pos(face_x, 1.8, 0) * Box(0.1, 0.1, 0.1),
-            Pos(face_x, -1.8, 0) * Box(0.1, 0.1, 0.1),
-            Pos(face_x, 0, 1.8) * Box(0.1, 0.1, 0.1),
-            Pos(face_x, 0, -1.8) * Box(0.1, 0.1, 0.1),
+            Pos(face_x, 1.8, DIMENSIONS.crossbar_axis_lift_z) * Box(0.1, 0.1, 0.1),
+            Pos(face_x, -1.8, DIMENSIONS.crossbar_axis_lift_z) * Box(0.1, 0.1, 0.1),
+            Pos(face_x, 0, DIMENSIONS.crossbar_axis_lift_z + 1.8) * Box(0.1, 0.1, 0.1),
+            Pos(face_x, 0, DIMENSIONS.crossbar_axis_lift_z - 1.8) * Box(0.1, 0.1, 0.1),
         )
 
         assert all((axle & probe).volume > 0 for probe in face_probes)
@@ -309,30 +327,59 @@ def test_req_FIG_11_arms_are_continuous_push_fit_parts() -> None:
         assert len(parts[name].solids()) == 1
 
 
-def test_req_FIG_11_arm_hubs_have_print_clearance_on_inner_axles() -> None:
+def test_req_FIG_11_arm_sockets_fit_outward_axle_knobs() -> None:
+    assert isclose(DIMENSIONS.arm_axle_collar_diameter, 9.2)
+    assert isclose(DIMENSIONS.arm_knob_diameter, 6.0)
+    assert isclose(DIMENSIONS.arm_knob_socket_diameter, 6.2)
+    assert isclose(DIMENSIONS.arm_knob_length, 8.0)
+    assert isclose(DIMENSIONS.arm_knob_socket_depth, 8.3)
+    assert isclose(DIMENSIONS.arm_shoulder_hub_radius * 2, 11.0)
+    assert isclose(DIMENSIONS.arm_shoulder_hub_thickness, 9.3)
+
     for shoulder_x, cam_x in (
         (-DIMENSIONS.shoulder_position, CAM_CENTERS_X[0]),
         (DIMENSIONS.shoulder_position, CAM_CENTERS_X[1]),
     ):
         side = 1 if shoulder_x > 0 else -1
+        layout = arm_crossbar_layout(shoulder_x, cam_x)
         arm = build_arm(shoulder_x, cam_x)
         axle = build_arm_axle(shoulder_x, cam_x)
-        fit_gap_probe = Pos(shoulder_x - side * 1.5, 1.33, 0) * Box(0.1, 0.02, 0.05)
-        knob_probe = Pos(shoulder_x - side * 1.5, 1.0, 0) * Box(0.1, 0.1, 0.1)
-        knob_tip_x = shoulder_x - side * (1 + DIMENSIONS.arm_knob_length - 0.1)
-        knob_tip_probe = Pos(knob_tip_x, 0, 0) * Box(0.1, 0.1, 0.1)
-        beyond_knob_probe = Pos(
-            shoulder_x - side * (1 + DIMENSIONS.arm_knob_length + 0.1),
+        knob_center_x = layout.outer_end_x + side * DIMENSIONS.arm_knob_length / 2
+        knob_probe = Pos(
+            knob_center_x,
             0,
+            DIMENSIONS.crossbar_axis_lift_z,
+        ) * Box(0.1, 0.1, 0.1)
+        radial_gap_probe = Pos(
+            knob_center_x,
+            3.05,
+            DIMENSIONS.crossbar_axis_lift_z,
+        ) * Box(0.1, 0.02, 0.1)
+        hub_wall_probe = Pos(
+            knob_center_x,
+            3.5,
+            DIMENSIONS.crossbar_axis_lift_z,
+        ) * Box(0.1, 0.1, 0.1)
+        knob_tip_probe = Pos(
+            layout.outer_end_x + side * (DIMENSIONS.arm_knob_length - 0.1),
             0,
+            DIMENSIONS.crossbar_axis_lift_z,
+        ) * Box(0.1, 0.1, 0.1)
+        socket_floor_probe = Pos(
+            layout.outer_end_x + side * (DIMENSIONS.arm_knob_socket_depth + 0.5),
+            0,
+            DIMENSIONS.crossbar_axis_lift_z,
         ) * Box(0.1, 0.1, 0.1)
 
-        assert (arm & fit_gap_probe).volume == 0
-        assert (axle & fit_gap_probe).volume == 0
-        assert (arm & knob_probe).volume > 0
-        assert (axle & knob_probe).volume == 0
-        assert (arm & knob_tip_probe).volume > 0
-        assert (arm & beyond_knob_probe).volume == 0
+        assert (axle & knob_probe).volume > 0
+        assert (arm & knob_probe).volume == 0
+        assert (axle & radial_gap_probe).volume == 0
+        assert (arm & radial_gap_probe).volume == 0
+        assert (arm & hub_wall_probe).volume > 0
+        assert (axle & hub_wall_probe).volume == 0
+        assert (axle & knob_tip_probe).volume > 0
+        assert (arm & socket_floor_probe).volume > 0
+        assert (axle & socket_floor_probe).volume == 0
 
 
 def test_req_FIG_11_assembly_components_have_no_geometric_interference() -> None:
@@ -364,7 +411,8 @@ def test_req_FIG_11_motor_envelope_matches_the_supplied_dimension_drawing() -> N
 
 
 def test_req_FIG_11_printed_mechanism_parts_are_valid_and_fit_the_prusa_bed() -> None:
-    assert outer_axle_motor_clearance_mm() >= 1.5
+    assert isclose(outer_axle_motor_clearance_mm(), 1.8797, abs_tol=0.001)
+    assert outer_axle_motor_clearance_mm() >= 1.8
 
     for part in build_print_parts().values():
         assert part.is_valid

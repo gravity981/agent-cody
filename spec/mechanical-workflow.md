@@ -51,7 +51,7 @@ Exploratory sketches, calculations, and disposable envelope/kinematic geometry m
 - Retain electronics with snug, removable printed features, not screws or glue, preserving FIG-14 access and replacement.
 - Check moving parts, fasteners, wires, connectors, and tools throughout assembly and the full motion cycle. Distinguish intended contact from interference; endpoint-only or single-pose checks do not prove full-cycle clearance.
 - Do not add pockets, lattices, thin webs, or hollowing solely to save filament. Keep functional cavities, and keep structural supports solid unless a design requirement says otherwise; let slicer infill manage material use.
-- Use the existing build123d/manifold3d toolchain. Separate parts when material, orientation, service, or assembly requires it, while checking the product's part-count limit. Do not add dependencies without need.
+- Use the existing build123d/manifold3d toolchain. Separate parts when material, orientation, service, or assembly requires it, while considering total part count. Do not add dependencies without need.
 
 ### Slicing and physical evidence
 
