@@ -1,0 +1,23 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CAD: View chest-cam mechanism",
+      "type": "process",
+      "command": "uv",
+      "args": ["run", "--frozen", "python", "cad/view_mechanism.py"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "HTML: Serve active file's folder",
+      "type": "process",
+      "command": "python3",
+      "args": ["-u", "-m", "http.server", "8876", "--bind", "127.0.0.1", "--directory", "${fileDirname}"],
+      "isBackground": true,
+      "problemMatcher": []
+    }
+  ]
+}

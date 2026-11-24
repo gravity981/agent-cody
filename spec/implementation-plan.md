@@ -11,6 +11,7 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 - Every step adds evidence tagged with the requirement IDs it implements and removes those IDs from the "not yet implemented" list in [verification.md](verification.md). The requirement report must pass.
 - **Each completed stage** ends with a status report (section 4), appended to section 5 and shown in the conversation.
 - If a step shows that the spec is wrong or incomplete, Claude proposes a spec change before deviating.
+- Mechanical steps also follow [mechanical-workflow.md](mechanical-workflow.md). Its gates fit within these stages/steps; they do not authorize bypassing preflight or executing a later step. Physical checks scheduled later remain pending, not passed.
 
 ## 2. Milestones
 
@@ -29,7 +30,7 @@ The spec is implemented in stages, each split into steps. This plan lists what m
 | 1 | Walking skeleton: toolchain, CI, requirement report, first release candidate | | done |
 | 2 | Status light on the bench with Claude Code | M1 | done (open points) |
 | 3 | Copilot integration | M2 | done (open points) |
-| 4 | Mechanism prototype | | next |
+| 4 | Mechanism prototype | | in progress |
 | 5 | Character and assembly | M3 | open |
 | 6 | Native bridge for Linux and macOS, firmware updater | | open |
 
@@ -117,7 +118,7 @@ Implementation status: Firmware behavior and bridge command mapping are covered 
 Requirements: TST-11.
 
 **2e – Build documentation for the status light — implementation done; manual verification pending.** Done after 2p. Stage 2 electronics parts-list draft; assembly instructions for soldering, wiring, flashing a combined firmware image, installing the Windows bridge or compatible legacy Docker bridge, installing Claude Code hooks, and using the hardware test panel and settings. Each step names parts and tools and has an illustration. `ci/build-release` emits a versioned CSV and PDF from the Markdown sources.
-Implementation status: Documentation exports and their release filenames are covered by CI; the owner still needs to inspect the instructions and follow them on the Windows host and bench. DOC-01's complete parts list moves to step 5d because printed parts and fasteners are not yet defined.
+Implementation status: Documentation exports and their release filenames are covered by CI; the owner still needs to inspect the instructions and follow them on the Windows host and bench. DOC-01's complete parts list moves to Stage 5 because printed parts and fasteners are not yet defined (now step 5g).
 Requirements: DOC-02, DOC-05, DOC-06.
 
 ### Stage 3 – Copilot integration
@@ -141,37 +142,51 @@ Requirements: AGT-10.
 ### Stage 4 – Mechanism prototype
 
 **Before the stage starts:**
-- Motor model and gear ratio chosen; filament and screws available.
+- The 6 V, 500 rpm N20 is selected; filament and screws are available.
+- The owner's [chest cam concept](../cad/concept/Cody%20Chest%20Cam%20Drive.html) is reviewed and its dimensions are integrated below.
 
 **Steps:**
 
-**4a – Crank and arms.** Code-CAD test rig: motor mount, crankshaft with two pins at 180°, rods, shoulder pivots, stops, test arms; tuned to the travel and stroke rate.
-Requirements: FIG-06 – FIG-09, FIG-11.
+**4a – Chest cam and arms.** Code-CAD test rig based on the concept. Use two separate hollow Ø10 mm crossbars of unequal length (one per arm), each attached to the frame along a full-length rear shelf with a sturdy upward lip and local reliefs for nut and wrench access at the fasteners. Raise the tube and axle axes 2 mm while leaving the existing frame geometry, motor position and frame screw-hole locations unchanged; keep the lips aligned to the existing holes. The 5 mm backplate remains flush at the rear and has no threaded inserts. Secure each lip with two rear-access M3 × 8 socket-head screws through Ø3.4 mm clearance holes in the backplate and lip; Ø6 × 3.1 mm rear counterbores recess the heads. Use loose standard M3 hex nuts (5.5 mm across flats, 2.4 mm thick) on the inside, accessible to a wrench. Keep screw and wrench access clear of other parts. Each crossbar has an Ø8.6 mm bore guiding a separate circular Ø8 mm arm axle with 0.3 mm radial clearance and an integral Ø9.2 mm collar that abuts the tube end. Each axle carries an integral lever at least 4 mm thick, with its root covering the full Ø8 mm axle end face on the cam side; lengthen its diagonal path from the raised axle to the existing follower position. The axle has a solid outward-facing Ø6 × 8 mm knob. Each outside arm has a blind Ø6.2 × 8.3 mm hole with 0.1 mm radial clearance in an Ø11 × 9.3 mm hub; place the hub's inner face flush with the tube end, shifting each arm 3.55 mm outboard. Orient printed arms on their flat outward-facing sides with their blind holes pointing up. Reprint only the crossbars, axles and arms in PLA; retain the already-printed frame and eccentric. Assemble each arm, axle and crossbar as a module, then mount it to the frame and fasten from the rear using standard hand tools; no part or tool access may be blocked, no part may become trapped, and no glue is used. Gravity keeps the lever tips on the cams; the frame has no endstop. Join upper arm, forearm and hand as continuous solids. The frame's back has no projections. Include a provisional 80 × 60 × 4 mm base, with its back edge flush to the frame back; support the motor mount from the plate with a solid block and print the frame flat on the base, leaving infill optimization to the slicer. Complete-figure stability is verified in Stage 5. Parts must fit the Prusa MK3S+ build volume and be printable with the preferred 0.6 mm nozzle in PrusaSlicer 2.9.4; smaller nozzles are possible but should be avoided. The supplied GA12-N20 drawing gives a 12 × 10 mm motor envelope, 9 mm gearbox, 15 mm motor can, and Ø3 × 10 mm output shaft. Keep its axis at the existing frame position, 9.7 mm forward and 8.8 mm below the original shoulder datum; it is 10.8 mm below the raised axle axis and provides about 1.88 mm calculated clearance to the crossbars. Verify no rubbing physically. The concept front view places the body center about 7 mm left of the chest centerline and lobe centers at 7.2 and 12.2 mm. Fit one printed double eccentric to the modeled D-shaft, with two side-by-side Ø10 × 4 mm lobes offset 0.65 mm and phased 180° apart. Verify every assembly-part pair has no geometric interference. Tune target hand travel to about 5 mm and verify alternating motion, follower contact at up to 4 strokes/s, and 1–4 strokes/s per arm. The owner reports the motor's current operating speed is about 120 rpm (about 2 strokes/s per arm); it can run faster, so tune to the fastest non-distracting rate at 1 m within FIG-08.
+Requirements: FIG-06 – FIG-08, FIG-11, FIG-18.
+Printability refinements: each arm's outward-facing side is planar and lies on the print bed with its blind socket upward; the cam-lever root covers the full axle end face on the cam side; the motor mount stands on the ground plate without overhangs in the frame's base-down print orientation.
 
-**4b – Power and endurance.** USB current measured incl. motor start; stability of ESP32 and USB; 8 h run with motor temperature and noise.
+**4b – Power and endurance.** Measure USB current including motor start; check ESP32 and USB stability; run for 8 h without failure with the motor below 60 °C; assess noise at 1 m.
 Requirements: FIG-12, FIG-13, ELE-04, ELE-05.
 
-**4c – Mechanism instructions.** Assembly instructions for motor, crank, rods and arms; parts list updated.
+**4c – Mechanism instructions.** Assembly instructions for motor, double eccentric, shoulder axle, arm hubs, levers and arms; parts list updated.
 Requirements: DOC-03.
 
 ### Stage 5 – Character and assembly
 
 **Before the stage starts:**
-- Meshy.ai licence terms checked (README.md "Open points"); head generated.
-- A test builder for DOC-07 found.
+- Stage 4 is complete, with its prototype revision, measurements, physical evidence and any owner-approved deferrals identified. Determine which results remain applicable to the changed final assembly; do not treat a deferral as a pass.
+- The approved direction in [architecture.md 8.4](architecture.md#84-figure-construction-integrated-back-removable-chest-and-scene) is the starting point. Resolve its open engineering inputs in 5a before detailed CAD. Meshy is optional; check the applicable terms only if an output is used or distributed.
+- A test builder for DOC-07 is available for 5g; printer, slicer, material, modules and fasteners needed for the planned physical checks are available or their absence is recorded as a blocker.
+
+Each affected assembly follows the [mechanical workflow](mechanical-workflow.md), with gate records and requirement-tagged evidence in the existing design notes. The steps below separate the work but do not bypass owner approval, CAD inspection, independent review, slicer review or physical validation. Requirements needing later physical evidence stay on the "not yet implemented" list until all required checks pass.
 
 **Steps:**
 
-**5a – Head pipeline.** Meshy head committed with its prompt; manifold3d repair, scaling, socket; printable STL.
-Requirements: none (part of FIG-01, verified in 5b).
+**5a – Concept and dimensioning basis.** Use Stage 4 results and measured purchased components to develop the final layout: integral frame/back, front-access shoulder fasteners and removable chest, keyed head joint, removable frame/base connection, solid-looking electronics enclosure, tabletop and notebook. Compare backrest and tabletop-cutout alternatives with the owner; decide their arrangement rather than assuming it. Map component envelopes, load paths, wiring and connectors, tool access, assembly and service sequence, head/arm proportions and the full motion envelope. Propose single-color part splits, materials and orientations. Calculate critical dimensions, fits and tolerance stacks from sourced inputs; identify provisional values and the cheapest useful fit coupons. Obtain the owner's concept and dimensioning-basis approvals before detailed CAD. If physical fit data is needed first, take the coupon through the applicable workflow gates and have the owner test it; record actual results, not estimates.
+Requirements: none (design basis; final evidence is collected in later steps).
 
-**5b – Figure and scene.** Torso with hidden mechanism, table, laptop, platform with electronics compartment; model checks in CI; print notes.
-Requirements: FIG-01 – FIG-05, FIG-10, FIG-17.
+**5b – Frame and front-access drive.** Implement the approved integral frame/back, front-access shoulder mounting, removable chest and frame/base interface in build123d. Adapt the Stage 4 drive without silently changing its functional goals; preserve motor and arm replacement, tool access, no-glue assembly and the intended wire route. Export the affected parts and assembly reference; add focused checks for fit, full-cycle motion and assembly clearances where feasible. Inspect the native geometry and exported meshes separately from implementation. Identify Stage 4 evidence invalidated by changes; do not claim that CAD alone proves physical retention or motion.
+Requirements: FIG-20.
 
-**5c – Assembly and service.** Full assembly; service checks, stability, no glue; final parts cost (from the parts list).
+**5c – Electronics enclosure and desk.** Model the solid-looking enclosure with its functional electronics cavity, removable access, USB opening, module retention and cable routes; keep modules removable without screws or glue. Model the chosen backrest and tabletop interface, separate single-color tabletop and one-piece notebook, with provision for the status LED and its wiring. Check module and connector envelopes, tool and cable access, part interfaces and bed fit; export the affected parts and inspect their meshes. Preserve the frame/base joint and avoid trapping the tabletop, chest or electronics during assembly or service.
+Requirements: FIG-19.
+
+**5d – Head, arms and complete scene.** Model the simple, slightly robotic build123d head with geometric facial detail and its keyed push-on socket; refine the arms and appearance around the approved mechanism and notebook position. Keep the head, arms and all other printed parts single-color; do not require Meshy. Integrate the complete figure and add focused model checks for assembly height, build-volume fit, hidden drive, required files and arm-to-keyboard motion/clearance. Inspect the assembly and exported parts; record proposed orientations and support exceptions. Owner judgment of the appearance and physical behavior remains pending.
+Requirements: FIG-01 – FIG-03, FIG-05, FIG-10, FIG-17.
+
+**5e – Independent and manufacturing review.** Complete the separate author CAD inspection of the integrated revision, including sections, all interfaces, full-cycle motion, assembly/service paths, tools, wires and the actual oriented exports. Arrange an independent reviewer for that exact revision and resolve blocking findings. Slice each changed printable part with the specified printer, material, nozzle and slicer; inspect actual toolpaths, bed fit, supports and strength-critical features, and record print settings and remaining coupon needs. Review any affected calculations and Stage 4 evidence. A failed or unavailable review blocks the relevant prototype or release gate; it is not physical proof.
+Requirements: none (review and manufacturing evidence for 5b – 5d).
+
+**5f – Physical assembly and verification.** The human operator prints the reviewed parts and any necessary coupons, then records actual settings, observations and measurements. Assemble the full scene and demonstrate head and chest retention, front fastener access, frame/base connection, electronics and USB access, motor and arm replacement without damage, no-glue assembly, stability during operation and owner acceptance of the appearance. Check hand travel, alternating motion, speed, noise, endurance and electrical behavior again where the final design invalidates Stage 4 evidence; retain earlier evidence only with a documented reason. Reopen affected workflow gates after refinements. Record only observed checks in the verification log and keep incomplete requirements pending. Calculate the purchased-parts cost against ELE-06.
 Requirements: FIG-14 – FIG-16, ELE-06.
 
-**5d – Complete build documentation.** Printing and full assembly instructions; complete parts list including printed parts, fasteners and consumables; a test build by someone other than the owner.
+**5g – Complete build documentation.** Update the mechanism instructions for the final front-access design, and document printing, assembly, wiring and service with parts, tools and pictures for each step. Complete the parts list with quantities, sources, prices, print files and materials. Have someone other than the owner build Cody from the parts list and instructions, record the result and address findings; keep DOC-07 pending if the test build is unavailable. Reconcile release files and print notes with the tested revision.
 Requirements: DOC-01, DOC-04, DOC-07.
 
 ### Stage 6 – Native bridge for Linux and macOS, firmware updater
@@ -345,8 +360,7 @@ After each completed stage, Claude appends a report with this structure to secti
 **Remaining requirements by stage:** 1 → 0, 2 → 7, 3 → 1, 4 → 10, 5 → 14, 6 → 3.
 
 **Waiting on the project owner:**
-- Before Stage 4, choose the motor model and gear ratio (the 300 rpm N20 is recommended for the preferred mechanism); provide filament and screws.
-- Confirm the arm mechanism concept. The preferred option in architecture.md 8.3 is the chest cam drive with action-figure shoulder joints; after confirmation, adapt step 4a, FIG-10 and TD-05.
+- Before Stage 5, resolve the frame, chest cover, front-access fasteners, neck-joint and scene engineering inputs for the approved direction in architecture.md 8.4.
 
 **Risks and notes:**
 - AGT-05 depends on VS Code exposing an approval hook event; keep it open until that event is available and verified.

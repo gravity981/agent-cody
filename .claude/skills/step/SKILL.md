@@ -16,6 +16,7 @@ description: Implements one step of the current stage from spec/implementation-p
 ## 2. Understand
 
 - Read the step and every requirement it lists, plus the design sections they touch.
+- For mechanical work, follow [the mechanical workflow](../../../spec/mechanical-workflow.md) and load the specialist skill for the earliest phase lacking current evidence. Identify current gate evidence before implementation; do not jump directly to CAD. Direct specialist requests do not bypass the workflow.
 - List anything unclear, contradictory or missing. Ask all of it now, in one round, with options and a recommendation. Record the answers in the spec before implementing.
 - If the step turns out too big or depends on something missing, propose a split or reorder instead of starting.
 
@@ -24,7 +25,7 @@ description: Implements one step of the current stage from spec/implementation-p
 - Implement only this step. Follow `spec/architecture.md` and the conventions of the files around you.
 - Add evidence for every requirement of the step, tagged as in `spec/verification.md` (e.g. `[ABC-01] …`). Each piece of evidence verifies what the requirement says, not just that the code runs.
 - Requirements that can only be verified manually: describe the check for the user; the user records it in `spec/verification-log.md` after doing it.
-- Remove the step's requirement IDs from "Not yet implemented" in `spec/verification.md` (keep ranges tidy).
+- Remove a step's requirement ID from "Not yet implemented" in `spec/verification.md` only when all required evidence for it is passing (keep ranges tidy). Leave IDs with required physical or other checks pending on the list, even if partial automated evidence passes; explain the remaining work and report warnings.
 - If the spec turns out wrong or incomplete: stop, explain, propose the spec change, and continue only after the user agrees.
 
 ## 4. Verify
@@ -38,10 +39,11 @@ description: Implements one step of the current stage from spec/implementation-p
 ### Step <id> – <title>
 
 **Changed:** files or areas, one line each.
-**Requirements:** <IDs> — evidence: <test / check names> — all passing.
+**Requirements:** <IDs> — evidence: <test / check names and results>; pending evidence explicitly listed.
 **Verification:** ci/check result; counts per level; requirement report OK / errors.
 **Spec changes:** what and why (or none).
 **Open:** questions, manual checks to do, follow-ups (or none).
+**Mechanical gates (if applicable):** current phase, evidence links, blockers, and next action.
 ```
 
 Don't commit. Wait for the user to review and commit before the next step. If this was the last step of the stage, say so and suggest `/stage-report`.

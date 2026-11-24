@@ -1,0 +1,301 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Cody Chest Cam Drive</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a technical drawing sheet - side and front view of the bust to scale, both animated, numbers below. */
+  :root {
+    --paper: #f3f5f6;
+    --sheet: #ffffff;
+    --ink: #1c2731;
+    --muted: #5d6c78;
+    --line: #c9d2d8;
+    --fixed: #9aa8b2;       /* torso, axle, motor, stops: parts that don't move */
+    --drive: #d4601c;       /* eccentric discs on the motor shaft */
+    --arm: #2b67b0;         /* arms: sleeve cap, upper arm, forearm, hand */
+    --arm-soft: #8fb3df;    /* parts of the arm inside the torso: sleeve on the axle, lever */
+    --fixed-fill: #e8edf0;
+    --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #131a20; --sheet: #1a232b; --ink: #e3e9ee; --muted: #93a3af; --line: #33414c;
+      --fixed: #6f808c; --drive: #f08a4b; --arm: #6aa6ec; --arm-soft: #3f6694; --fixed-fill: #222d36; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #131a20; --sheet: #1a232b; --ink: #e3e9ee; --muted: #93a3af; --line: #33414c;
+    --fixed: #6f808c; --drive: #f08a4b; --arm: #6aa6ec; --arm-soft: #3f6694; --fixed-fill: #222d36; color-scheme: dark;
+  }
+  body {
+    background: var(--paper); color: var(--ink); font-family: var(--font-sans); font-size: 15px; line-height: 1.5;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 28px 40px;
+  }
+  main { max-width: 1160px; margin: 0 auto; display: grid; gap: 22px; }
+  h1 { font-size: 1.6rem; font-weight: 600; margin: 0; text-wrap: balance; }
+  .lede { margin: 4px 0 0; color: var(--muted); max-width: 76ch; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; font-size: 14px; }
+  button {
+    font: inherit; font-weight: 500; color: var(--ink); background: var(--sheet); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 14px; cursor: pointer;
+  }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--arm); outline-offset: 2px; }
+  label { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+  output { font-family: var(--font-mono); color: var(--ink); min-width: 7ch; }
+  .views { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 18px; }
+  figure { margin: 0; background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; padding: 14px 14px 10px; min-width: 0; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  figcaption b { color: var(--ink); font-weight: 600; }
+  .view-title { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+  svg { width: 100%; height: auto; display: block; }
+  svg text { font-family: var(--font-sans); font-size: 13px; fill: var(--ink); }
+  svg .note { fill: var(--muted); font-size: 12px; }
+  svg .dim { font-family: var(--font-mono); font-size: 12px; fill: var(--muted); }
+  .fixed { stroke: var(--fixed); fill: var(--fixed-fill); stroke-width: 1.5; }
+  .fixed-line { stroke: var(--fixed); stroke-width: 1.5; fill: none; }
+  .axle { stroke: var(--fixed); stroke-width: 4; stroke-linecap: round; }
+  .shell { stroke: var(--fixed); fill: none; stroke-width: 1.5; stroke-dasharray: 6 4; }
+  .ghost { stroke: var(--line); fill: none; stroke-width: 1.5; stroke-dasharray: 4 4; }
+  .disc { stroke: var(--drive); fill: none; stroke-width: 3; }
+  .disc-fill { fill: var(--drive); }
+  .disc-mark { stroke: var(--drive); stroke-width: 2; }
+  .arm { stroke: var(--arm); stroke-width: 14; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+  .cap { fill: none; stroke: var(--arm); stroke-width: 3; }
+  .lever { stroke: var(--arm-soft); stroke-width: 8; stroke-linecap: round; fill: none; }
+  .sleeve { fill: var(--arm-soft); }
+  .tip { fill: var(--arm); }
+  .arm-fill { fill: var(--arm); }
+  .pivot { fill: var(--sheet); stroke: var(--ink); stroke-width: 2; }
+  .leader { stroke: var(--muted); stroke-width: 1; fill: none; }
+  .key { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 10px 28px; font-size: 14px; }
+  .key div { display: flex; gap: 10px; align-items: baseline; min-width: 0; }
+  .swatch { width: 14px; height: 4px; border-radius: 2px; flex: none; transform: translateY(-3px); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+  td.num { font-family: var(--font-mono); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .table-wrap { overflow-x: auto; background: var(--sheet); border: 1px solid var(--line); border-radius: 8px; }
+  h2 { font-size: 1.1rem; margin: 6px 0 0; font-weight: 600; }
+  p.small { font-size: 13px; color: var(--muted); margin: 0; max-width: 80ch; }
+</style>
+
+<main>
+  <header>
+    <h1>Chest cam drive for Cody's arms</h1>
+    <p class="lede">Everything that moves the arms sits inside the chest. The motor lies across the upper chest, just in front of and below the shoulder axle, and carries two small eccentric discs, half a turn apart. Each arm joins the torso like an action figure: its sleeve cap moves around a fixed, Ø6 mm circular printed crossbar through a circular bearing, while concentric shoulder surfaces guide the rotation. Inside the chest, each arm continues as a 9.7 mm lever, at least 4 mm thick, pointing forward. The arm's weight rests the lever tip on its disc. As the disc turns, it lifts and lowers the tip, and the hand bobs on the keys. Drawn to scale for a bust about 105 mm high (5 px = 1 mm); sizes are first guesses for stage 4.</p>
+  </header>
+
+  <div class="controls">
+    <button id="play" type="button" aria-pressed="true">Pause</button>
+    <label for="speed">Speed <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1"> <output id="speedOut" for="speed">1 turn/s</output></label>
+    <label for="exag">Motion <input id="exag" type="range" min="1" max="4" step="1" value="2"> <output id="exagOut" for="exag">2× real</output></label>
+  </div>
+
+  <div class="key" aria-label="Colour key">
+    <div><span class="swatch" style="background:var(--drive)"></span><span><b>Orange:</b> double eccentric on the motor shaft</span></div>
+    <div><span class="swatch" style="background:var(--arm)"></span><span><b>Blue:</b> arm; light blue where it is inside the torso</span></div>
+    <div><span class="swatch" style="background:var(--fixed)"></span><span><b>Grey:</b> torso shell, axle, motor, stops (don't move)</span></div>
+  </div>
+
+  <div class="views">
+    <figure>
+      <p class="view-title">Side view · left arm</p>
+      <svg viewBox="40 60 560 600" role="img" aria-label="Side view of the bust: shoulder axle at mid-depth, lever forward inside the chest resting on an eccentric disc on the lying motor, arm down and forward to the keyboard">
+        <!-- head with headphones and hoodie bust (outline of the draft) -->
+        <ellipse class="ghost" cx="250" cy="225" rx="140" ry="150"/>
+        <rect class="ghost" x="205" y="160" width="70" height="120" rx="30"/>
+        <text class="note" x="250" y="230" text-anchor="middle">head</text>
+        <path class="shell" d="M 175 395 Q 168 360 205 350 L 300 350 Q 345 356 352 392 L 360 470 Q 362 560 350 585 L 165 585 Q 155 520 165 440 Z"/>
+        <text class="note" x="170" y="604">hoodie bust, about 38 mm deep</text>
+        <!-- table and laptop keyboard -->
+        <line class="fixed-line" x1="300" y1="575" x2="592" y2="575"/>
+        <rect class="fixed" x="370" y="560" width="210" height="10" rx="2"/>
+        <path class="fixed-line" d="M 580 560 L 592 460"/>
+        <text class="note" x="475" y="595" text-anchor="middle">laptop keyboard</text>
+        <!-- motor lying across, seen end-on, behind the disc -->
+        <circle class="fixed" cx="305" cy="435" r="30" stroke-dasharray="4 3"/>
+        <text class="note" x="305" y="483" text-anchor="middle">N20 Ø12, lying</text>
+        <text class="note" x="305" y="497" text-anchor="middle">across</text>
+        <!-- stop above the lever tip -->
+        <rect class="fixed" x="292" y="370" width="26" height="7" rx="2"/>
+        <!-- moving parts -->
+        <g id="sDisc"><circle class="disc" cx="0" cy="0" r="25"/><line class="disc-mark" x1="0" y1="0" x2="0" y2="-25"/></g>
+        <circle class="disc-fill" cx="305" cy="435" r="3"/>
+        <path id="sLever" class="lever" d=""/>
+        <circle id="sTip" class="tip" r="5"/>
+        <path id="sArm" class="arm" d=""/>
+        <circle id="sHand" class="arm-fill" r="13"/>
+        <circle id="sCap" class="cap" r="34"/>
+        <circle class="pivot" cx="265" cy="405" r="6"/>
+        <!-- labels -->
+        <text x="48" y="330">sleeve cap: turns around</text>
+        <text x="48" y="346">the axle, the seam stays</text>
+        <text x="48" y="362">closed (action-figure joint)</text>
+        <path class="leader" d="M 186 360 L 236 392"/>
+        <text x="48" y="420">printed Ø6 circular axle</text>
+        <path class="leader" d="M 158 416 L 258 405"/>
+        <text x="372" y="368">stop</text>
+        <path class="leader" d="M 370 364 L 320 373"/>
+        <text x="372" y="400">lever tip rests</text>
+        <text x="372" y="416">on the disc</text>
+        <path class="leader" d="M 370 406 L 312 409"/>
+        <text x="372" y="446">eccentric disc</text>
+        <path class="leader" d="M 370 442 L 330 440"/>
+        <text x="190" y="520">upper arm</text>
+        <text x="430" y="510">forearm</text>
+        <text id="travelText" class="dim" x="475" y="640" text-anchor="middle"></text>
+      </svg>
+      <figcaption><b>The disc lifts the lever, the lever lifts the arm.</b> Lever and hand are on the same side of the axle, so the lever tip simply rides on top of the disc, held there by the arm's weight. A tip lift of ±0.65 mm at 8 mm becomes about ±3 mm at the hand, 37 mm forward of the axle.</figcaption>
+    </figure>
+
+    <figure>
+      <p class="view-title">Front view · inside the chest</p>
+      <svg viewBox="40 60 520 600" role="img" aria-label="Front view of the bust: printed circular axle through both shoulders, motor lying across the upper chest with two eccentric discs on its shaft, each lever tip resting on one disc">
+        <ellipse class="ghost" cx="300" cy="225" rx="150" ry="150"/>
+        <rect class="ghost" x="128" y="170" width="44" height="120" rx="20"/>
+        <rect class="ghost" x="428" y="170" width="44" height="120" rx="20"/>
+        <path class="ghost" d="M 150 180 Q 300 20 450 180"/>
+        <text class="note" x="300" y="230" text-anchor="middle">head with headphones</text>
+        <path class="shell" d="M 150 395 Q 155 362 210 352 L 390 352 Q 445 362 450 395 L 462 585 L 138 585 Z"/>
+        <text class="note" x="142" y="604">hoodie bust, about 62 mm wide at the shoulders</text>
+        <!-- keyboard -->
+        <rect class="fixed" x="190" y="560" width="220" height="10" rx="2"/>
+        <!-- motor lying across, shaft to the right -->
+        <rect class="fixed" x="205" y="405" width="120" height="60" rx="10"/>
+        <text class="note" x="265" y="440" text-anchor="middle">N20 motor, 24 mm</text>
+        <line class="axle" x1="325" y1="435" x2="375" y2="435"/>
+        <!-- axle and the arms' sleeves on it -->
+        <line class="axle" x1="160" y1="405" x2="440" y2="405"/>
+        <rect class="sleeve" x="168" y="398" width="172" height="14" rx="4"/>
+        <rect class="sleeve" x="354" y="398" width="78" height="14" rx="4"/>
+        <!-- stops above the tips -->
+        <rect class="fixed" x="328" y="370" width="16" height="7" rx="2"/>
+        <rect class="fixed" x="354" y="370" width="16" height="7" rx="2"/>
+        <!-- moving parts: discs seen edge-on, tips, arms -->
+        <rect id="fDiscL" class="disc-fill" x="327" y="410" width="19" height="50" rx="3" opacity="0.85"/>
+        <rect id="fDiscR" class="disc-fill" x="352" y="410" width="19" height="50" rx="3" opacity="0.85"/>
+        <circle id="fTipL" class="tip" cx="336" cy="404" r="6"/>
+        <circle id="fTipR" class="tip" cx="361" cy="404" r="6"/>
+        <path id="fArmL" class="arm" d=""/>
+        <path id="fArmR" class="arm" d=""/>
+        <circle id="fHandL" class="arm-fill" r="13"/>
+        <circle id="fHandR" class="arm-fill" r="13"/>
+        <circle class="cap" cx="160" cy="405" r="34"/>
+        <circle class="cap" cx="440" cy="405" r="34"/>
+        <!-- labels -->
+        <text x="300" y="338" text-anchor="middle">lever tips on the double eccentric (one part)</text>
+        <path class="leader" d="M 348 342 L 348 366"/>
+        <text x="48" y="480">left arm's sleeve runs</text>
+        <text x="48" y="496">along the axle to its lever</text>
+        <path class="leader" d="M 150 488 L 214 412"/>
+      </svg>
+      <figcaption><b>One motor, two discs.</b> The motor lies across the upper chest and fills most of its width; its 10 mm shaft carries one printed part with both eccentrics side by side. Each arm reaches its disc through a sleeve on the axle, so both levers sit next to each other. While one disc lifts its tip, the other lowers its own, so the hands type in turn.</figcaption>
+    </figure>
+  </div>
+
+  <section>
+    <h2>Sizes that make everything fit</h2>
+    <p class="small">The bust is scaled to the drive. With these sizes the whole drive fits in the upper chest with 2 mm walls, and the assembly stays within FIG-02 (≤ 150 mm, target 120–130 mm with table and platform).</p>
+  </section>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>What</th><th>Value</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Bust (head and torso)</td><td class="num">≈ 105 mm high</td><td>Leaves room for platform and table within 150 mm (FIG-02).</td></tr>
+        <tr><td>Torso at the shoulders</td><td class="num">≈ 62 × 38 mm</td><td>Inside ≈ 58 × 34 mm: the motor is 34 mm long including its shaft, so about 24 mm to spare across.</td></tr>
+        <tr><td>Motor (datasheet)</td><td class="num">12 × 10 mm envelope; 9 mm gearbox + 15 mm can; shaft Ø3 × 10 mm</td><td>34 mm overall; lies across the chest.</td></tr>
+        <tr><td>Shoulder axle</td><td class="num">fixed Ø6 × 60 mm circular printed bar, left–right</td><td>At mid-depth, about 10 mm below the top of the shoulders; arm sleeves have Ø6.4 mm circular bores and are retained by blind-socket end caps attached to the frame (61.6 mm overall).</td></tr>
+        <tr><td>Lever, forward from the axle</td><td class="num">≈ 9.7 mm, at least 4 mm thick</td><td>Same side as the hand: the tip rides on top of the disc, held by the arm's weight.</td></tr>
+        <tr><td>Hand, forward of the axle</td><td class="num">≈ 37 mm</td><td>Lever ratio 37 : 9.7 ≈ 3.8.</td></tr>
+        <tr><td>Double eccentric</td><td class="num">one part, 2 × Ø10 × 4 mm, offset 0.65 mm</td><td>Both eccentrics half a turn apart on one hub that fits the 10 mm D-shaft. Tip moves ±0.65 mm, hand ≈ ±3 mm: about 6 mm travel (FIG-07: 3–8 mm). Swap the part to tune the travel.</td></tr>
+        <tr><td>Motor position</td><td class="num">axis 9.7 mm in front of, 8.8 mm below the axle</td><td>Directly under the lever tips. At least 1.5 mm calculated clearance to the arm sleeves; about 1.3 mm to the inside of the front wall before its 2 mm thickness.</td></tr>
+        <tr><td>Strokes per arm</td><td class="num">1 per turn</td><td>The selected 500 rpm N20 currently runs at about 120 rpm (about 2 strokes/s per arm) and can run faster; tune to the fastest non-distracting rate (FIG-08, FIG-13).</td></tr>
+        <tr><td>Contact</td><td class="num">arm weight</td><td>At 4 strokes/s the hand needs about 2 m/s², below gravity; a light spring adds margin.</td></tr>
+        <tr><td>Stops</td><td class="num">above each lever tip</td><td>Catch an arm when someone lifts a hand (FIG-09).</td></tr>
+        <tr><td>Service</td><td class="num">removable back panel</td><td>Motor, discs and axle reachable; arms pull off the axle like an action figure's (FIG-14).</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let playing = !reduce;
+  let turnsPerSecond = 1;
+  let exag = 2;
+  let phase = 0.9;
+  let last = null;
+
+  const PX = 5;                          // px per mm
+  const OFFSET_MM = 0.65;                // eccentric offset
+  const DISC_R = 25;                     // disc radius, px (5 mm)
+  const P = [265, 405];                  // shoulder axle, side view
+  const SHAFT = [305, 435];              // motor axis, side view
+  const LEVER = 40;                      // 8 mm forward
+  const ELBOW = [5, 110];                // relative to the axle
+  const HAND_X = 185;                    // 37 mm forward
+  const RATIO = HAND_X / LEVER;
+
+  function rot(q, a) {
+    const c = Math.cos(a), s = Math.sin(a);
+    return [P[0] + q[0] * c - q[1] * s, P[1] + q[0] * s + q[1] * c];
+  }
+  function draw() {
+    const e = OFFSET_MM * exag * PX;     // offset as drawn, px
+    const liftL = e * Math.cos(phase);   // left tip lifted by liftL px
+    const liftR = -liftL;
+    const maxDown = RATIO * e;
+
+    // Side view: disc centre circles the motor axis; tip rides on top of the disc
+    const dc = [SHAFT[0] + e * Math.sin(phase), SHAFT[1] - e * Math.cos(phase)];
+    const ang = phase * 180 / Math.PI;
+    $("sDisc").setAttribute("transform", `translate(${dc[0]} ${dc[1]}) rotate(${ang})`);
+    const a = -Math.asin(Math.max(-0.95, Math.min(0.95, liftL / LEVER)));   // tip up -> arm turns up
+    const tip = rot([LEVER, 5], a);
+    const handRest = [HAND_X, (547 - maxDown) - P[1]];                     // lowest hand touches the keys
+    const elbow = rot(ELBOW, a), hand = rot(handRest, a);
+    $("sLever").setAttribute("d", `M ${P[0]} ${P[1]} L ${tip[0]} ${tip[1]}`);
+    setCircle("sTip", tip);
+    $("sArm").setAttribute("d", `M ${P[0]} ${P[1]} L ${elbow[0]} ${elbow[1]} L ${hand[0]} ${hand[1]}`);
+    setCircle("sHand", hand);
+    setCircle("sCap", P);
+
+    // Front view: discs move up and down half a turn apart; tips and hands follow
+    $("fDiscL").setAttribute("y", 410 - liftL);
+    $("fDiscR").setAttribute("y", 410 - liftR);
+    $("fTipL").setAttribute("cy", 404 - liftL);
+    $("fTipR").setAttribute("cy", 404 - liftR);
+    const restY = 547 - maxDown;
+    const hL = [230, restY - RATIO * liftL], hR = [370, restY - RATIO * liftR];
+    const eL = [150, 515 - liftL * 0.6], eR = [450, 515 - liftR * 0.6];
+    $("fArmL").setAttribute("d", `M 160 405 L ${eL[0]} ${eL[1]} L ${hL[0]} ${hL[1]}`);
+    $("fArmR").setAttribute("d", `M 440 405 L ${eR[0]} ${eR[1]} L ${hR[0]} ${hR[1]}`);
+    setCircle("fHandL", hL); setCircle("fHandR", hR);
+
+    $("travelText").textContent = `real hand travel ≈ ${(2 * OFFSET_MM * RATIO).toFixed(1)} mm`;
+  }
+  function setCircle(id, p) { const el = $(id); el.setAttribute("cx", p[0]); el.setAttribute("cy", p[1]); }
+
+  function tick(t) {
+    if (last !== null && playing) phase += (t - last) / 1000 * turnsPerSecond * 2 * Math.PI;
+    last = t;
+    draw();
+    requestAnimationFrame(tick);
+  }
+  const play = $("play");
+  function syncButton() { play.textContent = playing ? "Pause" : "Play"; play.setAttribute("aria-pressed", String(playing)); }
+  play.addEventListener("click", () => { playing = !playing; syncButton(); });
+  $("speed").addEventListener("input", (ev) => { turnsPerSecond = +ev.target.value; $("speedOut").textContent = `${turnsPerSecond} turn${turnsPerSecond === 1 ? "" : "s"}/s`; });
+  $("exag").addEventListener("input", (ev) => { exag = +ev.target.value; $("exagOut").textContent = exag === 1 ? "real size" : `${exag}× real`; });
+  syncButton();
+  draw();
+  requestAnimationFrame(tick);
+})();
+</script>
+
+</body></html>

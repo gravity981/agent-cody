@@ -24,6 +24,7 @@ For each item under "Before the stage starts":
 ## 3. Steps
 
 - Show the planned steps with their requirements. For each requirement, read it and check that it is clear enough to implement. Ask about every gap; never fill one with an assumption.
+- For mechanical stages, read [the mechanical workflow](../../../spec/mechanical-workflow.md) and map its nine phases to the planned steps. Reuse current evidence, identify owner concept/dimensioning approvals, arrange separate review, and make physical checks explicit without creating a competing stage plan.
 - Check that the stage's steps cover each requirement planned for the stage exactly once.
 - Ask the user to confirm or adjust the steps. Write changes into the plan.
 
